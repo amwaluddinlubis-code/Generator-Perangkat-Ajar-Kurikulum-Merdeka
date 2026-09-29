@@ -83,11 +83,6 @@ function getDb(): DatabaseSync {
   database.exec('PRAGMA synchronous = FULL;');
   database.exec('PRAGMA busy_timeout = 5000;');
 
-  const userColumns = database.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
-  if (!userColumns.some(column => column.name === 'deleted_at')) {
-    database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
-  }
-
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_meta (
       key TEXT PRIMARY KEY,
@@ -186,7 +181,13 @@ function getDb(): DatabaseSync {
       window_started_at INTEGER NOT NULL,
       request_count INTEGER NOT NULL
     ) STRICT;
-  `);
+  
+  const userColumns = database.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  if (!userColumns.some(column => column.name === 'deleted_at')) {
+    database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
+  }
+
+`);
 
   return database;
 }
