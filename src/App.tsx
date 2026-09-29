@@ -21,6 +21,7 @@ import { DashboardPage } from './components/DashboardPage';
 import { SchoolSettingsPage } from './components/SchoolSettingsPage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
+import { getServerMessage } from './utils/api';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -246,7 +247,7 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Gagal menghasilkan perangkat ajar');
+        throw new Error(getServerMessage(data, 'Gagal menghasilkan perangkat ajar'));
       }
 
       const newDoc: EducationalDocument = {
@@ -291,10 +292,12 @@ export default function App() {
       console.error('Generate error:', err);
       let friendlyMsg = 'Terjadi kesalahan saat menyusun dokumen. Silakan coba kembali.';
       const raw = String(err?.message || '');
-      if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
-        friendlyMsg = 'Server AI mengalami lonjakan antrean sesaat. Sistem telah mengoptimalkan koneksi alternatif, silakan klik tombol "Susun Perangkat Ajar" sekali lagi.';
-      } else if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
-        friendlyMsg = 'Batas frekuensi permintaan tercapai. Silakan tunggu beberapa detik lalu coba kembali.';
+      if (/sesi|login|auth|401/i.test(raw)) {
+        friendlyMsg = 'Sesi Anda berakhir. Silakan masuk kembali lalu ulangi penyusunan.';
+      } else if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
+        friendlyMsg = 'Server AI mengalami lonjakan antrean sesaat. Silakan klik tombol "Coba lagi" sekali lagi.';
+      } else if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED') || /frekuensi|rate limit/i.test(raw)) {
+        friendlyMsg = 'Batas frekuensi permintaan tercapai. Tunggu ±1 menit lalu klik "Coba lagi".';
       } else if (raw.length > 0 && !raw.includes('{')) {
         friendlyMsg = raw;
       }
@@ -320,7 +323,7 @@ export default function App() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal mengubah status');
+        throw new Error(getServerMessage(data, 'Gagal mengubah status'));
       }
 
       setUsers(prev => prev.map(u => u.id === userId ? data.user : u));
@@ -353,7 +356,7 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal memperbarui profil');
+        throw new Error(getServerMessage(data, 'Gagal memperbarui profil'));
       }
       setUsers(prev => prev.map(u => u.id === userId ? data.user : u));
       if (currentUser && currentUser.id === userId) {

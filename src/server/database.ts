@@ -286,12 +286,13 @@ function insertUser(user: Record<string, any>, schoolId?: string): void {
   const resolvedSchoolId = schoolId || user.schoolId || ensureSchool(user.schoolName, user.npsn, user.jenjang);
   db.prepare(`
     INSERT OR REPLACE INTO users
-      (id,name,email,school_id,npsn,nip,jenjang,mata_pelajaran,role,status,avatar_url,registered_at,verified_at,verified_by,deleted_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      (id,name,email,school_id,npsn,nip,jenjang,mata_pelajaran,role,status,avatar_url,registered_at,verified_at,verified_by,deleted_at,password_hash)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     user.id, user.name, user.email, resolvedSchoolId, user.npsn || null, user.nip || null,
     user.jenjang, user.mataPelajaran, user.role, user.status, user.avatarUrl || null,
-    user.registeredAt, user.verifiedAt || null, user.verifiedBy || null, user.deletedAt || null
+    user.registeredAt, user.verifiedAt || null, user.verifiedBy || null, user.deletedAt || null,
+    (user as any).passwordHash ?? null
   );
   db.prepare(`
     INSERT OR REPLACE INTO school_memberships
@@ -563,7 +564,9 @@ export function updateUser(user: Record<string, any>): DbUser {
     if (schoolId !== current.schoolId) {
       db.prepare('DELETE FROM school_memberships WHERE user_id = ?').run(user.id);
     }
-    insertUser({ ...current, ...user, schoolId }, schoolId);
+    // INSERT OR REPLACE menimpa seluruh baris: bawa hash lama bila tak diberikan yang baru.
+    const keepHash = (user as any).passwordHash ?? getUserPasswordHash(user.id);
+    insertUser({ ...current, ...user, schoolId, passwordHash: keepHash }, schoolId);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');

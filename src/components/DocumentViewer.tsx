@@ -9,6 +9,7 @@ import {
 } from '../utils/exportUtils';
 import { Modal } from './ui/Modal';
 import { Field } from './ui/Field';
+import { getServerMessage } from '../utils/api';
 import { 
   Printer, 
   Download, 
@@ -169,7 +170,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         body: JSON.stringify({ prompt: imgPrompt.trim(), aspectRatio: imgRatio })
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal membuat ilustrasi');
+      if (!res.ok || !data.success) throw new Error(getServerMessage(data, 'Gagal membuat ilustrasi'));
       setImgResult(data.imageUrl);
     } catch (err: any) {
       setImgError(err.message || 'Gagal membuat ilustrasi');
@@ -217,7 +218,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         })
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error?.message || data.message || 'Gagal meregenerasi bagian');
+      if (!res.ok || !data.success) throw new Error(getServerMessage(data, 'Gagal meregenerasi bagian'));
       setEditableContent(prev => {
         const lines = prev.split('\n');
         const idx = contentSections.findIndex(s => s.title === regenSection);

@@ -181,7 +181,7 @@ Token di `src/index.css`: warna (`--app-*`), radius 12/18/24/30, spacing basis 4
 | Loading | `.skeleton` | Daftar & kartu saat memuat |
 | Kosong | `.empty-state` | Arsip, riwayat, hasil filter |
 
-Primitif React (`src/components/ui/`): `Modal` (ESC + fokus + `role=dialog`), `Badge`, `EmptyState`, `Field` (error dekat field + `aria-describedby`). Aturan: halaman baru wajib memakai primitif ini, bukan merakit ulang. Model pembelajaran mengikuti jenjang profil (`MODEL_PEMBELAJARAN_PER_JENJANG`: SD 6, SMP 7, SMA 7, SMK 6 — tanpa diferensiasi/TaRL); saran katalog di luar daftar muncul sebagai opsi dinamis. Tabel memakai `.data-table`; bulk action tersedia di verifikasi guru; daftar memakai skeleton saat memuat dan empty/error state dengan aksi coba lagi.
+Primitif React (`src/components/ui/`): `Modal` (ESC + fokus + `role=dialog`), `Badge`, `EmptyState`, `Field` (error dekat field + `aria-describedby`). Pesan error server dibaca dua format via `getServerMessage` (`src/utils/api.ts`) agar penyebab asli (sesi berakhir, rate limit, AI sibuk) selalu tampil, bukan generik. Aturan: halaman baru wajib memakai primitif ini, bukan merakit ulang. Model pembelajaran mengikuti jenjang profil (`MODEL_PEMBELAJARAN_PER_JENJANG`: SD 6, SMP 7, SMA 7, SMK 6 — tanpa diferensiasi/TaRL); saran katalog di luar daftar muncul sebagai opsi dinamis. Tabel memakai `.data-table`; bulk action tersedia di verifikasi guru; daftar memakai skeleton saat memuat dan empty/error state dengan aksi coba lagi.
 
 **Aksesibilitas & responsif:** target sentuh ≥24px (`.check-hit`), fokus terlihat + `prefers-reduced-motion`, input 16px anti-zoom iOS, tabel punya kolom lengket + wilayah gulir keyboard, fokus pindah ke konten tiap navigasi, kontras teks sekunder memenuhi AA.
 

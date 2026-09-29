@@ -34,8 +34,7 @@ test('password payload validation', () => {
   assert.equal(validatePasswordPayload({ newPassword: 'cukup-panjang-1', currentPassword: 'lama-12345' }).ok, true);
 });
 
-test('login payload accepts optional password', () => {
-  const ok = validateLoginPayload({ email: 'guru@guru.smp.belajar.id', password: 'rahasia123' });
+test('login payload accepts optional password', () => {  const ok = validateLoginPayload({ email: 'guru@guru.smp.belajar.id', password: 'rahasia123' });
   assert.equal(ok.ok, true);
   assert.equal(ok.value?.password, 'rahasia123');
   const noPw = validateLoginPayload({ email: 'guru@guru.smp.belajar.id' });

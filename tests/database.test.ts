@@ -12,8 +12,11 @@ import {
   getDocumentById,
   getUserById,
   getUserByEmail,
+  getUserPasswordHash,
+  setUserPasswordHash,
   updateUser
 } from '../src/server/database.ts';
+import { hashPassword, verifyPassword } from '../src/server/security.ts';
 
 function userFixture(suffix: string) {
   return {
@@ -78,4 +81,19 @@ test('SQLite backup creates a restorable artifact', async () => {
   assert.equal(fs.existsSync(destination), true);
   assert.ok(fs.statSync(destination).size > 0);
   fs.rmSync(destination, { force: true });
+});
+
+test('update profil tidak menghapus hash kata sandi (regresi)', () => {
+  const created = createUser(userFixture('PW'));
+  setUserPasswordHash(created.id, hashPassword('Kata-Sandi-Awal-123'));
+  assert.ok(getUserPasswordHash(created.id));
+
+  const updated = updateUser({ ...created, name: 'Nama Baru', schoolName: 'Sekolah Baru' });
+  assert.equal(updated.name, 'Nama Baru');
+  const kept = getUserPasswordHash(created.id);
+  assert.ok(kept, 'hash harus tetap ada setelah update profil');
+  assert.equal(verifyPassword('Kata-Sandi-Awal-123', kept!), true);
+
+  deleteUser(created.id);
+  assert.equal(getUserById(created.id), null);
 });

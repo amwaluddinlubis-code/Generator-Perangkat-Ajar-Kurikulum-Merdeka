@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DOC_TYPE_INFO, JENJANG_CONFIGS } from '../src/data/curriculumData.ts';
 import { getContextualTopics } from '../src/data/topicCatalog.ts';
+import { getServerMessage } from '../src/utils/api.ts';
 
 const EXPECTED_DOC_TYPES = [
   'modul_ajar',
@@ -98,4 +99,18 @@ test('kontrak navigasi: semua target sidebar punya judul header', () => {
     const inCatalog = Object.keys(DOC_TYPE_INFO).includes(target);
     assert.ok(inHeader || inApp || inCatalog, `target '${target}' harus dirender di suatu view`);
   }
+});
+
+test('pesan error server terbaca dua format', () => {
+  assert.equal(
+    getServerMessage({ success: false, error: { code: 'RATE_LIMITED', message: 'Terlalu sering.' } }, 'Jatuh'),
+    'Terlalu sering.'
+  );
+  assert.equal(
+    getServerMessage({ success: false, message: 'Gagal lama.' }, 'Jatuh'),
+    'Gagal lama.'
+  );
+  assert.equal(getServerMessage(null, 'Jatuh'), 'Jatuh');
+  assert.equal(getServerMessage({ success: false }, 'Jatuh'), 'Jatuh');
+  assert.equal(getServerMessage({ success: false, error: { code: 'X' } }, 'Jatuh'), 'Jatuh');
 });

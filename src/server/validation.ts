@@ -134,7 +134,7 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
     errors.push('Dimensi P5 tidak valid.');
   }
 
-  if (input.soalConfig !== undefined) {
+  if (input.soalConfig !== undefined && input.docType === 'soal_ujian') {
     if (!input.soalConfig || typeof input.soalConfig !== 'object' || Array.isArray(input.soalConfig)) {
       errors.push('Konfigurasi soal tidak valid.');
     } else {

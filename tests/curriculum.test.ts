@@ -176,3 +176,11 @@ test('prompt generator memakai terminologi Profil Lulusan', () => {
     false
   );
 });
+
+test('prompt melarang sapaan dan identitas AI', () => {
+  const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+
+  assert.ok(serverSource.includes('TANPA SAPAAN & TANPA IDENTITAS AI'));
+  assert.ok(serverSource.includes('DILARANG membuka dengan sapaan'));
+  assert.ok(serverSource.includes('DILARANG menyebut diri sebagai AI'));
+});

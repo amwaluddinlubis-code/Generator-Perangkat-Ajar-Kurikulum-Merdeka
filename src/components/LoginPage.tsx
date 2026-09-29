@@ -125,7 +125,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
 
             <p className="apple-eyebrow">Ruang kerja guru</p>
-            <h1 className="apple-headline mt-2 max-w-[620px] !text-[44px] sm:!text-[58px] lg:!text-[68px]">
+            <h1 className="apple-headline mt-2 max-w-[620px] !text-[32px] sm:!text-[42px] lg:!text-[50px]">
               Lebih sedikit pekerjaan administratif. Lebih banyak waktu untuk murid.
             </h1>
             <p className="apple-sub mt-6 max-w-[570px] !text-[17px] sm:!text-[18px]">

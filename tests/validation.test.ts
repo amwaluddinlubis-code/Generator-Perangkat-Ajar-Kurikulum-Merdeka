@@ -46,6 +46,13 @@ test('generator validation rejects oversized and malformed structured input', ()
     mataPelajaran: 'Bahasa Indonesia',
     topik: 'Teks Eksplanasi',
     soalConfig: { jumlahSoal: 201 }
+  }).ok, true);
+
+  assert.equal(validateGeneratorPayload({
+    docType: 'soal_ujian',
+    mataPelajaran: 'Bahasa Indonesia',
+    topik: 'Teks Eksplanasi',
+    soalConfig: { jumlahSoal: 201 }
   }).ok, false);
 
   assert.equal(validateGeneratorPayload({
@@ -87,6 +94,22 @@ test('soal custom: komposisi harus total 100% dan bentuk valid', () => {
     ...base,
     soalConfig: { ...base.soalConfig, jumlahSoal: 0 }
   }).ok, false);
+});
+
+test('soalConfig asing diabaikan untuk non-soal (regresi)', () => {
+  assert.equal(validateGeneratorPayload({
+    docType: 'modul_ajar',
+    mataPelajaran: 'IPAS',
+    topik: 'Siklus Air',
+    soalConfig: { jumlahSoal: 0, bentukSoal: [], komposisi: { mudah: 0, sedang: 0, sukar: 0 } }
+  }).ok, true);
+
+  assert.equal(validateGeneratorPayload({
+    docType: 'prota_promes',
+    mataPelajaran: 'Matematika',
+    topik: 'Pecahan',
+    soalConfig: { jumlahSoal: 0 }
+  }).ok, true);
 });
 
 test('catatan tambahan per-jenis divalidasi batasnya', () => {

@@ -260,15 +260,19 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       modelPembelajaran,
       targetPeserta,
       dimensiP5,
-      soalConfig: {
-        jumlahSoal: Number(jumlahSoal) || 0,
-        bentukSoal,
-        komposisi: {
-          mudah: Number(komposisi.mudah) || 0,
-          sedang: Number(komposisi.sedang) || 0,
-          sukar: Number(komposisi.sukar) || 0
-        }
-      },
+      ...(docType === 'soal_ujian'
+        ? {
+            soalConfig: {
+              jumlahSoal: Number(jumlahSoal) || 0,
+              bentukSoal,
+              komposisi: {
+                mudah: Number(komposisi.mudah) || 0,
+                sedang: Number(komposisi.sedang) || 0,
+                sukar: Number(komposisi.sukar) || 0
+              }
+            }
+          }
+        : {}),
       authorName,
       schoolName,
       nip,
