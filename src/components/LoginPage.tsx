@@ -10,6 +10,8 @@ import {
   Download,
   BookOpen,
   BarChart3,
+  Sparkles,
+  LockKeyhole,
 } from 'lucide-react';
 
 interface LoginPageProps {
@@ -32,16 +34,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   isLoading = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
-  const [loginEmail, setLoginEmail] = useState<string>('');
-  const [loginPassword, setLoginPassword] = useState<string>('');
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [regName, setRegName] = useState<string>('');
-  const [regEmail, setRegEmail] = useState<string>('');
-  const [regSchool, setRegSchool] = useState<string>('');
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regSchool, setRegSchool] = useState('');
   const [regJenjang, setRegJenjang] = useState<Jenjang>('SD');
-  const [regMapel, setRegMapel] = useState<string>('Guru Kelas / IPAS');
-  const [regNip, setRegNip] = useState<string>('');
+  const [regMapel, setRegMapel] = useState('Guru Kelas / IPAS');
+  const [regNip, setRegNip] = useState('');
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,48 +94,92 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   };
 
   const features = [
-    { icon: <FileText className="w-5 h-5" />, title: '7 format perangkat', desc: 'Modul Ajar, RPP, Soal AKM/HOTS, LKPD, ATP/KKTP, Prota-Promes, P5.' },
-    { icon: <Download className="w-5 h-5" />, title: 'Siap cetak & edit', desc: 'Ekspor .docx asli dan .pdf dengan kop sekolah resmi.' },
-    { icon: <BookOpen className="w-5 h-5" />, title: 'Katalog topik BSKAP', desc: 'Inspirasi materi otomatis mengikuti Fase dan Kelas.' },
-    { icon: <BarChart3 className="w-5 h-5" />, title: 'Arsip & statistik', desc: 'Semua dokumen tersimpan rapi dan terpantau.' },
+    { icon: <FileText className="h-5 w-5" />, title: '7 format perangkat', desc: 'Modul Ajar, RPP, asesmen, LKPD, ATP/KKTP, Prota-Promes, dan proyek.' },
+    { icon: <Download className="h-5 w-5" />, title: 'Siap cetak & edit', desc: 'Ekspor Word dan PDF dengan identitas sekolah yang rapi.' },
+    { icon: <BookOpen className="h-5 w-5" />, title: 'Referensi kurikulum', desc: 'Fase, kelas, dan topik membantu menjaga konteks pembelajaran.' },
+    { icon: <BarChart3 className="h-5 w-5" />, title: 'Arsip & statistik', desc: 'Dokumen tersimpan teratur agar mudah dilanjutkan kembali.' },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Nav tipis ala Apple */}
-      <nav className="apple-nav sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-5 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-black dark:bg-white dark:text-black text-white flex items-center justify-center">
-              <GraduationCap className="w-4 h-4" />
-            </div>
-            <span className="text-[14px] font-semibold tracking-tight">Ruang Guru Merdeka</span>
+    <div className="login-shell min-h-screen text-[var(--app-text)]">
+      <header className="apple-nav sticky top-0 z-40 border-x-0">
+        <div className="mx-auto flex h-14 max-w-[1320px] items-center justify-between px-5 sm:px-8">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[11px] bg-[var(--app-text)] text-[var(--app-bg)]">
+              <GraduationCap className="h-[17px] w-[17px]" />
+            </span>
+            <span className="text-[14px] font-bold tracking-[-.02em]">Ruang Guru Merdeka</span>
           </div>
-          <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">Kurikulum Merdeka · 2026/2027</span>
+          <span className="hidden text-[12px] font-medium text-[var(--app-text-tertiary)] sm:block">
+            Perangkat Ajar · 2026/2027
+          </span>
         </div>
-      </nav>
+      </header>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-5 pt-12 pb-16 sm:pt-16">
-        {/* Hero */}
-        <div className="text-center max-w-2xl mx-auto">
-          <p className="apple-eyebrow mb-2">Generator Perangkat Ajar</p>
-          <h1 className="apple-headline">Ruang Guru Merdeka.</h1>
-          <p className="apple-sub mt-3">
-            Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikbudristek No.&nbsp;12&nbsp;Tahun&nbsp;2024 — dalam hitungan menit, bukan akhir pekan.
-          </p>
-        </div>
-
-        {/* Kartu auth */}
-        <div className="apple-card mt-10 max-w-xl mx-auto p-6 sm:p-8">
-          <div className="flex justify-center">
-            <div className="apple-segment" role="tablist" aria-label="Masuk atau daftar">
-              <button type="button" data-active={activeTab === 'login'} onClick={() => { setActiveTab('login'); setErrorMessage(''); }}>Masuk</button>
-              <button type="button" data-active={activeTab === 'register'} onClick={() => { setActiveTab('register'); setErrorMessage(''); }}>Daftar Guru</button>
+      <main className="mx-auto grid w-full max-w-[1320px] grid-cols-1 gap-6 px-5 py-7 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:gap-10 lg:py-16">
+        <section className="hero-surface overflow-hidden p-7 sm:p-10 lg:p-14">
+          <div className="relative z-10 max-w-[650px]">
+            <div className="status-chip mb-7 !bg-[var(--app-surface-solid)]">
+              <Sparkles className="h-3.5 w-3.5 text-[var(--app-accent)]" />
+              Generator perangkat ajar berbantuan AI
             </div>
+
+            <p className="apple-eyebrow">Ruang kerja guru</p>
+            <h1 className="apple-headline mt-2 max-w-[620px] !text-[44px] sm:!text-[58px] lg:!text-[68px]">
+              Lebih sedikit pekerjaan administratif. Lebih banyak waktu untuk murid.
+            </h1>
+            <p className="apple-sub mt-6 max-w-[570px] !text-[17px] sm:!text-[18px]">
+              Susun perangkat pembelajaran dengan struktur yang rapi, konteks kurikulum yang jelas, dan alur kerja yang terasa sederhana.
+            </p>
+
+            <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {features.map((feature) => (
+                <div key={feature.title} className="login-feature">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--app-accent-soft)] text-[var(--app-accent)]">
+                    {feature.icon}
+                  </div>
+                  <h2 className="text-[13.5px] font-bold tracking-[-.01em]">{feature.title}</h2>
+                  <p className="mt-1 text-[12.5px] leading-5 text-[var(--app-text-secondary)]">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="apple-card-solid rounded-[28px] p-6 shadow-[var(--app-shadow-lg)] sm:p-8 lg:p-9">
+          <div className="mb-6">
+            <p className="section-label">Akses ruang kerja</p>
+            <h2 className="mt-1 text-[28px] font-bold tracking-[-.04em]">
+              {activeTab === 'login' ? 'Selamat datang kembali.' : 'Buat profil guru.'}
+            </h2>
+            <p className="mt-2 text-[14px] leading-6 text-[var(--app-text-secondary)]">
+              {activeTab === 'login'
+                ? 'Masuk dengan profil guru Anda untuk melanjutkan pekerjaan.'
+                : 'Lengkapi identitas dasar untuk mengajukan akses.'}
+            </p>
+          </div>
+
+          <div className="apple-segment w-full" role="tablist" aria-label="Akses akun">
+            <button
+              type="button"
+              className="flex-1"
+              data-active={activeTab === 'login'}
+              onClick={() => { setActiveTab('login'); setErrorMessage(''); }}
+            >
+              Masuk
+            </button>
+            <button
+              type="button"
+              className="flex-1"
+              data-active={activeTab === 'register'}
+              onClick={() => { setActiveTab('register'); setErrorMessage(''); }}
+            >
+              Daftar Guru
+            </button>
           </div>
 
           {errorMessage && (
-            <div className="mt-5 rounded-xl bg-[#fff1f1] border border-[#ffcfcf] text-[#b3261e] text-[13.5px] font-medium px-4 py-3" role="alert">
+            <div className="mt-4 rounded-[14px] border border-[color-mix(in_srgb,var(--app-danger)_20%,transparent)] bg-[color-mix(in_srgb,var(--app-danger)_8%,transparent)] px-4 py-3 text-[13px] font-medium text-[var(--app-danger)]" role="alert">
               {errorMessage}
             </div>
           )}
@@ -141,9 +187,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           {activeTab === 'login' ? (
             <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="login-email">Email profil guru</label>
+                <label className="mb-1.5 block text-[13px] font-semibold" htmlFor="login-email">Email profil guru</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-text-tertiary)]" />
                   <input
                     id="login-email"
                     type="email"
@@ -154,19 +200,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     autoComplete="email"
                   />
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {['@guru.sd.belajar.id', '@guru.smp.belajar.id', '@guru.sma.belajar.id'].map((dom) => (
-                    <button key={dom} type="button" onClick={() => setLoginEmail(`guru${dom}`)}
-                      className="text-[12px] font-medium px-2.5 py-1 rounded-full bg-[#f5f5f7] dark:bg-white/10 text-[#424245] dark:text-[#e8e8ed] hover:bg-[#e8e8ed] dark:hover:bg-white/15 transition-colors">
-                      {dom}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {['@guru.sd.belajar.id', '@guru.smp.belajar.id', '@guru.sma.belajar.id'].map((domain) => (
+                    <button
+                      key={domain}
+                      type="button"
+                      onClick={() => setLoginEmail(`guru${domain}`)}
+                      className="rounded-full bg-[var(--app-surface-muted)] px-2.5 py-1 text-[11px] font-semibold text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-accent-soft)] hover:text-[var(--app-accent)]"
+                    >
+                      {domain}
                     </button>
                   ))}
                 </div>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-2">Isi kata sandi bila akun Anda sudah mengaturnya.</p>
               </div>
 
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="login-password">Kata sandi (opsional)</label>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label className="text-[13px] font-semibold" htmlFor="login-password">Kata sandi</label>
+                  <span className="text-[11px] text-[var(--app-text-tertiary)]">Opsional untuk akun lama</span>
+                </div>
                 <input
                   id="login-password"
                   type="password"
@@ -179,43 +231,56 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </div>
 
               <button type="submit" disabled={isLoading} className="btn-apple w-full">
-                {isLoading ? 'Membuka ruang kerja…' : 'Lanjutkan'} <ArrowRight className="w-4 h-4" />
+                {isLoading ? 'Membuka ruang kerja…' : 'Lanjutkan'}
+                <ArrowRight className="h-4 w-4" />
               </button>
 
-              <div className="pt-5 border-t border-black/10">
-                <p className="text-[13px] font-semibold text-[#424245] mb-2.5">Coba sekali ketuk</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {demoUsers.slice(0, 4).map((user) => (
-                    <button key={user.id} type="button" onClick={() => handleQuickLogin(user)}
-                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#0071e3] hover:bg-[#f5f9ff] dark:hover:bg-white/5 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px]">
-                      <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold truncate">{user.name}</p>
-                        <p className="text-[12px] text-[#6e6e73] dark:text-[#98989d] truncate">{user.schoolName}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-2 pt-1 text-[11.5px] text-[var(--app-text-tertiary)]">
+                <LockKeyhole className="h-3.5 w-3.5 shrink-0" />
+                Sesi akun dikelola server dan tidak disimpan sebagai identitas di browser.
               </div>
+
+              {demoUsers.length > 0 && (
+                <div className="mt-5 border-t border-[var(--app-border)] pt-5">
+                  <p className="mb-2.5 text-[12px] font-bold text-[var(--app-text-secondary)]">Profil contoh</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {demoUsers.slice(0, 4).map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => handleQuickLogin(user)}
+                        className="flex min-h-[54px] items-center gap-3 rounded-[15px] border border-[var(--app-border)] p-2.5 text-left transition-all hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--app-accent)_35%,transparent)] hover:bg-[var(--app-accent-soft)]"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--app-text)] text-[13px] font-bold text-[var(--app-bg)]">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold">{user.name}</span>
+                          <span className="mt-0.5 block truncate text-[11.5px] text-[var(--app-text-tertiary)]">{user.schoolName}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </form>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-3.5">
-              <p className="text-[13.5px] bg-[#f5f5f7] dark:bg-white/10 rounded-xl px-4 py-3">
+              <div className="rounded-[14px] bg-[var(--app-accent-soft)] px-4 py-3 text-[12.5px] leading-5">
                 Profil baru berstatus <b>menunggu verifikasi</b> administrator sebelum aktif penuh.
-              </p>
+              </div>
+
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Nama lengkap & gelar *</label>
+                <label className="mb-1.5 block text-[13px] font-semibold">Nama lengkap & gelar *</label>
                 <input value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Contoh: Rahmadani, S.Pd." className="apple-input" required />
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Email Belajar.id *</label>
+                <label className="mb-1.5 block text-[13px] font-semibold">Email Belajar.id *</label>
                 <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5">Jenjang</label>
+                  <label className="mb-1.5 block text-[13px] font-semibold">Jenjang</label>
                   <select value={regJenjang} onChange={(e) => setRegJenjang(e.target.value as Jenjang)} className="apple-input">
                     <option value="SD">SD</option>
                     <option value="SMP">SMP</option>
@@ -224,44 +289,40 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5">NIP <span className="font-normal text-[#86868b]">(opsional)</span></label>
+                  <label className="mb-1.5 block text-[13px] font-semibold">NIP <span className="font-normal text-[var(--app-text-tertiary)]">(opsional)</span></label>
                   <input value={regNip} onChange={(e) => setRegNip(e.target.value)} placeholder="19890412…" className="apple-input" />
                 </div>
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Sekolah *</label>
+                <label className="mb-1.5 block text-[13px] font-semibold">Sekolah *</label>
                 <input value={regSchool} onChange={(e) => setRegSchool(e.target.value)} placeholder="SMP Negeri 1 Padang" className="apple-input" required />
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Mata pelajaran</label>
+                <label className="mb-1.5 block text-[13px] font-semibold">Mata pelajaran</label>
                 <input value={regMapel} onChange={(e) => setRegMapel(e.target.value)} placeholder="Matematika / IPA" className="apple-input" />
               </div>
               <button type="submit" disabled={isLoading} className="btn-apple w-full">
-                Daftarkan & ajukan verifikasi <ArrowRight className="w-4 h-4" />
+                Daftarkan & ajukan verifikasi
+                <ArrowRight className="h-4 w-4" />
               </button>
             </form>
           )}
-        </div>
 
-        {/* Fitur — grid lega */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 max-w-4xl mx-auto">
-          {features.map((f) => (
-            <div key={f.title} className="apple-card p-5 text-left">
-              <div className="w-9 h-9 rounded-xl bg-[#f5f5f7] dark:bg-white/10 flex items-center justify-center mb-3">{f.icon}</div>
-              <h3 className="text-[14.5px] font-semibold">{f.title}</h3>
-              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-1 leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="max-w-xl mx-auto mt-6 flex items-center gap-2.5 justify-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
-          <ShieldCheck className="w-4 h-4 shrink-0" />
-          <span>Mode demo — akun Belajar.id resmi belum terhubung. Data tersimpan lokal di perangkat Anda.</span>
-        </div>
+          <div className="mt-7 flex items-start gap-2.5 border-t border-[var(--app-border)] pt-5 text-[11.5px] leading-5 text-[var(--app-text-tertiary)]">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Mode demo — koneksi Belajar.id resmi belum terhubung. Gunakan profil contoh untuk mencoba alur aplikasi.</span>
+          </div>
+        </section>
       </main>
 
-      <footer className="border-t border-black/10 dark:border-white/15 py-5 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
-        Ruang Guru Merdeka · Alat bantu penyusunan perangkat ajar · <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Permendikbudristek No. 12/2024</span>
+      <footer className="border-t border-[var(--app-border)] px-5 py-6 text-center text-[11.5px] text-[var(--app-text-tertiary)]">
+        <span className="font-semibold text-[var(--app-text-secondary)]">Ruang Guru Merdeka</span>
+        <span className="mx-2 opacity-40">·</span>
+        Alat bantu penyusunan perangkat ajar
+        <span className="mx-2 opacity-40">·</span>
+        <span className="inline-flex items-center gap-1">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Permendikbudristek No. 12/2024
+        </span>
       </footer>
     </div>
   );
