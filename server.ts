@@ -141,6 +141,7 @@ interface TeacherUser {
 
 interface AuditLog {
   id: string;
+  tenantId?: string;
   actorUserId?: string;
   action: string;
   resourceType: string;
@@ -782,6 +783,8 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
       error: { code: 'PROFILE_ACCESS_DENIED', message: 'Anda tidak memiliki kewenangan untuk mengubah profil ini.' }
     });
   }
+  const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
+
   if (schoolName !== undefined && clean(schoolName) && clean(schoolName) !== target.schoolName && !canChangeTenant(requester)) {
     return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Hanya Super Admin yang dapat memindahkan akun ke sekolah lain.' } });
   }
