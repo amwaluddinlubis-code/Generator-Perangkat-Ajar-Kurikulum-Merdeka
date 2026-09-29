@@ -83,6 +83,11 @@ function getDb(): DatabaseSync {
   database.exec('PRAGMA synchronous = FULL;');
   database.exec('PRAGMA busy_timeout = 5000;');
 
+  const userColumns = database.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  if (!userColumns.some(column => column.name === 'deleted_at')) {
+    database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
+  }
+
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_meta (
       key TEXT PRIMARY KEY,
@@ -115,7 +120,8 @@ function getDb(): DatabaseSync {
       avatar_url TEXT,
       registered_at TEXT NOT NULL,
       verified_at TEXT,
-      verified_by TEXT
+      verified_by TEXT,
+      deleted_at TEXT
     ) STRICT;
 
     CREATE TABLE IF NOT EXISTS school_memberships (
@@ -262,12 +268,12 @@ function insertUser(user: Record<string, any>, schoolId?: string): void {
   const resolvedSchoolId = schoolId || user.schoolId || ensureSchool(user.schoolName, user.npsn, user.jenjang);
   db.prepare(`
     INSERT OR REPLACE INTO users
-      (id,name,email,school_id,npsn,nip,jenjang,mata_pelajaran,role,status,avatar_url,registered_at,verified_at,verified_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      (id,name,email,school_id,npsn,nip,jenjang,mata_pelajaran,role,status,avatar_url,registered_at,verified_at,verified_by,deleted_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     user.id, user.name, user.email, resolvedSchoolId, user.npsn || null, user.nip || null,
     user.jenjang, user.mataPelajaran, user.role, user.status, user.avatarUrl || null,
-    user.registeredAt, user.verifiedAt || null, user.verifiedBy || null
+    user.registeredAt, user.verifiedAt || null, user.verifiedBy || null, user.deletedAt || null
   );
   db.prepare(`
     INSERT OR REPLACE INTO school_memberships
@@ -383,6 +389,7 @@ export function loadState(): DatabaseState {
   const users = (db.prepare(`
     SELECT u.*, s.name AS school_name
     FROM users u JOIN schools s ON s.id = u.school_id
+    WHERE u.deleted_at IS NULL
     ORDER BY u.registered_at DESC
   `).all() as Record<string, unknown>[]).map(mapUser);
 
@@ -408,7 +415,7 @@ export function getUserById(userId: string): DbUser | null {
   const row = db.prepare(`
     SELECT u.*, s.name AS school_name
     FROM users u JOIN schools s ON s.id = u.school_id
-    WHERE u.id = ?
+    WHERE u.id = ? AND u.deleted_at IS NULL
   `).get(userId) as Record<string, unknown> | undefined;
   return row ? mapUser(row) : null;
 }
@@ -418,7 +425,7 @@ export function getUserByEmail(email: string): DbUser | null {
   const row = db.prepare(`
     SELECT u.*, s.name AS school_name
     FROM users u JOIN schools s ON s.id = u.school_id
-    WHERE lower(u.email) = lower(?)
+    WHERE lower(u.email) = lower(?) AND u.deleted_at IS NULL
   `).get(email) as Record<string, unknown> | undefined;
   return row ? mapUser(row) : null;
 }
@@ -449,6 +456,9 @@ export function updateUser(user: Record<string, any>): DbUser {
 
   db.exec('BEGIN IMMEDIATE');
   try {
+    if (schoolId !== current.schoolId) {
+      db.prepare('DELETE FROM school_memberships WHERE user_id = ?').run(user.id);
+    }
     insertUser({ ...current, ...user, schoolId }, schoolId);
     db.exec('COMMIT');
   } catch (error) {
@@ -462,7 +472,9 @@ export function deleteUser(userId: string): void {
   const db = getDb();
   db.exec('BEGIN IMMEDIATE');
   try {
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    db.prepare('UPDATE users SET status = ?, deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run('REJECTED', nowIso(), userId);
+    db.prepare('UPDATE school_memberships SET status = ? WHERE user_id = ?').run('REVOKED', userId);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
