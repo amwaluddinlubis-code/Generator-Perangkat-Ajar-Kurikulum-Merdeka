@@ -11,6 +11,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 |---|---|
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
+| Prompt berversi | `src/server/prompts/` — 1 file per jenis + `base.ts` + builder; versi tercatat di meta/audit; test snapshot per jenis |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
 | Ekspor | `.docx` asli (Calibri 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
 | Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
@@ -37,6 +38,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 PerangkatAjar/
 ├── server.ts              # API Express + serve frontend
 ├── serverFallback.ts      # Template cadangan 7 tipe dokumen
+├── src/server/prompts/    # Prompt AI modular: types, base, 7 spec, section, index(builder+versi)
 ├── data/app.sqlite        # Database runtime SQLite (dibuat otomatis, jangan di-commit)
 ├── data/backups/          # Hasil backup SQLite (jangan di-commit)
 ├── .env                   # Kunci API (dibuat dari .env.example)
@@ -115,6 +117,7 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 | `GET /api/audit-logs` | Audit log | Super Admin global; Admin tenant sendiri |
 | `GET /api/documents` | Daftar dokumen | Server filter berdasarkan role/ownership/`schoolId` |
 | `POST /api/documents` | Simpan dokumen | author + tenant berasal dari session; private default |
+| `GET /api/documents/:id/versions` | Riwayat versi dokumen | Ownership/tenant policy server-side |
 | `DELETE /api/documents/:id` | Soft-delete dokumen | Ownership/tenant policy server-side |
 | `POST /api/generate` | Susun dokumen via AI/fallback | Session wajib; input + output divalidasi; balikan `quality{status: AI|fallback|needs_review, issues[], stats}` |
 | `POST /api/regenerate-section` | Tulis ulang satu bagian (heading dipertahankan, konteks 6000 char) | Session + rate limit; 503 jujur bila AI sibuk |
@@ -374,14 +377,16 @@ Implemented dan diuji otomatis:
 
 **Kriteria selesai:** setiap dokumen yang diekspor memakai identitas sekolah dan penandatangan yang berasal dari profil tenant.
 
-### Fase 3 — Kualitas AI dan dokumen
+### Fase 3 — Kualitas AI dan dokumen — LIFECYCLE DASAR SELESAI
 
 - Buat schema output berbeda untuk setiap `docType`.
 - Validasi jumlah soal, kunci jawaban, tabel, rubrik, fase, dan alokasi waktu.
 - Simpan `promptVersion`, `model`, `generationStatus`, dan `validationErrors`.
 - Tampilkan status `AI`, `fallback`, atau `needs_review` secara jujur.
 - Tambahkan tombol regenerasi bagian tertentu, bukan hanya seluruh dokumen.
-- Tambahkan versioning dan autosave draft.
+- Versioning dasar dan autosave draft sudah tersedia: setiap penyimpanan edit pada dokumen yang sama membuat versi baru.
+- Status dokumen tersedia: `DRAFT`, `REVIEW`, `APPROVED`, `ARCHIVED`.
+- Riwayat versi dapat dibaca melalui `GET /api/documents/:id/versions` dengan ownership/tenant check.
 - Uji ekspor dengan tabel panjang, gambar, halaman lebih dari satu, dan dokumen berbahasa Indonesia.
 
 **Kriteria selesai:** hasil yang tidak memenuhi struktur minimum tidak dapat diberi status siap ekspor tanpa peringatan.
@@ -585,7 +590,7 @@ Run terakhir yang berhasil:
 2. Deployment multi-instance dengan PostgreSQL/managed database.
 3. Object storage untuk file/gambar besar.
 4. Metrics/tracing/alerting produksi.
-5. Role `KEPALA_SEKOLAH`, workflow approval, komentar, dan sharing eksplisit.
+5. Role `KEPALA_SEKOLAH`, workflow approval formal, komentar, dan sharing eksplisit.
 6. E2E browser QA setelah user meminta tahap tersebut.
 
 **Kriteria masuk Browser QA:** automated CI dan runtime integration sudah PASS. Tahap berikutnya adalah pengguna menjalankan aplikasi dan melakukan uji UI nyata; hasil Browser QA kemudian dicatat sebagai gate terpisah, bukan dicampur dengan hasil automated test.

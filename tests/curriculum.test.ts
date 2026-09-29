@@ -164,12 +164,8 @@ test('output fallback standar memakai terminologi Profil Lulusan', () => {
 });
 
 test('prompt generator memakai terminologi Profil Lulusan', () => {
-  const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
   const refsSource = readFileSync(new URL('../src/server/curriculumRefs.ts', import.meta.url), 'utf8');
 
-  assert.ok(serverSource.includes('Profil Lulusan'));
-  assert.equal(serverSource.includes('Profil Pelajar Pancasila (fokuskan pada dimensi:'), false);
-  assert.equal(serverSource.includes('Dimensi Profil Pelajar Pancasila:'), false);
   assert.ok(refsSource.includes('Profil Lulusan'));
   assert.equal(
     refsSource.includes('Selaraskan dengan Profil Pelajar Pancasila dimensi'),
@@ -178,9 +174,9 @@ test('prompt generator memakai terminologi Profil Lulusan', () => {
 });
 
 test('prompt melarang sapaan dan identitas AI', () => {
-  const serverSource = readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+  const baseSource = readFileSync(new URL('../src/server/prompts/base.ts', import.meta.url), 'utf8');
 
-  assert.ok(serverSource.includes('TANPA SAPAAN & TANPA IDENTITAS AI'));
-  assert.ok(serverSource.includes('DILARANG membuka dengan sapaan'));
-  assert.ok(serverSource.includes('DILARANG menyebut diri sebagai AI'));
+  assert.ok(baseSource.includes('TANPA SAPAAN & TANPA IDENTITAS AI'));
+  assert.ok(baseSource.includes('DILARANG membuka dengan sapaan'));
+  assert.ok(baseSource.includes('DILARANG menyebut diri sebagai AI'));
 });

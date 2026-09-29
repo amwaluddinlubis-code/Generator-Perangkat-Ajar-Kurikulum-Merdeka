@@ -13,8 +13,10 @@ import {
   getUserById,
   getUserByEmail,
   getUserPasswordHash,
+  listDocumentVersions,
   setUserPasswordHash,
-  updateUser
+  updateUser,
+  updateDocumentVersion
 } from '../src/server/database.ts';
 import { hashPassword, verifyPassword } from '../src/server/security.ts';
 
@@ -69,6 +71,17 @@ test('SQLite document persistence keeps author and tenant references', () => {
 
   assert.equal(getDocumentById(document.id)?.schoolId, user.schoolId);
   assert.equal(getDocumentById(document.id)?.authorId, user.id);
+  assert.equal(document.version, 1);
+
+  const revised = updateDocumentVersion(document.id, {
+    title: 'Dokumen Database Test Revisi',
+    content: '# Revisi\nKonten versi kedua.',
+    status: 'REVIEW',
+    authorId: user.id
+  });
+  assert.equal(revised.version, 2);
+  assert.equal(revised.status, 'REVIEW');
+  assert.equal(listDocumentVersions(document.id).length, 2);
 
   deleteDocument(document.id);
   assert.equal(getDocumentById(document.id), null);

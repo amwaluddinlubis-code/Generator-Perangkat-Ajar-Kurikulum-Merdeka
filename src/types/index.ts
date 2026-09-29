@@ -9,6 +9,8 @@ export type DocType =
   | 'prota_promes' 
   | 'modul_p5';
 
+export type DocumentStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'ARCHIVED';
+
 export interface TeacherUser {
   id: string;
   name: string;
@@ -39,6 +41,9 @@ export interface EducationalDocument {
   topik: string;
   content: string;
   createdAt: string;
+  updatedAt?: string;
+  status?: DocumentStatus;
+  version?: number;
   authorId: string;
   authorName: string;
   schoolName: string;

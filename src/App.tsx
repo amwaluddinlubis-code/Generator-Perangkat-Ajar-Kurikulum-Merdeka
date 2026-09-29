@@ -380,6 +380,7 @@ export default function App() {
       if (res.ok && data.success && data.document) {
         const persisted = data.document as EducationalDocument;
         setDocuments(prev => [persisted, ...prev.filter(d => d.id !== persisted.id)]);
+        setCurrentDoc(prev => prev?.id === persisted.id ? persisted : prev);
         return persisted;
       }
     } catch (err) {

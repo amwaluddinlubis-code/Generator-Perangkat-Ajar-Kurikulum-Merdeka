@@ -32,6 +32,9 @@ export interface DbDocument {
   topik: string;
   content: string;
   createdAt: string;
+  updatedAt?: string;
+  status: 'DRAFT' | 'REVIEW' | 'APPROVED' | 'ARCHIVED';
+  version: number;
   authorId: string;
   authorName: string;
   schoolName: string;
@@ -140,12 +143,27 @@ function getDb(): DatabaseSync {
       topik TEXT NOT NULL,
       content TEXT NOT NULL,
       created_at TEXT NOT NULL,
+      updated_at TEXT,
       author_id TEXT NOT NULL REFERENCES users(id),
       author_name TEXT NOT NULL,
       school_name_snapshot TEXT NOT NULL,
       is_public INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0,1)),
       duration_minutes REAL,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      version INTEGER NOT NULL DEFAULT 1,
       deleted_at TEXT
+    ) STRICT;
+
+    CREATE TABLE IF NOT EXISTS document_versions (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      version INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT NOT NULL,
+      author_id TEXT NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      UNIQUE(document_id, version)
     ) STRICT;
 
     CREATE INDEX IF NOT EXISTS ix_documents_school ON documents(school_id, created_at);
@@ -190,6 +208,24 @@ function getDb(): DatabaseSync {
   if (!userColumns.some(column => column.name === 'password_hash')) {
     database.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
   }
+
+  const documentColumns = database.prepare('PRAGMA table_info(documents)').all() as Array<{ name: string }>;
+  if (!documentColumns.some(column => column.name === 'updated_at')) database.exec('ALTER TABLE documents ADD COLUMN updated_at TEXT');
+  if (!documentColumns.some(column => column.name === 'status')) database.exec("ALTER TABLE documents ADD COLUMN status TEXT NOT NULL DEFAULT 'DRAFT'");
+  if (!documentColumns.some(column => column.name === 'version')) database.exec('ALTER TABLE documents ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS document_versions (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      version INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT NOT NULL,
+      author_id TEXT NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      UNIQUE(document_id, version)
+    ) STRICT;
+  `);
 
   const schoolColumns = database.prepare('PRAGMA table_info(schools)').all() as Array<{ name: string }>;
   const schoolIdentityColumns: Array<[string, string]> = [
@@ -258,6 +294,9 @@ function mapDocument(row: Record<string, unknown>): DbDocument {
     topik: String(row.topik),
     content: String(row.content),
     createdAt: String(row.created_at),
+    updatedAt: row.updated_at ? String(row.updated_at) : String(row.created_at),
+    status: (row.status as DbDocument['status']) || 'DRAFT',
+    version: Number(row.version || 1),
     authorId: String(row.author_id),
     authorName: String(row.author_name),
     schoolName: String(row.school_name_snapshot),
@@ -312,13 +351,13 @@ function insertDocument(document: Record<string, any>): void {
   const schoolId = document.schoolId || ensureSchool(document.schoolName, document.npsn, document.jenjang);
   db.prepare(`
     INSERT OR REPLACE INTO documents
-      (id,school_id,title,doc_type,jenjang,tingkat,fase,mata_pelajaran,topik,content,created_at,author_id,author_name,school_name_snapshot,is_public,duration_minutes,deleted_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      (id,school_id,title,doc_type,jenjang,tingkat,fase,mata_pelajaran,topik,content,created_at,updated_at,author_id,author_name,school_name_snapshot,is_public,duration_minutes,status,version,deleted_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     document.id, schoolId, document.title, document.docType, document.jenjang, document.tingkat,
-    document.fase, document.mataPelajaran, document.topik, document.content, document.createdAt,
+    document.fase, document.mataPelajaran, document.topik, document.content, document.createdAt, document.updatedAt || document.createdAt,
     document.authorId, document.authorName, document.schoolName, document.isPublic ? 1 : 0,
-    document.durationMinutes ?? null, null
+    document.durationMinutes ?? null, document.status || 'DRAFT', Number(document.version || 1), null
   );
 }
 
@@ -487,6 +526,8 @@ export function loadState(): DatabaseState {
     WHERE deleted_at IS NULL
     ORDER BY created_at DESC
   `).all() as Record<string, unknown>[]).map(mapDocument);
+  // Backfill the initial version for documents created before versioning existed.
+  for (const document of documents) addDocumentVersion(document);
 
   const auditLogs = (db.prepare(`
     SELECT *
@@ -610,7 +651,104 @@ export function createDocument(document: Record<string, any>): DbDocument {
     db.exec('ROLLBACK');
     throw error;
   }
-  return getDocumentById(document.id)!;
+  const created = getDocumentById(document.id)!;
+  addDocumentVersion(created);
+  return created;
+}
+
+export function updateDocumentVersion(
+  documentId: string,
+  patch: { title: string; content: string; status?: DbDocument['status']; authorId: string }
+): DbDocument {
+  const db = getDb();
+  const current = getDocumentById(documentId);
+  if (!current) throw new Error('Document not found');
+  const nextVersion = current.version + 1;
+  const updatedAt = nowIso();
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare(`
+      UPDATE documents
+      SET title = ?, content = ?, status = ?, version = ?, updated_at = ?
+      WHERE id = ? AND deleted_at IS NULL
+    `).run(
+      patch.title.trim(),
+      patch.content,
+      patch.status || current.status,
+      nextVersion,
+      updatedAt,
+      documentId
+    );
+    db.prepare(`
+      INSERT INTO document_versions
+        (id, document_id, version, title, content, status, author_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      `doc-version-${documentId}-${nextVersion}`,
+      documentId,
+      nextVersion,
+      patch.title.trim(),
+      patch.content,
+      patch.status || current.status,
+      patch.authorId,
+      updatedAt
+    );
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+
+  return getDocumentById(documentId)!;
+}
+
+export function addDocumentVersion(document: DbDocument): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT OR IGNORE INTO document_versions
+      (id, document_id, version, title, content, status, author_id, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    `doc-version-${document.id}-${document.version}`,
+    document.id,
+    document.version,
+    document.title,
+    document.content,
+    document.status,
+    document.authorId,
+    document.updatedAt || document.createdAt
+  );
+}
+
+export interface DbDocumentVersion {
+  id: string;
+  documentId: string;
+  version: number;
+  title: string;
+  content: string;
+  status: DbDocument['status'];
+  authorId: string;
+  createdAt: string;
+}
+
+export function listDocumentVersions(documentId: string): DbDocumentVersion[] {
+  const rows = getDb().prepare(`
+    SELECT id, document_id, version, title, content, status, author_id, created_at
+    FROM document_versions
+    WHERE document_id = ?
+    ORDER BY version DESC
+  `).all(documentId) as Record<string, unknown>[];
+  return rows.map(row => ({
+    id: String(row.id),
+    documentId: String(row.document_id),
+    version: Number(row.version),
+    title: String(row.title),
+    content: String(row.content),
+    status: row.status as DbDocument['status'],
+    authorId: String(row.author_id),
+    createdAt: String(row.created_at)
+  }));
 }
 
 export function deleteDocument(documentId: string): void {

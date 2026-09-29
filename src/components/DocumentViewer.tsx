@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { EducationalDocument, TeacherUser, SchoolConfig } from '../types';
+import { EducationalDocument, TeacherUser, SchoolConfig, DocumentStatus } from '../types';
 import { 
   renderMarkdownToHtml, 
   downloadWordDocument, 
@@ -59,13 +59,28 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [regenSection, setRegenSection] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenError, setRegenError] = useState<string>('');
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatus>(document?.status || 'DRAFT');
+  const lastAutosavedContent = React.useRef(document?.content || '');
 
   useEffect(() => {
     if (!document) return;
     setEditableContent(document.content);
+    setDocumentStatus(document.status || 'DRAFT');
+    lastAutosavedContent.current = document.content;
     setActiveView('preview');
     setJustSaved(isSaved);
   }, [document?.id, document?.content, isSaved]);
+
+  // Autosave draft setelah pengguna berhenti mengetik. Server membuat versi baru
+  // hanya bila ID dokumen sudah ada, sehingga edit tidak membuat arsip duplikat.
+  useEffect(() => {
+    if (!document || !onSaveToRepository || editableContent === lastAutosavedContent.current) return;
+    const timer = window.setTimeout(() => {
+      onSaveToRepository({ ...document, content: editableContent, status: documentStatus });
+      lastAutosavedContent.current = editableContent;
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [editableContent, documentStatus, document?.id]);
 
   if (!document) {
     return (
@@ -132,8 +147,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     if (onSaveToRepository) {
       onSaveToRepository({
         ...document,
-        content: editableContent
+        content: editableContent,
+        status: documentStatus
       });
+      lastAutosavedContent.current = editableContent;
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 3000);
     }
@@ -421,18 +438,41 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
           {/* Save to Repo */}
           {onSaveToRepository && (
-            <button
-              onClick={handleSave}
-              className={`btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px] ${
-                justSaved
-                  ? 'bg-black dark:bg-white dark:text-black text-white'
-                  : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15'
-              }`}
-              title="Simpan dokumen ke bank arsip perangkat ajar"
-            >
-              <Bookmark className="w-4 h-4" />
-              <span>{justSaved ? 'Tersimpan!' : 'Simpan'}</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <select
+                value={documentStatus}
+                onChange={(e) => {
+                  const next = e.target.value as DocumentStatus;
+                  setDocumentStatus(next);
+                  onSaveToRepository({ ...document, content: editableContent, status: next });
+                  lastAutosavedContent.current = editableContent;
+                }}
+                className="apple-input !w-auto !py-2 text-[12px] font-semibold"
+                aria-label="Status dokumen"
+                title="Status lifecycle dokumen"
+              >
+                <option value="DRAFT">Draf</option>
+                <option value="REVIEW">Siap ditinjau</option>
+                {(currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') && (
+                  <>
+                    <option value="APPROVED">Disetujui</option>
+                    <option value="ARCHIVED">Diarsipkan</option>
+                  </>
+                )}
+              </select>
+              <button
+                onClick={handleSave}
+                className={`btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px] ${
+                  justSaved
+                    ? 'bg-black dark:bg-white dark:text-black text-white'
+                    : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15'
+                }`}
+                title="Simpan dokumen dan buat versi baru"
+              >
+                <Bookmark className="w-4 h-4" />
+                <span>{justSaved ? 'Tersimpan!' : 'Simpan versi'}</span>
+              </button>
+            </div>
           )}
 
         </div>
