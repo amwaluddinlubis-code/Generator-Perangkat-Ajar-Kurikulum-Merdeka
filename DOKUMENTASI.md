@@ -492,3 +492,51 @@ Klien boleh mengirim data formulir, tetapi tidak lagi berwenang menentukan:
 - apakah dokumen otomatis publik.
 
 Keputusan tersebut berasal dari session dan data user yang dibaca server. Pola ini menjadi baseline sebelum implementasi tenancy Fase 1.
+
+---
+
+## 19. Status Implementasi Terkini — Security + Tenant Baseline
+
+**Branch kerja:** `feat/security-baseline`
+
+### Selesai dan terverifikasi otomatis
+
+- Session server-side persisten di SQLite; token raw tidak disimpan, hanya hash.
+- Cookie session HttpOnly + SameSite=Lax; Secure + `__Host-` pada production.
+- Absolute session TTL 8 jam dan idle timeout 2 jam.
+- Login/logout, status akun, role, dan ownership diverifikasi server-side.
+- `schoolId` menjadi tenant boundary server-owned. Client tidak dapat memilih `schoolId`, `authorId`, `authorName`, atau `schoolName` sebagai sumber otorisasi.
+- Admin hanya melihat/mengelola user dan dokumen dalam sekolahnya; Super Admin dapat lintas tenant.
+- Privilege escalation ke `ADMIN`/`SUPER_ADMIN` diblok.
+- User delete menjadi soft-delete agar referensi dokumen dan audit tetap valid.
+- SQLite memakai foreign key, WAL, synchronous FULL, busy timeout, dan transaksi untuk operasi penting.
+- Rate limit disimpan di SQLite dan update quota dibuat atomik.
+- Audit log tenant-aware dan visibilitas log mengikuti role/tenant.
+- Input validation terpusat untuk login, profil, dokumen, generator, dan image generator.
+- Output AI divalidasi sebelum dikembalikan.
+- Prompt generator memiliki security boundary yang memperlakukan input guru sebagai data, bukan instruksi sistem.
+- Markdown output disanitasi sebelum DOM injection.
+- Security headers: CSP, HSTS production, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP/CORP.
+- CSRF baseline: fetch metadata + Origin validation untuk request state-changing.
+- Backup dan restore SQLite tersedia melalui npm scripts.
+- Automated tests mencakup authorization policy, validation, session/rate limit, SQLite persistence/backup, dan API integration lintas tenant.
+- GitHub Actions memverifikasi lint/typecheck, seluruh test, dan production build pada Node 24.21.0.
+
+### Hasil verifikasi terakhir
+
+Run terakhir yang berhasil:
+
+- **CI Runtime:** PASS — runtime/integration tests.
+- **CI:** PASS — dependency install, TypeScript check, security/unit tests, production build.
+- **Browser QA:** **DEFERRED** sesuai keputusan pengembangan. Tidak ada manual UI/browser test yang dianggap selesai sebelum pengguna menyatakan siap.
+
+### Yang masih berada di luar baseline ini
+
+1. OAuth/OIDC Belajar.id resmi dan identity proofing.
+2. Deployment multi-instance dengan PostgreSQL/managed database.
+3. Object storage untuk file/gambar besar.
+4. Metrics/tracing/alerting produksi.
+5. Role `KEPALA_SEKOLAH`, workflow approval, komentar, dan sharing eksplisit.
+6. E2E browser QA setelah user meminta tahap tersebut.
+
+**Kriteria masuk Browser QA:** automated CI dan runtime integration sudah PASS. Tahap berikutnya adalah pengguna menjalankan aplikasi dan melakukan uji UI nyata; hasil Browser QA kemudian dicatat sebagai gate terpisah, bukan dicampur dengan hasil automated test.
