@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { useTheme } from '../theme';
 
 interface DocumentTypeD3DonutProps {
   data: { label: string; count: number; color: string }[];
@@ -7,6 +8,11 @@ interface DocumentTypeD3DonutProps {
 
 export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
+  const ink = dark ? '#f5f5f7' : '#1d1d1f';
+  const subtle = dark ? '#98989d' : '#6e6e73';
+  const track = dark ? 'rgba(255,255,255,0.12)' : '#e8e8ed';
 
   useEffect(() => {
     if (!svgRef.current || !data || data.length === 0) return;
@@ -32,13 +38,13 @@ export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }
       g.append('circle')
         .attr('r', radius - 10)
         .attr('fill', 'none')
-        .attr('stroke', '#e2e8f0')
+        .attr('stroke', track)
         .attr('stroke-width', 16);
 
       g.append('text')
         .attr('text-anchor', 'middle')
         .attr('dy', '0.3em')
-        .attr('fill', '#94a3b8')
+        .attr('fill', subtle)
         .attr('font-size', '12px')
         .text('Belum ada data');
       return;
@@ -73,20 +79,20 @@ export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }
     g.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.2em')
-      .attr('fill', '#0f172a')
+      .attr('fill', ink)
       .attr('font-size', '24px')
-      .attr('font-weight', '800')
+      .attr('font-weight', '700')
       .text(totalCount);
 
     g.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '1.3em')
-      .attr('fill', '#64748b')
+      .attr('fill', subtle)
       .attr('font-size', '11px')
       .attr('font-weight', '600')
       .text('Perangkat Ajar');
 
-  }, [data]);
+  }, [data, theme, ink, subtle, track]);
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -94,14 +100,14 @@ export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }
         <svg ref={svgRef} className="w-full h-full"></svg>
       </div>
 
-      <div className="space-y-2 w-full text-xs">
+      <div className="space-y-2 w-full text-[13px]">
         {data.map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between text-slate-700">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+          <div key={idx} className="flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
               <span className="font-medium truncate max-w-[150px]">{item.label}</span>
             </div>
-            <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
+            <span className="font-semibold bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full text-[12px]">
               {item.count}
             </span>
           </div>

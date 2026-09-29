@@ -290,6 +290,212 @@ Guru Mata Pelajaran,
 NIP. ....................................................`;
   }
 
+  const temaP5 = (params.catatanTambahan && params.catatanTambahan.temaP5) || 'Gaya Hidup Berkelanjutan';
+
+  if (docType === 'lkpd') {
+    return `# LEMBAR KERJA PESERTA DIDIK (LKPD) KURIKULUM MERDEKA
+## ${mataPelajaran} • ${tingkat} (${fase}) — Siap Cetak
+**Satuan Pendidikan: ${schoolName} • Topik: ${topik}**
+
+---
+
+### KOP ISIAN KELOMPOK
+* **Nama Kelompok**: ....................................................  **Kelas**: ${tingkat}
+* **Anggota**: 1. ............................ 2. ............................ 3. ............................ 4. ............................
+* **Hari / Tanggal**: ....................................................
+
+---
+
+### I. JUDUL AKTIVITAS
+**Menjelajahi ${topik} melalui Pengamatan dan Penyelidikan Kelompok**
+
+### II. PETUNJUK BELAJAR & KESELAMATAN
+1. Baca setiap instruksi dengan saksama sebelum memulai kegiatan.
+2. Gunakan alat dan bahan sesuai fungsinya; dahulukan keselamatan selama praktik/pengamatan.
+3. Catat seluruh hasil pengamatan langsung pada tabel yang tersedia — dilarang menyalin hasil kelompok lain.
+4. Mintalah bimbingan guru apabila menemui kendala atau hasil yang meragukan.
+
+### III. STIMULUS MASALAH NYATA
+> *Di lingkungan sekitar kita (sekolah, rumah, dan masyarakat) terdapat berbagai fenomena yang berkaitan erat dengan **${topik}**. Amati, kumpulkan fakta, dan diskusikan bersama kelompokmu: mengapa fenomena tersebut terjadi dan bagaimana prinsip **${mataPelajaran}** menjelaskannya?*
+
+### IV. AKTIVITAS 1 — EKSPLORASI & PENGAMATAN (Diferensiasi Konten)
+Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
+
+| No | Aspek yang Diamati | Hasil Pengamatan / Data | Keterangan |
+| :--- | :--- | :--- | :--- |
+| 1 | .................................................... | .................................................... | .................................................... |
+| 2 | .................................................... | .................................................... | .................................................... |
+| 3 | .................................................... | .................................................... | .................................................... |
+
+### V. AKTIVITAS 2 — ANALISIS & KOLABORASI (Diferensiasi Proses)
+1. Berdasarkan data pada tabel di atas, pola atau keteraturan apa yang ditemukan kelompokmu terkait **${topik}**?
+   Jawab: ...................................................................................................................................
+2. Hubungkan temuanmu dengan konsep **${mataPelajaran}** yang telah dipelajari. Jelaskan dengan bahasamu sendiri!
+   Jawab: ...................................................................................................................................
+3. Rumuskan satu pertanyaan kritis lanjutan yang ingin kalian selidiki lebih dalam:
+   Jawab: ...................................................................................................................................
+
+### VI. AKTIVITAS 3 — KESIMPULAN & REFLEKSI MANDIRI (Diferensiasi Produk)
+* **Kesimpulan kelompok**: ...................................................................................................................................
+* **Refleksi individu** — *Satu hal yang kupahami hari ini*: ............................ *Satu hal yang ingin kupelajari lagi*: ............................
+
+### VII. RUBRIK PENILAIAN DIRI & ANTAR-TEMAN
+| Aspek | Ya, Mandiri (3) | Dengan Bantuan (2) | Belum (1) |
+| :--- | :---: | :---: | :---: |
+| Aku aktif berkontribusi dalam kelompok | ☐ | ☐ | ☐ |
+| Aku mencatat data pengamatan dengan jujur dan teliti | ☐ | ☐ | ☐ |
+| Aku menghargai pendapat teman sekelompok | ☐ | ☐ | ☐ |
+
+*Disusun oleh ${authorName} • ${schoolName} • Model: ${modelPembelajaran} • Alokasi: ${alokasiWaktu}*`;
+  }
+
+  if (docType === 'kktp_atp') {
+    return `# ALUR TUJUAN PEMBELAJARAN (ATP) & KRITERIA KETERCAPAIAN (KKTP)
+## ${mataPelajaran} • ${tingkat} (${fase}) — PPA 2024
+**Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
+
+---
+
+### I. RASIONAL & CAPAIAN PEMBELAJARAN (CP)
+Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik menguasai konsep esensial **${topik}** dan mampu menerapkannya dalam konteks nyata. Dokumen ini disusun berdasarkan Keputusan Kepala BSKAP No. 032/H/KR/2024 sebagai pijakan perencanaan, pelaksanaan, dan evaluasi pembelajaran selama satu tahun ajaran.
+
+### II. MATRIKS ALUR TUJUAN PEMBELAJARAN (ATP)
+
+| No | Elemen / Materi | Capaian Pembelajaran | Tujuan Pembelajaran (TP) | Alur & Alokasi (JP) | Profil Pelajar Pancasila |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | Pengenalan **${topik}** | Peserta didik memahami konsep dasar dan karakteristik utama materi. | Melalui pengamatan dan diskusi, siswa mampu mengidentifikasi konsep dasar **${topik}** dengan tepat. | Pertemuan 1–2 (4 JP) | ${dimensiList} |
+| 2 | Pendalaman **${topik}** | Peserta didik menganalisis keterkaitan konsep dengan fenomena nyata. | Melalui penyelidikan kelompok (**${modelPembelajaran}**), siswa mampu menganalisis persoalan kontekstual **${topik}**. | Pertemuan 3–5 (6 JP) | ${dimensiList} |
+| 3 | Penerapan & Kreasi | Peserta didik menyajikan solusi/karya berbasis pemahaman konsep. | Melalui proyek mini, siswa mampu menyajikan karya dan merefleksikan pemahaman **${topik}**. | Pertemuan 6–7 (4 JP) + Asesmen Sumatif (2 JP) | ${dimensiList} |
+
+### III. PENETAPAN KKTP — 3 PENDEKATAN RESMI PPA 2024
+
+#### Pendekatan 1: Deskripsi Kriteria
+Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${topik}** tanpa miskonsepsi berarti; (b) menerapkan konsep dalam tugas/asesmen kontekstual; (c) menunjukkan partisipasi aktif dan tanggung jawab belajar.
+
+#### Pendekatan 2: Rubrik Skala Berkembang
+| Level | Deskripsi Operasional |
+| :--- | :--- |
+| Baru Berkembang (BB) | Membutuhkan bimbingan penuh untuk memahami dan menerapkan **${topik}**. |
+| Layak (L) | Memahami sebagian konsep; mampu menyelesaikan tugas rutin dengan bantuan minimal. |
+| Cakap (C) | Memahami konsep secara utuh dan menerapkannya secara mandiri dan runtut. |
+| Mahir (M) | Menganalisis, menghubungkan ke konteks baru, dan mengomunikasikan gagasan secara kreatif. |
+
+#### Pendekatan 3: Interval Nilai
+| Interval | Kategori | Tindak Lanjut |
+| :--- | :--- | :--- |
+| 0 – 60 | Belum mencapai ketuntasan | Remedial: pembelajaran ulang terfokus + tugas perbaikan |
+| 61 – 75 | Mencapai sebagian | Penguatan: latihan tambahan dan pendampingan kelompok |
+| 76 – 90 | Tuntas | Lanjut ke materi berikutnya |
+| 91 – 100 | Melampaui ketuntasan | Pengayaan: proyek mini / soal HOTS lanjutan |
+
+### IV. INTERVENSI REMEDIAL & PENGAYAAN
+* **Remedial**: diagnosis miskonsepsi, pembelajaran ulang dengan media konkret, asesmen ulang setara dengan bentuk berbeda.
+* **Pengayaan**: eksplorasi mandiri, membuat infografis/poster edukasi **${topik}**, atau menjadi tutor sebaya bagi teman yang remedial.`;
+  }
+
+  if (docType === 'prota_promes') {
+    return `# PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)
+## ${mataPelajaran} • ${tingkat} (${fase}) — Kurikulum Merdeka
+**Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName} • Tahun Ajaran 2026/2027**
+
+---
+
+### I. IDENTITAS & ALOKASI WAKTU
+* **Alokasi intrakurikuler**: ${alokasiWaktu} per pertemuan; total ± 32 minggu efektif per tahun.
+* **Cakupan materi tahun ini**: konsep esensial **${topik}** beserta materi prasyarat dan pengembangannya sesuai CP **${fase}**.
+
+### II. PROGRAM TAHUNAN (PROTA)
+
+| No | Capaian / Lingkup Materi | Alokasi (JP) | Semester |
+| :--- | :--- | :---: | :---: |
+| 1 | Pengenalan konsep dasar **${topik}** | 8 | Ganjil |
+| 2 | Pendalaman & penyelidikan **${topik}** (model ${modelPembelajaran}) | 12 | Ganjil |
+| 3 | Asesmen Sumatif Lingkup Materi + Tengah Semester Ganjil | 4 | Ganjil |
+| 4 | Penerapan lanjutan & proyek mini **${topik}** | 10 | Genap |
+| 5 | Penguatan, remedial–pengayaan, & persiapan sumatif akhir | 6 | Genap |
+| 6 | Asesmen Sumatif Akhir Semester Genap | 4 | Genap |
+
+### III. PROGRAM SEMESTER (PROMES)
+
+#### Semester Ganjil (16 Minggu Efektif)
+| Minggu | Kegiatan | Keterangan |
+| :--- | :--- | :--- |
+| 1 – 2 | Pengenalan **${topik}** + asesmen diagnostik | 4 JP |
+| 3 – 7 | Pendalaman materi & diskusi kelompok | 10 JP |
+| 8 | Asesmen Sumatif Lingkup Materi 1 | 2 JP |
+| 9 – 11 | Lanjutan pendalaman + LKPD terstruktur | 6 JP |
+| 12 | Sumatif Tengah Semester (STS) | 2 JP |
+| 13 – 15 | Penguatan & remedial–pengayaan | 6 JP |
+| 16 | Cadangan / kalender pendidikan (jeda tengah semester) | — |
+
+#### Semester Genap (16 Minggu Efektif)
+| Minggu | Kegiatan | Keterangan |
+| :--- | :--- | :--- |
+| 1 – 4 | Penerapan lanjutan **${topik}** + proyek mini | 8 JP |
+| 5 – 6 | Asesmen Sumatif Lingkup Materi 2 | 4 JP |
+| 7 – 10 | Penguatan konsep & diferensiasi lanjutan | 8 JP |
+| 11 | Sumatif Tengah Semester (STS) Genap | 2 JP |
+| 12 – 14 | Remedial–pengayaan & persiapan akhir | 6 JP |
+| 15 | Sumatif Akhir Semester (SAS) | 2 JP |
+| 16 | Refleksi tahunan & pembagian rapor | — |
+
+### IV. CATATAN KALENDER PENDIDIKAN
+Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, jeda tengah semester, libur akhir semester, dan kegiatan kokurikuler P5 agar tidak tumpang tindih dengan jam intrakurikuler **${mataPelajaran}**.`;
+  }
+
+  if (docType === 'modul_p5') {
+    return `# MODUL PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)
+## Tema: ${temaP5} • Topik: ${topik}
+**Jenjang / Fase: ${jenjang} / ${fase} • Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
+
+---
+
+### I. PROFIL MODUL
+* **Tema resmi**: ${temaP5}
+* **Topik projek**: ${topik}
+* **Fase / Kelas**: ${fase} / ${tingkat}
+* **Alokasi waktu**: ${alokasiWaktu} (dapat direntang beberapa pertemuan)
+* **Model fasilitasi**: ${modelPembelajaran}
+
+### II. DIMENSI, ELEMEN & SUBELEMEN PROFIL PELAJAR PANCASILA
+
+| Dimensi | Elemen yang Dikembangkan | Target Akhir Fase |
+| :--- | :--- | :--- |
+| ${dimensiList} | Bernalar kritis: menganalisis masalah nyata di sekitar sekolah | Berkembang Sesuai Harapan |
+| ${dimensiList} | Gotong royong: kolaborasi dan berbagi peran dalam tim projek | Berkembang Sesuai Harapan |
+| ${dimensiList} | Mandiri: mengatur diri, waktu, dan tanggung jawab tugas | Mulai Berkembang → BSH |
+
+### III. ALUR AKTIVITAS PROJEK
+
+#### Tahap 1 — Pengenalan (Asesmen Diagnostik + Apersepsi Tema)
+* Fasilitator membuka wawasan tentang **${temaP5}** melalui video, kunjungan lingkungan sekolah, atau cerita inspiratif.
+* Siswa menggali pengalaman awal terkait **${topik}** dan menyepakati pertanyaan utama projek.
+
+#### Tahap 2 — Kontekstualisasi (Riset & Perencanaan Aksi)
+* Kelompok melakukan audit/observasi nyata (misal: sampah, energi, kearifan lokal, sesuai tema) dan mencatat data sederhana.
+* Kelompok menyusun rencana aksi: tujuan, pembagian peran, jadwal, dan kebutuhan alat/bahan.
+
+#### Tahap 3 — Aksi Nyata (Eksekusi & Pendampingan Formatif)
+* Siswa melaksanakan aksi (misal: bank sampah mini, kampanye hemat energi, pameran budaya lokal) dengan pendampingan formatif fasilitator.
+* Setiap kelompok mendokumentasikan proses dalam jurnal foto/catatan harian projek.
+
+#### Tahap 4 — Refleksi & Gelar Karya (Sumatif + Tindak Lanjut)
+* Pameran hasil karya (gelar karya) di tingkat kelas/sekolah; setiap kelompok mempresentasikan dampak aksinya.
+* Refleksi individu dan umpan balik antar-kelompok; rencana tindak lanjut keberlanjutan projek.
+
+### IV. ASESMEN PROJEK (Rubrik Perkembangan Subelemen)
+
+| Subelemen | Belum Berkembang | Mulai Berkembang | Berkembang Sesuai Harapan | Sangat Berkembang |
+| :--- | :--- | :--- | :--- | :--- |
+| Kolaborasi tim | Pasif, menunggu perintah | Berkontribusi bila diminta | Aktif berbagi peran dan menuntaskan tugas | Memimpin, memediasi konflik, memastikan semua terlibat |
+| Nalar kritis aksi | Solusi meniru contoh | Menganalisis sebagian masalah | Menganalisis utuh dan solusi tepat guna | Solusi inovatif berdampak nyata terukur |
+| Refleksi diri | Belum mampu menilai diri | Menilai diri secara umum | Jujur menilai kekuatan–kelemahan + rencana perbaikan | Konsisten menindaklanjuti rencana perbaikan |
+
+### V. LAMPIRAN
+* **Jurnal refleksi siswa**: *Hari ini aku belajar ... / Tantangan terbesarku ... / Besok aku akan ...*
+* **Panduan gelar karya**: susunan acara pameran, pembagian stan per kelompok, rubrik presentasi, dan dokumentasi kegiatan untuk portofolio sekolah.`;
+  }
+
   // Default Fallback
   return `# DOKUMEN PERANGKAT AJAR KURIKULUM MERDEKA
 ## Satuan Pendidikan: ${schoolName} • Mata Pelajaran: ${mataPelajaran}

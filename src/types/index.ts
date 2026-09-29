@@ -57,6 +57,7 @@ export interface MonthlyProductivityData {
 }
 
 export interface GeneratorParams {
+  authorId?: string;
   docType: DocType;
   jenjang: Jenjang;
   tingkat: string;

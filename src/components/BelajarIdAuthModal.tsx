@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
 import { TeacherUser, Jenjang } from '../types';
-import { 
-  GraduationCap, 
-  CheckCircle2, 
-  Clock, 
-  X, 
-  ShieldCheck, 
-  ArrowRight, 
-  Sparkles,
+import {
+  GraduationCap,
+  X,
+  ArrowRight,
   School,
   Mail,
   User,
-  Info,
   LogOut
 } from 'lucide-react';
 
@@ -123,64 +118,52 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="apple-card max-w-xl w-full overflow-hidden">
         
-        {/* Header Belajar.id Branding */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600 text-white p-6 relative">
+        {/* Header */}
+        <div className="p-6 pb-5 relative border-b border-black/10 dark:border-white/10">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            className="absolute top-5 right-5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label="Tutup"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-white text-blue-700 flex items-center justify-center shadow-lg font-bold">
-              <GraduationCap className="w-7 h-7" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-black dark:bg-white dark:text-black text-white flex items-center justify-center shrink-0">
+              <GraduationCap className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-black tracking-tight">
-                  Masuk dengan Akun Belajar.id
-                </h3>
-              </div>
-              <p className="text-xs text-blue-100">
-                Kementerian Pendidikan Dasar dan Menengah Republik Indonesia
+            <div className="pr-10">
+              <h3 className="text-[19px] font-semibold tracking-tight">
+                Ganti akun Belajar.id
+              </h3>
+              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d]">
+                Akun baru berstatus menunggu verifikasi admin.
               </p>
             </div>
-          </div>
-
-          <div className="bg-white/15 backdrop-blur-md rounded-xl p-3 text-xs text-blue-50 mt-3 flex items-start gap-2 border border-white/20">
-            <Info className="w-4 h-4 shrink-0 text-blue-200 mt-0.5" />
-            <p>
-              Akun guru baru yang mendaftar akan berstatus <b>Menunggu Verifikasi</b> sampai disetujui oleh Admin Kurikulum (<b>Bpk. Amwaluddin Lubis, M.Pd.</b>).
-            </p>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex border-b border-slate-200 px-6 pt-3 bg-slate-50/60">
-          <button
-            onClick={() => setActiveTab('presets')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'presets'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Pilihan Akun Demo Cepat
-          </button>
-          <button
-            onClick={() => setActiveTab('custom')}
-            className={`pb-3 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'custom'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            Masuk / Daftar Akun Belajar.id Lain
-          </button>
+        <div className="px-6 pt-4">
+          <div className="apple-segment w-full grid grid-cols-2" role="tablist" aria-label="Pilih cara masuk">
+            <button
+              type="button"
+              onClick={() => setActiveTab('presets')}
+              data-active={activeTab === 'presets'}
+            >
+              Akun demo cepat
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('custom')}
+              data-active={activeTab === 'custom'}
+            >
+              Akun lain
+            </button>
+          </div>
         </div>
 
         {/* Body Content */}
@@ -189,11 +172,11 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
           {/* TAB 1: PRESETS */}
           {activeTab === 'presets' && (
             <div className="space-y-3">
-              <p className="text-xs text-slate-500 font-medium">
-                Pilih salah satu profil di bawah ini untuk menguji sistem verifikasi dan pembuatan modul ajar:
+              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d]">
+                Ketuk salah satu profil untuk beralih akun:
               </p>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {demoAccounts.map((acc, idx) => {
                   const isCurrent = currentUser.email.toLowerCase() === acc.email.toLowerCase();
                   return (
@@ -201,40 +184,31 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                       key={idx}
                       disabled={loading}
                       onClick={() => handleSelectPreset(acc)}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between group cursor-pointer ${
+                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
                         isCurrent
-                          ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20'
-                          : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          ? 'border-black dark:border-white bg-black/[0.03] dark:bg-white/5'
+                          : 'border-black/10 dark:border-white/15 hover:border-black/30 dark:hover:border-white/30'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs ${
-                          acc.status === 'VERIFIED' && acc.email.includes('amwaluddin')
-                            ? 'bg-purple-600'
-                            : acc.status === 'VERIFIED'
-                            ? 'bg-blue-600'
-                            : 'bg-amber-600'
-                        }`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
                           {acc.name.charAt(0)}
                         </div>
 
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-900 text-xs sm:text-sm group-hover:text-blue-700">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-[13.5px]">
                               {acc.name}
                             </span>
-                            <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${
-                              acc.status === 'VERIFIED'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {acc.roleBadge}
+                            <span className="inline-flex items-center gap-1 text-[11.5px] text-[#6e6e73] dark:text-[#98989d]">
+                              <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'VERIFIED' ? 'bg-[#30b158]' : 'bg-[#ff9f0a]'}`} />
+                              {acc.status === 'VERIFIED' ? 'Terverifikasi' : 'Menunggu'}
                             </span>
                           </div>
-                          <div className="text-xs text-slate-500 font-mono">
+                          <div className="text-[12px] text-[#6e6e73] dark:text-[#98989d] truncate">
                             {acc.email}
                           </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5">
+                          <div className="text-[12px] text-[#86868b] truncate">
                             {acc.school} • {acc.mapel}
                           </div>
                         </div>
@@ -242,11 +216,11 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
 
                       <div className="shrink-0 pl-2">
                         {isCurrent ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                          <span className="px-2.5 py-1 rounded-full bg-black dark:bg-white dark:text-black text-white text-[12px] font-semibold">
                             Aktif
                           </span>
                         ) : (
-                          <div className="p-2 rounded-xl bg-slate-100 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <div className="p-2 rounded-full bg-black/5 dark:bg-white/10">
                             <ArrowRight className="w-4 h-4" />
                           </div>
                         )}
@@ -260,88 +234,88 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
 
           {/* TAB 2: CUSTOM LOGIN / REGISTRATION */}
           {activeTab === 'custom' && (
-            <form onSubmit={handleCustomSubmit} className="space-y-4">
+            <form onSubmit={handleCustomSubmit} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Email Akun Belajar.id
+                <label className="block text-[13px] font-semibold mb-1.5">
+                  Email Belajar.id
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Mail className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="email"
                     required
                     placeholder="nama.guru@guru.sd.belajar.id"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                    className="apple-input !pl-10"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Contoh: @guru.sd.belajar.id, @guru.smp.belajar.id, @guru.sma.belajar.id, @guru.smk.belajar.id
+                <p className="text-[12px] text-[#86868b] mt-1.5">
+                  @guru.sd / @guru.smp / @guru.sma / @guru.smk.belajar.id
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nama Lengkap Guru (dengan gelar)
+                <label className="block text-[13px] font-semibold mb-1.5">
+                  Nama lengkap & gelar
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Dra. Nurhayati, M.Pd."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                    className="apple-input !pl-10"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Satuan Pendidikan (Sekolah)
+                <label className="block text-[13px] font-semibold mb-1.5">
+                  Sekolah
                 </label>
                 <div className="relative">
-                  <School className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <School className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     required
                     placeholder="Contoh: SMP Negeri 2 Padang Panjang"
                     value={schoolName}
                     onChange={(e) => setSchoolName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500"
+                    className="apple-input !pl-10"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Jenjang Sekolah
+                  <label className="block text-[13px] font-semibold mb-1.5">
+                    Jenjang
                   </label>
                   <select
                     value={jenjang}
                     onChange={(e) => setJenjang(e.target.value as Jenjang)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm bg-white"
+                    className="apple-input"
                   >
-                    <option value="SD">SD (Sekolah Dasar)</option>
-                    <option value="SMP">SMP (Sekolah Menengah Pertama)</option>
-                    <option value="SMA">SMA (Sekolah Menengah Atas)</option>
-                    <option value="SMK">SMK (Sekolah Menengah Kejuruan)</option>
+                    <option value="SD">SD</option>
+                    <option value="SMP">SMP</option>
+                    <option value="SMA">SMA</option>
+                    <option value="SMK">SMK</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Mata Pelajaran Diampu
+                  <label className="block text-[13px] font-semibold mb-1.5">
+                    Mata pelajaran
                   </label>
                   <input
                     type="text"
-                    placeholder="Matematika / Guru Kelas"
+                    placeholder="Matematika"
                     value={mapel}
                     onChange={(e) => setMapel(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm"
+                    className="apple-input"
                   />
                 </div>
               </div>
@@ -349,9 +323,9 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition-all shadow-md mt-4 cursor-pointer flex items-center justify-center gap-2"
+                className="btn-apple w-full !bg-black dark:!bg-white dark:!text-black"
               >
-                {loading ? 'Memproses Masuk...' : 'Masuk dengan Akun Belajar.id'}
+                {loading ? 'Memproses...' : 'Masuk dengan akun ini'}
               </button>
             </form>
           )}
@@ -359,10 +333,9 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <div>
-            <span>Akun Aktif: <b className="text-slate-800">{currentUser.name}</b></span>
-            <span className="ml-2 font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">{currentUser.status}</span>
+        <div className="px-6 py-3.5 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
+          <div className="truncate">
+            Aktif: <b>{currentUser.name}</b>
           </div>
 
           {onLogout && (
@@ -372,10 +345,10 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                 onClose();
                 onLogout();
               }}
-              className="px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="px-3.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#ff3b30] font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              <LogOut className="w-3.5 h-3.5 text-rose-600" />
-              <span>Keluar Akun (Logout)</span>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Keluar</span>
             </button>
           )}
         </div>

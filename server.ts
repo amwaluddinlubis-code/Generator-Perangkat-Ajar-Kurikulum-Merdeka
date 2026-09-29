@@ -381,6 +381,40 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
   }
 ];
 
+// ---- Persistensi file JSON (data/db.json) ----
+const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
+
+function saveDBNow() {
+  try {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents }, null, 2));
+  } catch (err) {
+    console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
+  }
+}
+
+let saveTimer: NodeJS.Timeout | null = null;
+function saveDB() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDBNow, 200);
+}
+
+function loadDB() {
+  try {
+    if (!fs.existsSync(DB_PATH)) {
+      saveDBNow(); // simpan data awal sebagai basis
+      return;
+    }
+    const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+    if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
+    if (Array.isArray(raw.documents)) documents = raw.documents;
+    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents from db.json`);
+  } catch (err) {
+    console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
+  }
+}
+loadDB();
+
 // Helper to validate Belajar.id email format
 function isBelajarIdEmail(email: string): boolean {
   if (!email) return false;
@@ -421,6 +455,12 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   }
 
   const cleanEmail = email.toLowerCase().trim();
+  if (!isBelajarIdEmail(cleanEmail)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Gunakan email Belajar.id yang valid (contoh: nama@guru.smp.belajar.id)'
+    });
+  }
   let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
 
   if (existingUser) {
@@ -459,6 +499,7 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   };
 
   users.unshift(newUser);
+  saveDB();
 
   res.json({
     success: true,
@@ -503,11 +544,65 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
     user.verifiedBy = undefined;
   }
 
+  saveDB();
+
   res.json({
     success: true,
     message: `Status guru ${user.name} berhasil diubah menjadi: ${status}`,
     user
   });
+});
+
+// 4b. Update user (manajemen user dua level)
+// - Admin: boleh ubah profil siapa pun + role (GURU/ADMIN), kecuali SUPER_ADMIN.
+// - Guru: hanya profil sendiri (nama, sekolah, mapel, NIP, NPSN).
+// - Status HANYA via /api/users/verify. Email & id tidak bisa diubah.
+app.put('/api/users/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { requesterId, name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
+
+  const target = users.find(u => u.id === id);
+  if (!target) {
+    return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+  }
+  const requester = users.find(u => u.id === String(requesterId || ''));
+  if (!requester) {
+    return res.status(403).json({ success: false, message: 'Identitas peminta tidak valid' });
+  }
+
+  const isAdmin = requester.role === 'SUPER_ADMIN' || requester.role === 'ADMIN';
+  const isSelf = requester.id === id;
+  if (!isAdmin && !isSelf) {
+    return res.status(403).json({ success: false, message: 'Anda hanya boleh mengubah profil sendiri' });
+  }
+  if (target.role === 'SUPER_ADMIN' && !isSelf) {
+    return res.status(403).json({ success: false, message: 'Akun Super Admin tidak dapat diubah' });
+  }
+
+  const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
+
+  if (isAdmin) {
+    if (clean(name)) target.name = clean(name);
+    if (clean(schoolName)) target.schoolName = clean(schoolName);
+    if (['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang))) target.jenjang = jenjang;
+    if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
+    if (nip !== undefined) target.nip = clean(nip) || undefined;
+    if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
+    // Role: admin boleh GURU<->ADMIN; tidak boleh menyentuh role diri sendiri/SUPER_ADMIN
+    if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') {
+      target.role = role;
+    }
+  } else {
+    // Guru: profil sendiri, tanpa jenjang/role/status
+    if (clean(name)) target.name = clean(name);
+    if (clean(schoolName)) target.schoolName = clean(schoolName);
+    if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
+    if (nip !== undefined) target.nip = clean(nip) || undefined;
+    if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
+  }
+
+  saveDB();
+  res.json({ success: true, message: `Profil ${target.name} berhasil diperbarui`, user: target });
 });
 
 // 5. Delete teacher
@@ -518,6 +613,7 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
   if (users.length === initialLength) {
     return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
   }
+  saveDB();
   res.json({ success: true, message: 'Data guru berhasil dihapus' });
 });
 
@@ -565,18 +661,28 @@ app.post('/api/documents', (req: Request, res: Response) => {
   };
 
   documents.unshift(newDoc);
+  saveDB();
   res.json({ success: true, message: 'Dokumen perangkat ajar berhasil disimpan ke arsip!', document: newDoc });
 });
 
 app.delete('/api/documents/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   documents = documents.filter(d => d.id !== id);
+  saveDB();
   res.json({ success: true, message: 'Dokumen berhasil dihapus dari arsip' });
 });
 
 // 7. AI Perangkat Ajar Generator using Gemini 3.8 Flash
 app.post('/api/generate', async (req: Request, res: Response) => {
   try {
+    // Kunci jenjang: 1 guru hanya untuk 1 tingkat sekolah sesuai profil.
+    // Admin/Super Admin bebas lintas jenjang (tugas verifikasi & supervisi).
+    const reqAuthorId = String((req.body as any)?.authorId || '');
+    const authorUser = users.find(u => u.id === reqAuthorId);
+    if (authorUser && authorUser.role === 'GURU') {
+      req.body.jenjang = authorUser.jenjang;
+    }
+
     const {
       docType,
       jenjang,
@@ -875,6 +981,59 @@ PANDUAN PENULISAN:
     res.status(500).json({
       success: false,
       message: 'Gagal membuat perangkat ajar: ' + (error?.message || 'Terjadi kesalahan sistem.'),
+    });
+  }
+});
+
+// 7b. AI Image Generator (ilustrasi dokumen) — model gemini-2.5-flash-image,
+// memakai GEMINI_API_KEY yang sama dengan generator teks.
+app.post('/api/generate-image', async (req: Request, res: Response) => {
+  try {
+    const { prompt, aspectRatio } = req.body as { prompt?: string; aspectRatio?: string };
+
+    if (!prompt || !String(prompt).trim()) {
+      return res.status(400).json({ success: false, message: 'Deskripsi gambar (prompt) wajib diisi.' });
+    }
+    if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        message: 'GEMINI_API_KEY belum diisi. Isi di file .env lalu jalankan ulang server.'
+      });
+    }
+
+    const ratio = ['1:1', '3:4', '4:3', '16:9', '9:16'].includes(String(aspectRatio))
+      ? String(aspectRatio)
+      : '16:9';
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: String(prompt).trim(),
+      config: {
+        responseModalities: ['TEXT', 'IMAGE'],
+        imageConfig: { aspectRatio: ratio as never }
+      } as never
+    } as never);
+
+    const parts: any[] = (response as any)?.candidates?.[0]?.content?.parts || [];
+    const imgPart = parts.find(p => p?.inlineData?.data);
+    if (!imgPart) {
+      return res.status(502).json({
+        success: false,
+        message: 'Model tidak mengembalikan gambar. Coba ubah deskripsinya.'
+      });
+    }
+
+    const mime = imgPart.inlineData.mimeType || 'image/png';
+    res.json({
+      success: true,
+      imageUrl: `data:${mime};base64,${imgPart.inlineData.data}`,
+      modelUsed: 'gemini-2.5-flash-image'
+    });
+  } catch (error: any) {
+    console.error('Error generating image:', error?.message || error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal membuat ilustrasi: ' + (error?.message || 'Terjadi kesalahan sistem.')
     });
   }
 });

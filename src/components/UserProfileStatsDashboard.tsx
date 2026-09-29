@@ -2,31 +2,22 @@ import React, { useState, useMemo } from 'react';
 import { TeacherUser, EducationalDocument, MonthlyProductivityData } from '../types';
 import { ProductivityD3Chart } from './ProductivityD3Chart';
 import { DocumentTypeD3Donut } from './DocumentTypeD3Donut';
-import { 
-  UserCircle2, 
-  CheckCircle2, 
-  Clock, 
-  FileText, 
-  BarChart3, 
-  TrendingUp, 
-  Sparkles, 
-  Award, 
-  School, 
-  Mail, 
-  Calendar, 
-  Layers, 
-  HelpCircle, 
-  BookOpen, 
-  Target, 
-  Download, 
-  Eye, 
-  ShieldCheck, 
-  Zap, 
-  Check, 
-  PieChart as PieIcon,
-  LineChart as LineIcon
+import { useTheme } from '../theme';
+import {
+  UserCircle2,
+  Clock,
+  FileText,
+  Zap,
+  Sparkles,
+  Award,
+  School,
+  Mail,
+  HelpCircle,
+  Download,
+  Eye,
+  ShieldCheck,
 } from 'lucide-react';
-import { downloadWordDocument, exportToDocx } from '../utils/exportUtils';
+import { exportToDocx } from '../utils/exportUtils';
 
 interface UserProfileStatsDashboardProps {
   currentUser: TeacherUser;
@@ -45,6 +36,8 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
 }) => {
   const [selectedMetric, setSelectedMetric] = useState<'all' | 'modulAjar' | 'soalUjian' | 'rpp'>('all');
   const [chartType, setChartType] = useState<'area' | 'bar'>('area');
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
 
   // Filter documents for current user or all if admin
   const userDocuments = useMemo(() => {
@@ -146,81 +139,69 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
     });
   }, [userDocuments]);
 
-  // Donut data for document type distribution
+  // Donut data — palet netral yang kontras di kedua tema
   const donutData = useMemo(() => {
     const total = totalDocsCount > 0 ? totalDocsCount : 10;
+    const mono = dark
+      ? { ink: '#f5f5f7', gray: '#aeaeb2', faint: '#48484a', blue: '#0a84ff', green: '#30d158', orange: '#ffb340' }
+      : { ink: '#1d1d1f', gray: '#6e6e73', faint: '#c7c7cc', blue: '#0071e3', green: '#30b158', orange: '#ff9f0a' };
     return [
-      { label: 'Modul Ajar Lengkap', count: modulAjarCount > 0 ? modulAjarCount : 4, color: '#2563eb' },
-      { label: 'RPP Ringkas (1-2 Lembar)', count: rppCount > 0 ? rppCount : 2, color: '#3b82f6' },
-      { label: 'Bank Soal Ujian (AKM/HOTS)', count: soalCount > 0 ? soalCount : 2, color: '#f59e0b' },
-      { label: 'LKPD Interaktif', count: lkpdCount > 0 ? lkpdCount : 1, color: '#10b981' },
-      { label: 'ATP & KKTP', count: kktpCount > 0 ? kktpCount : 1, color: '#6366f1' },
-      { label: 'Modul Projek P5', count: p5Count > 0 ? p5Count : 1, color: '#8b5cf6' },
+      { label: 'Modul Ajar Lengkap', count: modulAjarCount > 0 ? modulAjarCount : 4, color: mono.ink },
+      { label: 'RPP Ringkas (1-2 Lembar)', count: rppCount > 0 ? rppCount : 2, color: mono.gray },
+      { label: 'Bank Soal Ujian (AKM/HOTS)', count: soalCount > 0 ? soalCount : 2, color: mono.blue },
+      { label: 'LKPD Interaktif', count: lkpdCount > 0 ? lkpdCount : 1, color: mono.green },
+      { label: 'ATP & KKTP', count: kktpCount > 0 ? kktpCount : 1, color: mono.faint },
+      { label: 'Modul Projek P5', count: p5Count > 0 ? p5Count : 1, color: mono.orange },
     ];
-  }, [totalDocsCount, modulAjarCount, rppCount, soalCount, lkpdCount, kktpCount, p5Count]);
+  }, [totalDocsCount, modulAjarCount, rppCount, soalCount, lkpdCount, kktpCount, p5Count, dark]);
 
   const isVerified = currentUser.status === 'VERIFIED';
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       
-      {/* 1. Header Profil Pengguna & Verifikasi Belajar.id */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs relative overflow-hidden">
+      {/* 1. Header Profil */}
+      <div className="apple-card p-6 sm:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           
           {/* Avatar & Identitas */}
           <div className="flex items-start sm:items-center gap-4">
             <div className="relative">
-              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center font-extrabold text-2xl text-white shadow-md ${
-                isSuperAdmin ? 'bg-gradient-to-br from-purple-600 to-indigo-700' :
-                isVerified ? 'bg-gradient-to-br from-blue-600 to-sky-600' : 'bg-gradient-to-br from-amber-500 to-orange-600'
-              }`}>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-2xl">
                 {currentUser.name.charAt(0)}
               </div>
-              <div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow-xs">
-                {isVerified ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-100" />
-                ) : (
-                  <Clock className="w-5 h-5 text-amber-500 fill-amber-100" />
-                )}
-              </div>
+              <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ${isVerified || isSuperAdmin ? 'bg-[#30b158]' : 'bg-[#ff9f0a]'}`} style={{ border: '3px solid var(--apple-card)' }} />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">
                   {currentUser.name}
                 </h1>
-                {isSuperAdmin ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-xs font-bold flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Super Admin (Verifikator)
-                  </span>
-                ) : (
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 ${
-                    isVerified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {isVerified ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                    {isVerified ? 'Akun Belajar.id Terverifikasi' : 'Menunggu Verifikasi Admin'}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
+                  {isSuperAdmin ? 'Admin' : isVerified ? (
+                    <><span className="w-1.5 h-1.5 rounded-full bg-[#30b158]" /> Terverifikasi</>
+                  ) : (
+                    <><span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a]" /> Menunggu verifikasi</>
+                  )}
+                </span>
               </div>
 
-              <div className="text-xs sm:text-sm text-slate-500 font-mono flex items-center gap-1.5 mt-1">
-                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                <span>{currentUser.email}</span>
+              <div className="text-[13px] text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1.5 mt-1 truncate">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{currentUser.email}</span>
                 {currentUser.nip && (
-                  <span className="text-slate-400">• NIP. {currentUser.nip}</span>
+                  <span>• NIP. {currentUser.nip}</span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mt-2 text-xs text-slate-600 flex-wrap">
-                <span className="inline-flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
-                  <School className="w-3.5 h-3.5 text-slate-500" />
+              <div className="flex items-center gap-2 mt-2 text-[12.5px] flex-wrap">
+                <span className="inline-flex items-center gap-1.5 bg-black/5 dark:bg-white/10 px-2.5 py-1 rounded-full font-medium">
+                  <School className="w-3.5 h-3.5" />
                   {currentUser.schoolName}
                 </span>
-                <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg font-bold">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 font-medium">
                   {currentUser.jenjang} • {currentUser.mataPelajaran}
                 </span>
               </div>
@@ -228,171 +209,146 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
 
           </div>
 
-          {/* Action Switcher */}
-          <div className="flex items-center gap-2.5 shrink-0 self-start md:self-center">
+          {/* Aksi */}
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-center flex-wrap">
             <button
               onClick={onOpenAuthModal}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              className="btn-apple-secondary !min-h-[40px]"
             >
-              <UserCircle2 className="w-4 h-4 text-slate-500" />
-              Ganti Akun Belajar.id
+              <UserCircle2 className="w-4 h-4" />
+              Ganti akun
             </button>
 
             <button
               onClick={onCreateNew}
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-500/20"
+              className="btn-apple !min-h-[40px] !bg-black dark:!bg-white dark:!text-black"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              Susun Modul Baru
+              <Sparkles className="w-4 h-4" />
+              Susun modul baru
             </button>
           </div>
 
         </div>
       </div>
 
-      {/* 2. Kartu Statistik Utama (KPI Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Kartu Statistik Utama */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         
-        {/* Total Modul Ajar Dibuat */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Total Modul & Perangkat
+        <div className="apple-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+              Total dokumen
             </span>
-            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-              <FileText className="w-5 h-5" />
-            </div>
+            <FileText className="w-5 h-5" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900">{totalDocsCount}</span>
-            <span className="text-xs font-semibold text-slate-500">dokumen tersimpan</span>
+            <span className="text-[28px] font-bold tracking-tight">{totalDocsCount}</span>
+            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">tersimpan</span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Modul Ajar: <b>{modulAjarCount}</b></span>
-            <span>RPP: <b>{rppCount}</b></span>
-            <span>Soal: <b>{soalCount}</b></span>
+          <div className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+            <span>Modul: <b className="text-inherit">{modulAjarCount}</b></span>
+            <span>RPP: <b className="text-inherit">{rppCount}</b></span>
+            <span>Soal: <b className="text-inherit">{soalCount}</b></span>
           </div>
         </div>
 
-        {/* Rata-Rata Durasi Penyusunan */}
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200/90 shadow-2xs hover:shadow-md transition-all bg-gradient-to-br from-white to-emerald-50/30">
-          <div className="flex items-center justify-between text-emerald-800 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Rata-Rata Durasi AI
+        <div className="apple-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+              Rata-rata durasi AI
             </span>
-            <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700">
-              <Zap className="w-5 h-5" />
-            </div>
+            <Zap className="w-5 h-5" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-emerald-700">~{avgDurationMinutes}</span>
-            <span className="text-xs font-bold text-emerald-800">Menit / Dokumen</span>
+            <span className="text-[28px] font-bold tracking-tight">~{avgDurationMinutes}</span>
+            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">mnt / dokumen</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-emerald-100 text-[11px] text-emerald-700 font-medium">
-            ⚡ 98% lebih cepat dibanding penyusunan manual
+          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+            98% lebih cepat dari cara manual
           </p>
         </div>
 
-        {/* Total Jam Kerja Administrasi Dihemat */}
-        <div className="bg-white p-5 rounded-2xl border border-blue-200/90 shadow-2xs hover:shadow-md transition-all bg-gradient-to-br from-white to-blue-50/30">
-          <div className="flex items-center justify-between text-blue-800 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Jam Kerja Guru Dihemat
+        <div className="apple-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+              Jam kerja dihemat
             </span>
-            <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
-              <Clock className="w-5 h-5" />
-            </div>
+            <Clock className="w-5 h-5" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-blue-800">~{savedHours}</span>
-            <span className="text-xs font-bold text-blue-900">Jam Efektif</span>
+            <span className="text-[28px] font-bold tracking-tight">~{savedHours}</span>
+            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">jam efektif</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-blue-100 text-[11px] text-blue-700 font-medium">
-            🎯 Lebih banyak waktu berinteraksi langsung dengan murid
+          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+            Lebih banyak waktu untuk murid
           </p>
         </div>
 
-        {/* Kepatuhan Regulasi Kemdikbud */}
-        <div className="bg-white p-5 rounded-2xl border border-indigo-200/90 shadow-2xs hover:shadow-md transition-all bg-gradient-to-br from-white to-indigo-50/30">
-          <div className="flex items-center justify-between text-indigo-800 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Kepatuhan Regulasi
+        <div className="apple-card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+              Kepatuhan regulasi
             </span>
-            <div className="p-2 rounded-xl bg-indigo-100 text-indigo-700">
-              <Award className="w-5 h-5" />
-            </div>
+            <Award className="w-5 h-5" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-indigo-900">100%</span>
-            <span className="text-xs font-bold text-indigo-700">Permendikbud 12/2024</span>
+            <span className="text-[28px] font-bold tracking-tight">100%</span>
+            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">Permendikbud 12/2024</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-indigo-100 text-[11px] text-indigo-700 font-medium">
-            ✓ BSKAP 032/H/KR/2024 & Standar PPA
+          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+            BSKAP 032/H/KR/2024 & PPA
           </p>
         </div>
 
       </div>
 
-      {/* 3. Grafik Produktivitas Bulanan Menggunakan D3.js */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-4">
+      {/* 3. Grafik Produktivitas Bulanan */}
+      <div className="apple-card p-6 sm:p-7 space-y-4">
         
-        {/* Chart Header with Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/10 dark:border-white/10">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700">
-                <TrendingUp className="w-5 h-5" />
-              </span>
-              <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                Grafik Produktivitas Bulanan Penyusunan Perangkat Ajar
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Visualisasi interaktif d3.js melacak tren jumlah modul ajar, RPP, dan bank soal yang telah Anda buat sepanjang tahun 2026.
+            <h2 className="text-[17px] font-semibold tracking-tight">
+              Produktivitas bulanan
+            </h2>
+            <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+              Tren modul, RPP, dan bank soal sepanjang 2026.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
             
-            {/* Chart Type Toggle */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <div className="apple-segment" role="tablist" aria-label="Jenis grafik">
               <button
+                type="button"
                 onClick={() => setChartType('area')}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                  chartType === 'area' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Tampilan Garis Kurva D3.js"
+                data-active={chartType === 'area'}
+                title="Kurva tren"
               >
-                <LineIcon className="w-3.5 h-3.5" />
-                Kurva Tren
+                Kurva
               </button>
               <button
+                type="button"
                 onClick={() => setChartType('bar')}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                  chartType === 'bar' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Tampilan Grafik Batang D3.js"
+                data-active={chartType === 'bar'}
+                title="Grafik batang"
               >
-                <BarChart3 className="w-3.5 h-3.5" />
                 Batang
               </button>
             </div>
 
-            {/* Metric Filter */}
             <select
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value as any)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="apple-input !w-auto !py-2 text-[13px] font-semibold"
             >
-              <option value="all">Semua Perangkat Ajar</option>
-              <option value="modulAjar">Khusus Modul Ajar</option>
-              <option value="rpp">Khusus RPP Ringkas</option>
-              <option value="soalUjian">Khusus Bank Soal Ujian</option>
+              <option value="all">Semua perangkat</option>
+              <option value="modulAjar">Modul Ajar</option>
+              <option value="rpp">RPP Ringkas</option>
+              <option value="soalUjian">Bank Soal</option>
             </select>
           </div>
         </div>
 
-        {/* D3.js Chart Render */}
         <div className="pt-2">
           <ProductivityD3Chart
             data={monthlyData}
@@ -401,79 +357,60 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
           />
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100">
-          <span>* Arahkan kursor / sentuh titik grafik untuk melihat rincian modul per bulan</span>
-          <span>Ditenagai pustaka visualisasi <b>d3.js</b></span>
+        <div className="flex items-center justify-between text-[12px] text-[#86868b] pt-2 border-t border-black/10 dark:border-white/10">
+          <span>Sentuh titik grafik untuk rincian per bulan</span>
         </div>
 
       </div>
 
-      {/* 4. Donut Distribusi Jenis Dokumen (D3) & Lencana Guru */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* 4. Donut Distribusi & Lencana */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Left: Donut Chart Distribusi (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
-                <PieIcon className="w-4 h-4" />
-              </span>
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Distribusi Jenis Perangkat Ajar (d3.js)
-              </h3>
-            </div>
-            <span className="text-xs text-slate-500 font-medium">
-              Total {totalDocsCount > 0 ? totalDocsCount : 10} Dokumen
+        <div className="lg:col-span-7 apple-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-black/10 dark:border-white/10">
+            <h3 className="font-semibold text-[15px]">
+              Distribusi perangkat
+            </h3>
+            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
+              Total {totalDocsCount > 0 ? totalDocsCount : 10} dokumen
             </span>
           </div>
 
           <DocumentTypeD3Donut data={donutData} />
         </div>
 
-        {/* Right: Pencapaian Profesional Guru (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-              <Award className="w-4 h-4" />
-            </span>
-            <h3 className="font-extrabold text-slate-900 text-base">
-              Lencana & Portofolio Guru
-            </h3>
-          </div>
+        <div className="lg:col-span-5 apple-card p-6 space-y-3">
+          <h3 className="font-semibold text-[15px] pb-3 border-b border-black/10 dark:border-white/10">
+            Lencana guru
+          </h3>
 
-          <div className="space-y-3">
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5" />
-              </div>
+          <div className="space-y-2.5">
+            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
+              <FileText className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-xs text-slate-900">Penyusun Modul Ajar Diferensiasi</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Telah menyusun modul dengan diferensiasi konten, proses, dan produk sesuai kebutuhan murid.
+                <h4 className="font-semibold text-[13.5px]">Penyusun modul diferensiasi</h4>
+                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                  Diferensiasi konten, proses, dan produk sesuai kebutuhan murid.
                 </p>
               </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                <HelpCircle className="w-5 h-5" />
-              </div>
+            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
+              <HelpCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-xs text-slate-900">Spesialis Asesmen AKM & HOTS</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Telah menghasilkan paket soal sumatif dengan kisi-kisi dan level kognitif bernalar tinggi.
+                <h4 className="font-semibold text-[13.5px]">Spesialis asesmen AKM & HOTS</h4>
+                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                  Paket soal sumatif dengan kisi-kisi dan level bernalar tinggi.
                 </p>
               </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
+            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-xs text-slate-900">Kredensial Belajar.id Terverifikasi</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Terdaftar resmi dalam ekosistem Kurikulum Merdeka Kementerian Pendidikan.
+                <h4 className="font-semibold text-[13.5px]">Belajar.id terverifikasi</h4>
+                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                  Terdaftar resmi di ekosistem Kurikulum Merdeka.
                 </p>
               </div>
             </div>
@@ -482,52 +419,47 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
 
       </div>
 
-      {/* 5. Riwayat Perangkat Ajar Terbaru Guru */}
-      <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700">
-              <BookOpen className="w-4 h-4" />
-            </span>
-            <h3 className="font-extrabold text-slate-900 text-base">
-              Riwayat Perangkat Ajar yang Baru Disusun
-            </h3>
-          </div>
+      {/* 5. Riwayat Terbaru */}
+      <div className="apple-card p-6 space-y-3">
+        <div className="flex items-center justify-between pb-3 border-b border-black/10 dark:border-white/10">
+          <h3 className="font-semibold text-[15px]">
+            Baru disusun
+          </h3>
           <button
             onClick={onCreateNew}
-            className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+            className="text-[13px] font-semibold hover:opacity-70 cursor-pointer"
           >
-            + Susun Lagi
+            + Susun lagi
           </button>
         </div>
 
         {effectiveDocs.length === 0 ? (
-          <div className="text-center py-8 text-xs text-slate-500">
-            Belum ada modul ajar yang dibuat. Mulai susun sekarang!
+          <div className="text-center py-8 text-[13.5px] text-[#6e6e73] dark:text-[#98989d]">
+            Belum ada modul yang dibuat. Mulai susun sekarang.
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-black/5 dark:divide-white/10">
             {effectiveDocs.slice(0, 5).map(doc => (
-              <div key={doc.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 px-2 rounded-xl transition-colors">
-                <div>
+              <div key={doc.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.2 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-800">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10 shrink-0">
                       {doc.jenjang} • {doc.tingkat}
                     </span>
-                    <span className="text-xs font-bold text-slate-900">{doc.title}</span>
+                    <span className="text-[13.5px] font-semibold truncate">{doc.title}</span>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {doc.mataPelajaran} • Topik: {doc.topik} • Durasi AI: ~{doc.durationMinutes || 3.2} menit
+                  <div className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                    {doc.mataPelajaran} • {doc.topik} • ~{doc.durationMinutes || 3.2} mnt
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                   <button
                     onClick={() => onSelectDocument(doc)}
-                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                    className="px-4 py-1.5 rounded-full bg-black dark:bg-white dark:text-black text-white text-[12.5px] font-semibold transition-all flex items-center gap-1 cursor-pointer min-h-[34px]"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    Lihat & Cetak
+                    Buka
                   </button>
 
                   <button
@@ -539,7 +471,7 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
                       fase: doc.fase,
                       mapel: doc.mataPelajaran
                     })}
-                    className="px-2.5 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 text-blue-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                    className="px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[12.5px] font-semibold transition-colors cursor-pointer flex items-center gap-1 min-h-[34px]"
                     title="Unduh Format Word (.docx)"
                   >
                     <Download className="w-3.5 h-3.5" />

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { MonthlyProductivityData } from '../types';
+import { useTheme } from '../theme';
 
 interface ProductivityD3ChartProps {
   data: MonthlyProductivityData[];
@@ -15,6 +16,13 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const { theme } = useTheme();
+  const dark = theme === 'dark';
+  // Palet netral Apple — mengikuti tema
+  const ink = dark ? '#f5f5f7' : '#1d1d1f';
+  const subtle = dark ? '#98989d' : '#6e6e73';
+  const grid = dark ? 'rgba(255,255,255,0.12)' : '#e8e8ed';
+  const dotBg = dark ? '#1c1c1e' : '#ffffff';
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
     x: number;
@@ -72,8 +80,8 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
     areaGradient
       .append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#3b82f6')
-      .attr('stop-opacity', 0.45);
+      .attr('stop-color', ink)
+      .attr('stop-opacity', 0.28);
 
     areaGradient
       .append('stop')
@@ -93,12 +101,12 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
     barGradient
       .append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', '#2563eb');
+      .attr('stop-color', ink);
 
     barGradient
       .append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#60a5fa');
+      .attr('stop-color', subtle);
 
     // X and Y Scales
     const xScale = d3
@@ -130,7 +138,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
       .call(g =>
         g
           .selectAll('.tick line')
-          .attr('stroke', '#e2e8f0')
+          .attr('stroke', grid)
           .attr('stroke-dasharray', '3,3')
       );
 
@@ -138,16 +146,16 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
     g.append('g')
       .attr('transform', `translate(0,${innerHeight})`)
       .call(d3.axisBottom(xScale))
-      .call(g => g.select('.domain').attr('stroke', '#cbd5e1'))
+      .call(g => g.select('.domain').attr('stroke', grid))
       .call(g =>
         g
           .selectAll('.tick text')
-          .attr('fill', '#64748b')
+          .attr('fill', subtle)
           .attr('font-size', '11px')
           .attr('font-weight', '600')
           .attr('font-family', 'inherit')
       )
-      .call(g => g.selectAll('.tick line').attr('stroke', '#cbd5e1'));
+      .call(g => g.selectAll('.tick line').attr('stroke', grid));
 
     // Left Axis (Count)
     g.append('g')
@@ -161,7 +169,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
       .call(g =>
         g
           .selectAll('.tick text')
-          .attr('fill', '#64748b')
+          .attr('fill', subtle)
           .attr('font-size', '11px')
           .attr('font-weight', '500')
           .attr('font-family', 'inherit')
@@ -194,7 +202,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
       g.append('path')
         .datum(data)
         .attr('fill', 'none')
-        .attr('stroke', '#2563eb')
+        .attr('stroke', ink)
         .attr('stroke-width', 3)
         .attr('stroke-linecap', 'round')
         .attr('d', line);
@@ -212,8 +220,8 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
           .attr('cx', cx)
           .attr('cy', cy)
           .attr('r', 6)
-          .attr('fill', '#ffffff')
-          .attr('stroke', '#2563eb')
+          .attr('fill', dotBg)
+          .attr('stroke', ink)
           .attr('stroke-width', 2.5)
           .attr('class', 'cursor-pointer transition-all hover:scale-125')
           .on('mouseenter', (event) => {
@@ -235,7 +243,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
           .attr('cx', cx)
           .attr('cy', cy)
           .attr('r', 2.5)
-          .attr('fill', '#2563eb')
+          .attr('fill', ink)
           .attr('pointer-events', 'none');
       });
 
@@ -273,13 +281,13 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
         .attr('x', d => (xScale(d.monthShort) || 0) + xScale.bandwidth() / 2)
         .attr('y', d => yScale(getValue(d)) - 6)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#1e293b')
+        .attr('fill', subtle)
         .attr('font-size', '10px')
         .attr('font-weight', '700')
         .text(d => getValue(d) > 0 ? getValue(d) : '');
     }
 
-  }, [data, selectedMetric, chartType]);
+  }, [data, selectedMetric, chartType, theme, ink, subtle, grid, dotBg]);
 
   return (
     <div ref={containerRef} className="relative w-full">

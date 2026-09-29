@@ -2,21 +2,8 @@ import React from 'react';
 import { TeacherUser, DocType } from '../types';
 import { NavigationTarget } from './Sidebar';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
-import { 
-  Menu, 
-  Sparkles, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Clock, 
-  UserCircle2, 
-  ChevronRight, 
-  HelpCircle,
-  FileCheck,
-  Award,
-  Layers,
-  FileText,
-  LogOut
-} from 'lucide-react';
+import { useTheme } from '../theme';
+import { Menu, CheckCircle2, Clock, ShieldCheck, ChevronRight, LogOut, Sun, Moon } from 'lucide-react';
 
 interface TopHeaderProps {
   currentUser: TeacherUser;
@@ -33,154 +20,65 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   activeTarget,
   onOpenAuthModal,
   onOpenMobileSidebar,
-  onOpenGuideModal,
   onLogout,
-  pendingCount
 }) => {
+  const { theme, toggle } = useTheme();
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
   const isVerified = currentUser.status === 'VERIFIED';
 
-  // Determine breadcrumb title
-  const getBreadcrumbTitle = (): { category: string; title: string; badge?: string } => {
-    if (activeTarget === 'stats') {
-      return { category: 'Workspace Guru', title: 'Dashboard Statistik & Analitik (d3.js)' };
-    }
-    if (activeTarget === 'repository') {
-      return { category: 'Workspace Guru', title: 'Bank Arsip Dokumen Perangkat Ajar' };
-    }
-    if (activeTarget === 'admin') {
-      return { category: 'Pusat Kontrol', title: 'Verifikasi & Validasi Guru Belajar.id' };
-    }
-    if (activeTarget === 'guide') {
-      return { category: 'Regulasi Kurikulum', title: 'Panduan Permendikbudristek No. 12 Tahun 2024' };
-    }
-
-    const docInfo = DOC_TYPE_INFO[activeTarget as DocType];
-    return {
-      category: 'Penyusun Perangkat Ajar',
-      title: docInfo ? docInfo.label : 'Generator Perangkat Ajar',
-      badge: docInfo?.badge
-    };
+  const getTitle = (): { kicker: string; title: string } => {
+    if (activeTarget === 'profile') return { kicker: 'Ruang kerja', title: 'Profil saya' };
+    if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
+    if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
+    if (activeTarget === 'admin') return { kicker: 'Admin', title: 'Verifikasi guru' };
+    if (activeTarget === 'guide') return { kicker: 'Regulasi', title: 'Panduan Kurikulum Merdeka' };
+    const info = DOC_TYPE_INFO[activeTarget as DocType];
+    return { kicker: 'Buat perangkat', title: info ? info.label : 'Generator' };
   };
-
-  const breadcrumb = getBreadcrumbTitle();
+  const t = getTitle();
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs no-print">
-      
-      {/* Top Banner Notice */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-sky-900 text-white px-4 py-1 text-[11px] font-medium flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold">
-            ✓ Permendikbudristek No. 12/2024
-          </span>
-          <span className="hidden sm:inline text-slate-300">•</span>
-          <span className="hidden sm:inline text-blue-100">
-            Panduan Pembelajaran & Asesmen (PPA 2024)
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-sky-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Profil pengguna
-          </span>
-          <button
-            onClick={onOpenGuideModal}
-            className="text-white/80 hover:text-white underline underline-offset-2 cursor-pointer"
-          >
-            Info Regulasi
-          </button>
-        </div>
-      </div>
-
-      {/* Main Bar */}
-      <div className="px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        
-        {/* Left: Mobile Hamburger & Breadcrumb */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-            title="Buka Menu"
-          >
+    <header className="sticky top-0 z-30 apple-nav no-print">
+      <div className="px-4 sm:px-8 lg:px-12 h-[60px] flex items-center justify-between gap-3 max-w-[1400px] mx-auto">
+        <div className="flex items-center gap-2 min-w-0">
+          <button onClick={onOpenMobileSidebar} className="lg:hidden p-2.5 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer" aria-label="Buka menu">
             <Menu className="w-5 h-5" />
           </button>
-
-          <div className="flex items-center gap-2 overflow-hidden">
-            <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
-              {breadcrumb.category}
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-300 hidden sm:inline" />
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">
-                {breadcrumb.title}
-              </h2>
-              {breadcrumb.badge && (
-                <span className="hidden md:inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                  {breadcrumb.badge}
-                </span>
-              )}
-            </div>
+          <div className="min-w-0">
+            <p className="text-[12px] font-medium text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1 leading-none">
+              {t.kicker} <ChevronRight className="w-3 h-3" />
+            </p>
+            <h2 className="text-[17px] font-semibold tracking-tight truncate leading-tight">{t.title}</h2>
           </div>
         </div>
 
-        {/* Right: Quick User Profile & Status */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          
-          {/* Status Badge */}
-          {isSuperAdmin ? (
-            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-              Super Admin
-            </span>
-          ) : isVerified ? (
-            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Profil terverifikasi
-            </span>
-          ) : (
-            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-300 text-xs font-bold animate-pulse">
-              <Clock className="w-3.5 h-3.5 text-amber-600" />
-              Menunggu Verifikasi
-            </span>
-          )}
+        <div className="flex items-center gap-1.5">
+          <span className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10">
+            {isSuperAdmin ? <><ShieldCheck className="w-3.5 h-3.5" /> Admin</>
+            : isVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#30b158]" /> Terverifikasi</>
+            : <><Clock className="w-3.5 h-3.5 text-[#ff9f0a]" /> Menunggu verifikasi</>}
+          </span>
 
-          {/* User Profile Trigger Button */}
+          {/* Toggle tema */}
           <button
-            onClick={onOpenAuthModal}
-            className="flex items-center gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-white hover:bg-slate-50 transition-all text-left shadow-2xs group cursor-pointer"
-            title="Kelola Profil / Ganti Akun Belajar.id"
+            onClick={toggle}
+            className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+            title={theme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+            aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
           >
-            <div className="relative">
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white ${
-                isSuperAdmin ? 'bg-purple-600' : isVerified ? 'bg-blue-600' : 'bg-amber-600'
-              }`}>
-                {currentUser.name.charAt(0)}
-              </div>
-            </div>
-
-            <div className="hidden sm:block text-left">
-              <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700 truncate max-w-[120px]">
-                {currentUser.name}
-              </p>
-              <p className="text-[10px] text-slate-400 truncate max-w-[120px]">
-                {currentUser.schoolName}
-              </p>
-            </div>
+            {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px] text-[#424245] dark:text-[#f5f5f7]" />}
           </button>
 
-          {/* Quick Logout Button */}
-          <button
-            onClick={onLogout}
-            className="p-2 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-500 hover:text-rose-600 transition-all cursor-pointer shadow-2xs"
-            title="Keluar / Logout dari Sistem"
-          >
-            <LogOut className="w-4 h-4" />
+          <button onClick={onOpenAuthModal} className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Profil">
+            <div className="w-8 h-8 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[13px]">
+              {currentUser.name.charAt(0)}
+            </div>
+            <span className="hidden sm:block text-[13.5px] font-semibold max-w-[140px] truncate">{currentUser.name}</span>
           </button>
-
+          <button onClick={onLogout} className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Keluar">
+            <LogOut className="w-[18px] h-[18px]" />
+          </button>
         </div>
-
       </div>
     </header>
   );

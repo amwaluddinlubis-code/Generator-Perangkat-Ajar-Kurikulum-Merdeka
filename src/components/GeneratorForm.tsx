@@ -5,13 +5,12 @@ import {
   GeneratorParams, 
   TeacherUser 
 } from '../types';
-import { 
-  JENJANG_CONFIGS, 
-  DIMENSI_P5, 
-  MODEL_PEMBELAJARAN, 
-  TEMA_P5, 
-  DOC_TYPE_INFO, 
-  TOPIK_INSPIRASI 
+import {
+  JENJANG_CONFIGS,
+  DIMENSI_P5,
+  MODEL_PEMBELAJARAN,
+  TEMA_P5,
+  DOC_TYPE_INFO,
 } from '../data/curriculumData';
 import { ContextualTopicSuggester } from './ContextualTopicSuggester';
 import { CurriculumTopicItem } from '../data/topicCatalog';
@@ -57,18 +56,42 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
   }, [activeDocType]);
 
+  // Sinkronkan form bila akun berganti (mis. demo SD -> SMP) agar
+  // fase/kelas/mapel selalu valid untuk jenjang pengguna aktif.
+  useEffect(() => {
+    const cfg = JENJANG_CONFIGS[currentUser.jenjang] || JENJANG_CONFIGS['SD'];
+    const j = currentUser.jenjang || 'SD';
+    setJenjang(j);
+    setFase(cfg.fases[0]?.fase || 'Fase B');
+    setTingkat(cfg.fases[0]?.kelas[0] || 'Kelas 4');
+    setMataPelajaran(cfg.defaultMapel[0] || '');
+    setCustomMapel('');
+    setAlokasiWaktu(defaultAlokasi(j));
+    setSchoolName(currentUser.schoolName || '');
+    setAuthorName(currentUser.name || '');
+    setNip(currentUser.nip || '');
+    setFormStep(0);
+  }, [currentUser.id]);
+
   const handleDocTypeChange = (newType: DocType) => {
     setDocType(newType);
     onSelectDocType?.(newType);
   };
 
+  const defaultAlokasi = (j: Jenjang) =>
+    j === 'SD' ? '2 JP (2 x 35 Menit) - 1 Pertemuan' :
+    j === 'SMP' ? '2 JP (2 x 40 Menit) - 1 Pertemuan' :
+    '2 JP (2 x 45 Menit) - 1 Pertemuan';
+
+  const initialCfg = JENJANG_CONFIGS[currentUser.jenjang || 'SD'] || JENJANG_CONFIGS['SD'];
+
   const [jenjang, setJenjang] = useState<Jenjang>(currentUser.jenjang || 'SD');
-  const [fase, setFase] = useState<string>('Fase B');
-  const [tingkat, setTingkat] = useState<string>('Kelas 4');
-  const [mataPelajaran, setMataPelajaran] = useState<string>('IPAS (Ilmu Pengetahuan Alam & Sosial)');
+  const [fase, setFase] = useState<string>(initialCfg.fases[0]?.fase || 'Fase B');
+  const [tingkat, setTingkat] = useState<string>(initialCfg.fases[0]?.kelas[0] || 'Kelas 4');
+  const [mataPelajaran, setMataPelajaran] = useState<string>(initialCfg.defaultMapel[0] || 'IPAS (Ilmu Pengetahuan Alam & Sosial)');
   const [customMapel, setCustomMapel] = useState<string>('');
   const [topik, setTopik] = useState<string>('Bagian Tubuh Tumbuhan dan Fungsinya');
-  const [alokasiWaktu, setAlokasiWaktu] = useState<string>('2 JP (2 x 35 Menit) - 1 Pertemuan');
+  const [alokasiWaktu, setAlokasiWaktu] = useState<string>(() => defaultAlokasi(currentUser.jenjang || 'SD'));
   const [modelPembelajaran, setModelPembelajaran] = useState<string>('Problem Based Learning (PBL)');
   const [targetPeserta, setTargetPeserta] = useState<string>('Peserta didik reguler/tipikal dengan diferensiasi gaya belajar');
   const [dimensiP5, setDimensiP5] = useState<string[]>([
@@ -92,24 +115,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [formStep, setFormStep] = useState<number>(0);
 
-  // Update jenjang and sync fases and mapel
-  const handleJenjangChange = (newJenjang: Jenjang) => {
-    setJenjang(newJenjang);
-    const config = JENJANG_CONFIGS[newJenjang];
-    if (config.fases.length > 0) {
-      const defaultF = config.fases[0];
-      setFase(defaultF.fase);
-      setTingkat(defaultF.kelas[0] || 'Kelas 1');
-    }
-    if (config.defaultMapel.length > 0) {
-      setMataPelajaran(config.defaultMapel[0]);
-    }
-    // Set default time allocation
-    if (newJenjang === 'SD') setAlokasiWaktu('2 JP (2 x 35 Menit) - 1 Pertemuan');
-    else if (newJenjang === 'SMP') setAlokasiWaktu('2 JP (2 x 40 Menit) - 1 Pertemuan');
-    else setAlokasiWaktu('2 JP (2 x 45 Menit) - 1 Pertemuan');
-  };
-
   // Toggle P5 Dimensi
   const toggleDimensi = (dim: string) => {
     if (dimensiP5.includes(dim)) {
@@ -121,7 +126,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
   };
 
-  // Apply contextual topic from Suggester
+  // Apply contextual topic from Suggester (tetap dalam jenjang profil)
   const handleSelectContextualTopic = (item: CurriculumTopicItem) => {
     setTopik(item.topik);
     if (item.rekomendasiModel) {
@@ -132,19 +137,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
   };
 
-  // Apply inspiration topic
-  const applyInspirasi = (item: { jenjang: Jenjang; mapel: string; topik: string; tingkat: string }) => {
-    handleJenjangChange(item.jenjang);
-    setTingkat(item.tingkat);
-    setMataPelajaran(item.mapel);
-    setTopik(item.topik);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
 
     onGenerate({
+      authorId: currentUser.id,
       docType,
       jenjang,
       tingkat,
@@ -182,102 +180,86 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const currentFaseObj = availableFases.find(f => f.fase === fase) || availableFases[0];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+    <div className="apple-card overflow-hidden">
       
       {/* Verification Notice Banner if Pending */}
       {!isVerified && (
-        <div className="bg-amber-50 border-b border-amber-200 p-4 sm:p-5">
+        <div className="bg-[#fff8e5] border-b border-black/10 p-4 sm:p-5">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
+            <div className="w-9 h-9 rounded-full bg-[#ff9f0a]/15 flex items-center justify-center text-[#9a6700] shrink-0">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-amber-900">
-                {currentUser.status === 'PENDING' ? 'Profil menunggu verifikasi' : 'Profil belum terverifikasi'}
+              <h4 className="text-[14px] font-semibold">
+                {currentUser.status === 'PENDING' ? 'Menunggu verifikasi admin' : 'Belum terverifikasi'}
               </h4>
-              <p className="text-xs text-amber-800 mt-0.5">
-                Status profil untuk {currentUser.email} belum disetujui administrator aplikasi. Hubungi administrator jika status ini belum berubah.
+              <p className="text-[13px] text-[#6e6e73] mt-0.5">
+                Profil {currentUser.email} belum disetujui. Anda tetap bisa menyusun draf, hubungi admin bila status tak berubah.
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Header Form */}
-      <div className="p-5 sm:p-7 border-b border-slate-100 bg-gradient-to-b from-slate-50/70 to-white">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold uppercase tracking-wider mb-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              Draf berbantuan AI
-            </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Susun {DOC_TYPE_INFO[docType].label}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
-              Tentukan kelas dan materi, sesuaikan rancangan, lalu tinjau hasil sebelum diekspor.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              Semua Mapel SD • SMP • SMA • SMK
-            </span>
-          </div>
-        </div>
+      {/* Header Form — Apple hero */}
+      <div className="p-6 sm:p-10 pb-6 text-center border-b border-black/10">
+        <p className="apple-eyebrow">Draf berbantuan AI</p>
+        <h2 className="apple-headline !text-[30px] sm:!text-[38px] mt-1">
+          Susun {DOC_TYPE_INFO[docType].label}.
+        </h2>
+        <p className="apple-sub mt-2 max-w-xl mx-auto !text-[15px]">
+          Tiga langkah singkat — pilih format dan kelas, isi materi, periksa lalu susun.
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 sm:p-7">
-        <ol className="grid grid-cols-3 gap-2 mb-7" aria-label="Tahapan penyusunan dokumen">
+      <form onSubmit={handleSubmit} className="p-5 sm:p-8">
+        <ol className="flex items-center justify-center gap-2 mb-8" aria-label="Tahapan penyusunan dokumen">
           {[
-            { title: 'Format & kelas', detail: 'Pilih dokumen dan jenjang' },
-            { title: 'Rancangan', detail: 'Isi topik pembelajaran' },
-            { title: 'Periksa & susun', detail: 'Lengkapi identitas dokumen' }
+            { title: 'Format & kelas' },
+            { title: 'Materi' },
+            { title: 'Periksa & susun' }
           ].map((step, index) => (
-            <li key={step.title}>
+            <li key={step.title} className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => index < formStep && setFormStep(index)}
                 aria-current={formStep === index ? 'step' : undefined}
-                className={`w-full border-t-2 pt-3 text-left transition-colors ${
-                  formStep === index ? 'border-blue-700 text-blue-800' :
-                  formStep > index ? 'border-emerald-500 text-slate-700' : 'border-slate-200 text-slate-400'
+                className={`flex items-center gap-2 rounded-full pl-1.5 pr-4 py-1.5 text-[13px] font-semibold transition-all min-h-[36px] ${
+                  formStep === index ? 'bg-black text-white dark:bg-white dark:text-black' :
+                  formStep > index ? 'bg-black/5 dark:bg-white/10' : 'text-[#86868b]'
                 }`}
               >
-                <span className="flex items-center gap-2 text-xs font-bold sm:text-sm">
-                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${
-                    formStep === index ? 'bg-blue-700 text-white' :
-                    formStep > index ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {formStep > index ? <Check className="h-3.5 w-3.5" /> : index + 1}
-                  </span>
-                  {step.title}
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] ${
+                  formStep === index ? 'bg-white text-black dark:bg-black dark:text-white' :
+                  formStep > index ? 'bg-[#30b158] text-white' : 'bg-black/10 dark:bg-white/15 text-[#6e6e73] dark:text-[#98989d]'
+                }`}>
+                  {formStep > index ? <Check className="h-3.5 w-3.5" /> : index + 1}
                 </span>
-                <span className="mt-1 hidden pl-8 text-[11px] text-slate-500 sm:block">{step.detail}</span>
+                {step.title}
               </button>
+              {index < 2 && <span className="w-4 sm:w-8 h-px bg-black/15 dark:bg-white/20" />}
             </li>
           ))}
         </ol>
 
-        <div className="mb-6 rounded-xl bg-slate-50 px-4 py-3">
-          <h3 className="text-sm font-bold text-slate-900">
-            {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Rancang kebutuhan pembelajaran' : 'Periksa identitas sebelum menyusun'}
+        <div className="mb-6 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 px-5 py-4 text-center">
+          <h3 className="text-[15px] font-semibold">
+            {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Isi kebutuhan pembelajaran' : 'Periksa sebelum menyusun'}
           </h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            {formStep === 0 ? 'Pilih jenis dokumen, jenjang, fase, dan kelas yang akan menggunakan perangkat ini.' :
-              formStep === 1 ? 'Tentukan mata pelajaran, materi, alokasi waktu, dan kebutuhan belajar murid.' :
-                'Nama dan sekolah mengikuti profil Anda. Sesuaikan bila dokumen ini dibuat untuk keperluan lain.'}
+          <p className="mt-1 text-[13.5px] text-[#6e6e73] dark:text-[#98989d]">
+            {formStep === 0 ? 'Pilih jenis dokumen, lalu fase dan kelas di jenjang Anda.' :
+              formStep === 1 ? 'Tentukan mata pelajaran, materi, alokasi waktu, dan kebutuhan murid.' :
+                'Dokumen dibuat atas nama Anda — sesuaikan bila perlu.'}
           </p>
         </div>
 
         {/* 1. Pilih Jenis Perangkat Ajar */}
         {formStep === 0 && <>
         <div>
-          <label className="block text-sm font-bold text-slate-900 mb-2.5">
-            1. Pilih Jenis Dokumen Perangkat Ajar
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <p className="text-[14px] font-semibold mb-3">
+            Jenis dokumen
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {(Object.keys(DOC_TYPE_INFO) as DocType[]).map((typeKey) => {
               const info = DOC_TYPE_INFO[typeKey];
               const isSelected = docType === typeKey;
@@ -286,100 +268,68 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   key={typeKey}
                   type="button"
                   onClick={() => handleDocTypeChange(typeKey)}
-                  className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
+                  aria-pressed={isSelected}
+                  className={`p-4 rounded-2xl border text-left transition-all min-h-[104px] flex flex-col justify-between cursor-pointer ${
                     isSelected
-                      ? 'border-blue-600 bg-blue-50/80 shadow-xs ring-2 ring-blue-500/20'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
+                      ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
+                      : 'border-black/10 dark:border-white/15 hover:border-black/30 dark:hover:border-white/30 hover:bg-[#f5f5f7] dark:hover:bg-white/5'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`p-2 rounded-lg ${isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                        {typeKey === 'modul_ajar' && <FileText className="w-4 h-4" />}
-                        {typeKey === 'rpp' && <Layers className="w-4 h-4" />}
-                        {typeKey === 'soal_ujian' && <HelpCircle className="w-4 h-4" />}
-                        {typeKey === 'lkpd' && <BookOpen className="w-4 h-4" />}
-                        {typeKey === 'kktp_atp' && <Target className="w-4 h-4" />}
-                        {typeKey === 'prota_promes' && <Calendar className="w-4 h-4" />}
-                        {typeKey === 'modul_p5' && <Sparkles className="w-4 h-4" />}
+                      <span className={isSelected ? '' : 'text-[#424245] dark:text-[#c7c7cc]'}>
+                        {typeKey === 'modul_ajar' && <FileText className="w-5 h-5" />}
+                        {typeKey === 'rpp' && <Layers className="w-5 h-5" />}
+                        {typeKey === 'soal_ujian' && <HelpCircle className="w-5 h-5" />}
+                        {typeKey === 'lkpd' && <BookOpen className="w-5 h-5" />}
+                        {typeKey === 'kktp_atp' && <Target className="w-5 h-5" />}
+                        {typeKey === 'prota_promes' && <Calendar className="w-5 h-5" />}
+                        {typeKey === 'modul_p5' && <Sparkles className="w-5 h-5" />}
                       </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        isSelected ? 'bg-blue-200 text-blue-800' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {info.badge}
-                      </span>
+                      {isSelected && <Check className="w-4 h-4" />}
                     </div>
-                    <div className="font-bold text-xs sm:text-sm text-slate-900 leading-snug">
+                    <div className={`font-semibold text-[14px] leading-snug ${isSelected ? '' : ''}`}>
                       {info.label}
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                  <p className={`text-[12px] mt-1 line-clamp-2 ${isSelected ? 'opacity-70' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>
                     {info.desc}
                   </p>
                 </button>
               );
             })}
           </div>
-
-          {/* Specialized Highlight Card for Active Perangkat Ajar */}
-          <div className="mt-3.5 p-4 rounded-2xl border transition-all flex items-start gap-3.5 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-slate-50 border-blue-200/80">
-            <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-xs shrink-0 mt-0.5">
-              {docType === 'modul_ajar' && <FileText className="w-5 h-5" />}
-              {docType === 'rpp' && <Layers className="w-5 h-5" />}
-              {docType === 'soal_ujian' && <HelpCircle className="w-5 h-5" />}
-              {docType === 'lkpd' && <BookOpen className="w-5 h-5" />}
-              {docType === 'kktp_atp' && <Target className="w-5 h-5" />}
-              {docType === 'prota_promes' && <Calendar className="w-5 h-5" />}
-              {docType === 'modul_p5' && <Sparkles className="w-5 h-5" />}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-sm font-extrabold text-slate-900">
-                  Format Aktif: {DOC_TYPE_INFO[docType].label}
-                </h4>
-                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-blue-100 text-blue-800">
-                  {DOC_TYPE_INFO[docType].badge}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 mt-0.5">
-                {DOC_TYPE_INFO[docType].desc}
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* 2. Jenjang, Fase, & Kelas */}
-        <div className="bg-slate-50/80 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-4">
-          <label className="block text-sm font-bold text-slate-900">
-            2. Tingkat Satuan Pendidikan & Fase Kurikulum Merdeka
-          </label>
+        <div className="bg-[#f5f5f7] dark:bg-white/5 p-4 sm:p-6 rounded-2xl space-y-4 mt-4">
+          <p className="text-[14px] font-semibold">
+            Kelas & fase
+          </p>
           
-          {/* Jenjang Buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(['SD', 'SMP', 'SMA', 'SMK'] as Jenjang[]).map((j) => (
-              <button
-                key={j}
-                type="button"
-                onClick={() => handleJenjangChange(j)}
-                className={`py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all border flex items-center justify-center gap-2 cursor-pointer ${
-                  jenjang === j
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span>{j}</span>
-                <span className="text-[11px] font-normal opacity-85">
-                  ({j === 'SD' ? 'Fase A-C' : j === 'SMP' ? 'Fase D' : 'Fase E-F'})
-                </span>
-              </button>
-            ))}
+          {/* Jenjang terkunci profil — 1 akun untuk 1 jenjang */}
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-white dark:bg-white/5 border border-black/10 dark:border-white/15 px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-bold text-[13px] shrink-0">
+                {jenjang}
+              </div>
+              <div>
+                <p className="text-[14px] font-semibold">Jenjang {jenjang}</p>
+                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
+                  Mengikuti profil Anda{currentUser.role !== 'GURU' ? ' (admin bebas lintas jenjang)' : ''}.
+                </p>
+              </div>
+            </div>
+            <span className="text-[12px] font-semibold px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 shrink-0">
+              Terkunci
+            </span>
           </div>
 
           {/* Fase & Tingkat Kelas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Fase Capaian Pembelajaran (BSKAP 032/H/KR/2024)
+              <label className="block text-[13px] font-semibold mb-1.5">
+                Fase
               </label>
               <select
                 value={fase}
@@ -391,7 +341,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     setTingkat(fObj.kelas[0]);
                   }
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input !bg-white"
               >
                 {availableFases.map((f) => (
                   <option key={f.fase} value={f.fase}>
@@ -402,13 +352,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Tingkat Kelas
+              <label className="block text-[13px] font-semibold mb-1.5">
+                Kelas
               </label>
               <select
                 value={tingkat}
                 onChange={(e) => setTingkat(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input !bg-white"
               >
                 {(currentFaseObj?.kelas || []).map((k) => (
                   <option key={k} value={k}>
@@ -424,10 +374,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
         {formStep === 1 && <>
         {/* 3. Mata Pelajaran & Topik */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-bold text-slate-900 mb-1.5">
-              3. Mata Pelajaran
+            <label className="block text-[14px] font-semibold mb-1.5">
+              Mata pelajaran
             </label>
             <div className="space-y-2">
               <select
@@ -436,40 +386,40 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   setMataPelajaran(e.target.value);
                   setCustomMapel('');
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input"
               >
                 {JENJANG_CONFIGS[jenjang]?.defaultMapel.map((m) => (
                   <option key={m} value={m}>
                     {m}
                   </option>
                 ))}
-                <option value="custom">-- Mata Pelajaran Lainnya (Ketik Sendiri) --</option>
+                <option value="custom">Lainnya — ketik sendiri…</option>
               </select>
 
               {mataPelajaran === 'custom' && (
                 <input
                   type="text"
-                  placeholder="Ketik nama mata pelajaran (contoh: Muatan Lokal Bahasa Sunda, Robotika, dll)..."
+                  placeholder="Contoh: Muatan Lokal, Robotika…"
                   value={customMapel}
                   onChange={(e) => setCustomMapel(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 rounded-xl border border-blue-400 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="apple-input"
                 />
               )}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-900 mb-1.5">
-              4. Topik / Materi Pokok Pembelajaran
+            <label className="block text-[14px] font-semibold mb-1.5">
+              Topik / materi pokok
             </label>
             <input
               type="text"
               value={topik}
               onChange={(e) => setTopik(e.target.value)}
-              placeholder="Contoh: Operasi Hitung Pecahan, Siklus Air, Hukum Newton..."
+              placeholder="Contoh: Pecahan, Siklus Air, Hukum Newton…"
               required
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="apple-input"
             />
           </div>
         </div>
@@ -485,10 +435,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         />
 
         {/* 5. Alokasi Waktu & Model Pembelajaran */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <div>
-            <label className="block text-sm font-bold text-slate-900 mb-1.5">
-              5. Alokasi Waktu
+            <label className="block text-[14px] font-semibold mb-1.5">
+              Alokasi waktu
             </label>
             <div className="flex gap-2">
               <input
@@ -496,19 +446,19 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 value={alokasiWaktu}
                 onChange={(e) => setAlokasiWaktu(e.target.value)}
                 placeholder="2 JP (2 x 35 Menit)"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-900 mb-1.5">
-              6. Model Pembelajaran
+            <label className="block text-[14px] font-semibold mb-1.5">
+              Model pembelajaran
             </label>
             <select
               value={modelPembelajaran}
               onChange={(e) => setModelPembelajaran(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="apple-input"
             >
               {MODEL_PEMBELAJARAN.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -520,13 +470,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         </div>
 
         {/* 6. Dimensi Profil Pelajar Pancasila */}
-        <div>
+        <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-bold text-slate-900">
-              7. Dimensi Profil Pelajar Pancasila (Pilih 2 - 4 Dimensi)
+            <label className="block text-[14px] font-semibold">
+              Dimensi Profil Pelajar Pancasila
             </label>
-            <span className="text-xs text-slate-500 font-medium">
-              {dimensiP5.length} dimensi terpilih
+            <span className="text-[12.5px] text-[#6e6e73]">
+              {dimensiP5.length} dipilih
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -537,17 +487,18 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   key={dim}
                   type="button"
                   onClick={() => toggleDimensi(dim)}
-                  className={`p-2.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                  aria-pressed={checked}
+                  className={`p-3 rounded-2xl text-left text-[13.5px] font-medium flex items-center justify-between transition-all cursor-pointer min-h-[48px] ${
                     checked
-                      ? 'bg-indigo-50/80 border-indigo-500 text-indigo-900 ring-1 ring-indigo-400'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      ? 'bg-black dark:bg-white text-white dark:text-black'
+                      : 'bg-[#f5f5f7] dark:bg-white/5 hover:bg-[#e8e8ed] dark:hover:bg-white/10'
                   }`}
                 >
                   <span className="truncate pr-1">{dim}</span>
                   {checked ? (
-                    <Check className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <Check className="w-4 h-4 shrink-0" />
                   ) : (
-                    <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0" />
+                    <div className="w-4 h-4 rounded-full border border-black/20 dark:border-white/30 shrink-0" />
                   )}
                 </button>
               );
@@ -557,7 +508,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
         {/* 7. Dedicated Configuration Card per Document Type */}
         {docType === 'soal_ujian' && (
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/90 to-orange-50/60 border border-amber-300/80 space-y-4 shadow-2xs">
+          <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 space-y-4 mt-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500 text-white shadow-xs">
@@ -620,7 +571,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {docType === 'modul_p5' && (
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50/90 to-indigo-50/60 border border-purple-300/80 space-y-4 shadow-2xs">
+          <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 space-y-4 mt-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-purple-600 text-white shadow-xs">
@@ -667,7 +618,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {docType === 'kktp_atp' && (
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 to-blue-50/60 border border-indigo-300/80 space-y-3 shadow-2xs">
+          <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 space-y-3 mt-3">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-xs">
                 <Target className="w-5 h-5" />
@@ -700,7 +651,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {docType === 'rpp' && (
-          <div className="p-4 rounded-2xl bg-sky-50/80 border border-sky-300/80 flex items-start gap-3">
+          <div className="p-4 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 flex items-start gap-3 mt-3">
             <div className="p-2 rounded-xl bg-sky-600 text-white shadow-xs shrink-0">
               <Layers className="w-5 h-5" />
             </div>
@@ -716,7 +667,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {docType === 'lkpd' && (
-          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-300/80 flex items-start gap-3">
+          <div className="p-4 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 flex items-start gap-3 mt-3">
             <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
@@ -896,13 +847,15 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </div>
           )}
         </div>
+        </>}
 
-        <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        {/* Bar navigasi — selalu tampil di langkah 1, 2, 3 */}
+        <div className="mt-8 sticky bottom-4 flex flex-col-reverse gap-2.5 rounded-2xl border border-black/10 dark:border-white/15 bg-white/85 dark:bg-[#1c1c1e]/85 p-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => setFormStep((step) => Math.max(step - 1, 0))}
             disabled={isGenerating}
-            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:invisible"
+            className={`btn-apple-secondary !bg-transparent hover:!bg-black/5 dark:hover:!bg-white/10 disabled:invisible ${formStep === 0 ? 'invisible' : ''}`}
           >
             Kembali
           </button>
@@ -910,22 +863,21 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <button
               type="button"
               onClick={handleNextStep}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800"
+              className="btn-apple flex-1 sm:flex-none sm:min-w-[220px]"
             >
-              Lanjutkan <ChevronRight className="h-4 w-4" />
+              Lanjutkan ke langkah {formStep + 2} <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
             <button
               type="submit"
               disabled={isGenerating}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-apple flex-1 sm:flex-none sm:min-w-[260px]"
             >
               {isGenerating ? <Clock className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {isGenerating ? 'Sedang menyusun…' : `Susun ${DOC_TYPE_INFO[docType].label}`}
+              {isGenerating ? 'Menyusun…' : `Susun ${DOC_TYPE_INFO[docType].label}`}
             </button>
           )}
         </div>
-        </>}
 
       </form>
     </div>

@@ -11,10 +11,15 @@ import {
   BorderStyle,
   AlignmentType,
   Packer,
+  LineRuleType,
   convertInchesToTwip
 } from 'docx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+
+/** Standar formal naskah dinas: Times New Roman 12pt, spasi 1.5, kertas A4 */
+const DOC_FONT = 'Times New Roman';
+const BODY_SIZE = 24; // 12pt dalam half-point
 
 export function renderMarkdownToHtml(markdownText: string): string {
   if (!markdownText) return '';
@@ -29,7 +34,10 @@ export function renderMarkdownToHtml(markdownText: string): string {
 /**
  * Helper to parse bold (**...**) and italic (*...*) in a line into docx TextRuns
  */
-function parseFormattedTextRuns(lineText: string, defaultOptions?: { color?: string; size?: number }): TextRun[] {
+function parseFormattedTextRuns(
+  lineText: string,
+  defaultOptions?: { color?: string; size?: number; italics?: boolean }
+): TextRun[] {
   const runs: TextRun[] = [];
   // Regex to split by bold (**text**) or italic (*text*)
   const tokens = lineText.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
@@ -42,9 +50,10 @@ function parseFormattedTextRuns(lineText: string, defaultOptions?: { color?: str
         new TextRun({
           text: token.slice(2, -2),
           bold: true,
+          italics: defaultOptions?.italics,
           color: defaultOptions?.color,
-          size: defaultOptions?.size || 22,
-          font: 'Calibri'
+          size: defaultOptions?.size || BODY_SIZE,
+          font: DOC_FONT
         })
       );
     } else if (token.startsWith('*') && token.endsWith('*')) {
@@ -53,23 +62,24 @@ function parseFormattedTextRuns(lineText: string, defaultOptions?: { color?: str
           text: token.slice(1, -1),
           italics: true,
           color: defaultOptions?.color,
-          size: defaultOptions?.size || 22,
-          font: 'Calibri'
+          size: defaultOptions?.size || BODY_SIZE,
+          font: DOC_FONT
         })
       );
     } else {
       runs.push(
         new TextRun({
           text: token,
+          italics: defaultOptions?.italics,
           color: defaultOptions?.color,
-          size: defaultOptions?.size || 22,
-          font: 'Calibri'
+          size: defaultOptions?.size || BODY_SIZE,
+          font: DOC_FONT
         })
       );
     }
   }
 
-  return runs.length > 0 ? runs : [new TextRun({ text: lineText, size: defaultOptions?.size || 22, font: 'Calibri' })];
+  return runs.length > 0 ? runs : [new TextRun({ text: lineText, size: defaultOptions?.size || BODY_SIZE, font: DOC_FONT })];
 }
 
 /**
@@ -91,7 +101,7 @@ export async function exportToDocx(
   const lines = markdownContent.split('\n');
   const docChildren: (Paragraph | Table)[] = [];
 
-  // 1. Official Indonesian Administrative Header (Kop Surat Resmi)
+  // 1. Kop resmi (Times New Roman, hitam formal)
   docChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -100,8 +110,8 @@ export async function exportToDocx(
         new TextRun({
           text: 'KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA',
           bold: true,
-          size: 20,
-          font: 'Calibri'
+          size: 22,
+          font: DOC_FONT
         })
       ]
     }),
@@ -112,8 +122,8 @@ export async function exportToDocx(
         new TextRun({
           text: 'DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH',
           bold: true,
-          size: 22,
-          font: 'Calibri'
+          size: 24,
+          font: DOC_FONT
         })
       ]
     }),
@@ -124,9 +134,9 @@ export async function exportToDocx(
         new TextRun({
           text: (metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA').toUpperCase(),
           bold: true,
-          size: 28,
-          color: '1E3A8A',
-          font: 'Calibri'
+          size: 30,
+          color: '000000',
+          font: DOC_FONT
         })
       ]
     }),
@@ -147,7 +157,7 @@ export async function exportToDocx(
           italics: true,
           size: 18,
           color: '555555',
-          font: 'Calibri'
+          font: DOC_FONT
         })
       ]
     }),
@@ -188,7 +198,7 @@ export async function exportToDocx(
               size: Math.floor(100 / Math.max(rawCells.length, 1)),
               type: WidthType.PERCENTAGE
             },
-            shading: isHeader ? { fill: 'F1F5F9' } : undefined,
+            shading: isHeader ? { fill: 'F2F2F2' } : undefined,
             margins: {
               top: convertInchesToTwip(0.06),
               bottom: convertInchesToTwip(0.06),
@@ -197,9 +207,9 @@ export async function exportToDocx(
             },
             children: [
               new Paragraph({
-                spacing: { before: 40, after: 40 },
+                spacing: { before: 40, after: 40, line: 360, lineRule: LineRuleType.AUTO },
                 children: parseFormattedTextRuns(cellText, {
-                  size: 20
+                  size: 22
                 })
               })
             ]
@@ -234,9 +244,9 @@ export async function exportToDocx(
             new TextRun({
               text: line.replace('# ', ''),
               bold: true,
-              size: 28,
-              color: '0F172A',
-              font: 'Calibri'
+              size: 32,
+              color: '000000',
+              font: DOC_FONT
             })
           ]
         })
@@ -252,9 +262,9 @@ export async function exportToDocx(
             new TextRun({
               text: line.replace('## ', ''),
               bold: true,
-              size: 24,
-              color: '1E3A8A',
-              font: 'Calibri'
+              size: 28,
+              color: '000000',
+              font: DOC_FONT
             })
           ]
         })
@@ -270,9 +280,9 @@ export async function exportToDocx(
             new TextRun({
               text: line.replace('### ', ''),
               bold: true,
-              size: 22,
-              color: '334155',
-              font: 'Calibri'
+              size: 24,
+              color: '000000',
+              font: DOC_FONT
             })
           ]
         })
@@ -288,11 +298,42 @@ export async function exportToDocx(
             new TextRun({
               text: line.replace('#### ', ''),
               bold: true,
-              size: 21,
-              color: '475569',
-              font: 'Calibri'
+              size: 24,
+              color: '000000',
+              font: DOC_FONT
             })
           ]
+        })
+      );
+    }
+    // Gambar markdown ![alt](url) -> keterangan ilustrasi terpusat
+    else if (/^!\[.*\]\(.*\)/.test(line)) {
+      const alt = line.replace(/^!\[(.*)\]\(.*\)/, '$1').trim() || 'Ilustrasi pembelajaran';
+      docChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 120, after: 120 },
+          children: [
+            new TextRun({
+              text: `[Ilustrasi: ${alt}]`,
+              italics: true,
+              size: 20,
+              color: '555555',
+              font: DOC_FONT
+            })
+          ]
+        })
+      );
+    }
+    // Kutipan (>) -> paragraf menjorok miring
+    else if (line.startsWith('>')) {
+      const quoteText = line.replace(/^>\s?/, '');
+      docChildren.push(
+        new Paragraph({
+          indent: { left: convertInchesToTwip(0.4) },
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 60, after: 60, line: 360, lineRule: LineRuleType.AUTO },
+          children: parseFormattedTextRuns(quoteText, { italics: true })
         })
       );
     }
@@ -302,7 +343,8 @@ export async function exportToDocx(
       docChildren.push(
         new Paragraph({
           bullet: { level: 0 },
-          spacing: { before: 40, after: 40 },
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 40, after: 40, line: 360, lineRule: LineRuleType.AUTO },
           children: parseFormattedTextRuns(bulletText)
         })
       );
@@ -311,7 +353,8 @@ export async function exportToDocx(
     else if (/^\d+\.\s/.test(line)) {
       docChildren.push(
         new Paragraph({
-          spacing: { before: 50, after: 50 },
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 50, after: 50, line: 360, lineRule: LineRuleType.AUTO },
           children: parseFormattedTextRuns(line)
         })
       );
@@ -337,7 +380,8 @@ export async function exportToDocx(
     else {
       docChildren.push(
         new Paragraph({
-          spacing: { before: 60, after: 60 },
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 60, after: 60, line: 360, lineRule: LineRuleType.AUTO },
           children: parseFormattedTextRuns(line)
         })
       );
@@ -367,20 +411,20 @@ export async function exportToDocx(
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Mengetahui,', size: 21, font: 'Calibri' })]
+                  children: [new TextRun({ text: 'Mengetahui,', size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Kepala Satuan Pendidikan', bold: true, size: 21, font: 'Calibri' })]
+                  children: [new TextRun({ text: 'Kepala Satuan Pendidikan', bold: true, size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Drs. H. Mulyadi, M.Pd.', bold: true, underline: {}, size: 21, font: 'Calibri' })]
+                  children: [new TextRun({ text: 'Drs. H. Mulyadi, M.Pd.', bold: true, underline: {}, size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'NIP. 19710318 199702 1 002', size: 19, color: '555555', font: 'Calibri' })]
+                  children: [new TextRun({ text: 'NIP. 19710318 199702 1 002', size: 20, color: '555555', font: DOC_FONT })]
                 })
               ]
             }),
@@ -392,14 +436,14 @@ export async function exportToDocx(
                   children: [
                     new TextRun({
                       text: `Jakarta, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-                      size: 21,
-                      font: 'Calibri'
+                      size: 24,
+                      font: DOC_FONT
                     })
                   ]
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Guru Mata Pelajaran / Kelas', bold: true, size: 21, font: 'Calibri' })]
+                  children: [new TextRun({ text: 'Guru Mata Pelajaran / Kelas', bold: true, size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
                 new Paragraph({
@@ -409,8 +453,8 @@ export async function exportToDocx(
                       text: metadata?.authorName || 'Bapak/Ibu Guru',
                       bold: true,
                       underline: {},
-                      size: 21,
-                      font: 'Calibri'
+                      size: 24,
+                      font: DOC_FONT
                     })
                   ]
                 }),
@@ -419,9 +463,9 @@ export async function exportToDocx(
                   children: [
                     new TextRun({
                       text: `NIP. ${metadata?.nip || '19890412 201402 2 003'}`,
-                      size: 19,
+                      size: 20,
                       color: '555555',
-                      font: 'Calibri'
+                      font: DOC_FONT
                     })
                   ]
                 })
@@ -433,17 +477,21 @@ export async function exportToDocx(
     })
   );
 
-  // Generate Docx Document
+  // Generate Docx Document — kertas A4, margin naskah dinas (atas 4cm, lain 3cm)
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
+            size: {
+              width: 11906, // 210mm
+              height: 16838 // 297mm
+            },
             margin: {
-              top: convertInchesToTwip(0.9),
-              bottom: convertInchesToTwip(0.9),
-              left: convertInchesToTwip(1.0),
-              right: convertInchesToTwip(0.8)
+              top: 2268, // 4cm
+              bottom: 1701, // 3cm
+              left: 1701, // 3cm
+              right: 1701 // 3cm
             }
           }
         },
@@ -553,13 +601,13 @@ export function downloadWordDocument(
         background-color: #fff;
       }
       h1, h2, h3, h4 {
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: 'Times New Roman', Times, serif;
         color: #111;
         margin-top: 14pt;
         margin-bottom: 6pt;
       }
       h1 { font-size: 16pt; font-weight: bold; text-align: center; border-bottom: 2px solid #000; padding-bottom: 4pt; }
-      h2 { font-size: 14pt; font-weight: bold; border-left: 4pt solid #1e3a8a; padding-left: 6pt; }
+      h2 { font-size: 14pt; font-weight: bold; }
       h3 { font-size: 12.5pt; font-weight: bold; }
       table {
         border-collapse: collapse;
@@ -588,7 +636,7 @@ export function downloadWordDocument(
       }
       .kop-kementerian { font-size: 11pt; font-weight: bold; text-transform: uppercase; }
       .kop-dinas { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
-      .kop-sekolah { font-size: 15pt; font-weight: bold; text-transform: uppercase; color: #1e3a8a; }
+      .kop-sekolah { font-size: 15pt; font-weight: bold; text-transform: uppercase; color: #000; }
       .kop-alamat { font-size: 9pt; font-style: italic; color: #444; }
     </style>
   </head>

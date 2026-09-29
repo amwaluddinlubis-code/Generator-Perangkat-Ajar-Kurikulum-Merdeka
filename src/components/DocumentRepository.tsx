@@ -54,40 +54,31 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
-              <Archive className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              Bank Perangkat Ajar & Arsip Modul Guru
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500">
-            Kumpulan Modul Ajar, RPP, Soal Ujian, dan LKPD terverifikasi standar Kurikulum Merdeka 2024.
-          </p>
-        </div>
-
+      <div className="text-center max-w-xl mx-auto">
+        <p className="apple-eyebrow">Bank perangkat</p>
+        <h2 className="apple-headline !text-[28px] sm:!text-[34px] mt-1">Arsip dokumen.</h2>
+        <p className="apple-sub mt-2 !text-[15px]">
+          Modul Ajar, RPP, Soal, dan LKPD tersimpan rapi — buka, cetak, atau unduh kapan pun.
+        </p>
         <button
           onClick={onCreateNew}
-          className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          className="btn-apple mt-5"
         >
-          <Sparkles className="w-4 h-4 text-amber-300" />
-          Susun Perangkat Baru
+          <Sparkles className="w-4 h-4" />
+          Susun perangkat baru
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="apple-card p-3.5 flex flex-col md:flex-row items-center justify-between gap-2.5">
         <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Cari materi, mata pelajaran, atau penyusun..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="apple-input !pl-10"
           />
         </div>
 
@@ -95,7 +86,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
           <select
             value={docTypeFilter}
             onChange={(e) => setDocTypeFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="apple-input !w-auto !py-2.5 text-[13.5px] font-semibold"
           >
             <option value="ALL">Semua Jenis Perangkat</option>
             <option value="modul_ajar">Modul Ajar</option>
@@ -110,7 +101,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
           <select
             value={jenjangFilter}
             onChange={(e) => setJenjangFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="apple-input !w-auto !py-2.5 text-[13.5px] font-semibold"
           >
             <option value="ALL">Semua Jenjang</option>
             <option value="SD">SD (Fase A-C)</option>
@@ -123,11 +114,11 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
 
       {/* Grid Cards of Documents */}
       {filteredDocs.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-700">Tidak ada perangkat ajar ditemukan</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Coba sesuaikan kata kunci pencarian atau buat perangkat ajar baru dengan generator AI.
+        <div className="apple-card p-12 text-center">
+          <BookOpen className="w-12 h-12 text-[#86868b] mx-auto mb-3" />
+          <h3 className="text-[16px] font-semibold">Tidak ada perangkat ditemukan</h3>
+          <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mt-1 max-w-sm mx-auto">
+            Sesuaikan kata kunci pencarian atau buat perangkat baru dengan generator.
           </p>
         </div>
       ) : (
@@ -139,43 +130,38 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
             return (
               <div
                 key={doc.id}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all p-5 flex flex-col justify-between group"
+                className="apple-card p-5 flex flex-col justify-between group hover:-translate-y-0.5 transition-all"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      doc.jenjang === 'SD' ? 'bg-emerald-100 text-emerald-800' :
-                      doc.jenjang === 'SMP' ? 'bg-blue-100 text-blue-800' :
-                      doc.jenjang === 'SMA' ? 'bg-indigo-100 text-indigo-800' :
-                      'bg-amber-100 text-amber-800'
-                    }`}>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10">
                       {doc.jenjang} • {doc.tingkat} ({doc.fase})
                     </span>
 
-                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                    <span className="text-[11px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
                       {typeConfig.badge}
                     </span>
                   </div>
 
                   <h3 
                     onClick={() => onSelectDocument(doc)}
-                    className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors text-sm sm:text-base leading-snug cursor-pointer line-clamp-2"
+                    className="font-semibold text-[15px] leading-snug cursor-pointer line-clamp-2"
                   >
                     {doc.title}
                   </h3>
 
-                  <div className="text-xs font-medium text-slate-600 mt-2 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                  <div className="text-[13px] font-medium mt-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white shrink-0" />
                     <span>{doc.mataPelajaran}</span>
                   </div>
 
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                  <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-1 line-clamp-2">
                     Topik: {doc.topik}
                   </p>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-slate-100">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-3">
+                <div className="pt-4 mt-4 border-t border-black/10 dark:border-white/10">
+                  <div className="flex items-center justify-between text-[12px] text-[#6e6e73] dark:text-[#98989d] mb-3">
                     <span className="truncate max-w-[150px]">{doc.authorName}</span>
                     <span>{new Date(doc.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                   </div>
@@ -183,10 +169,10 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
                   <div className="flex items-center gap-1.5 justify-end">
                     <button
                       onClick={() => onSelectDocument(doc)}
-                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                      className="px-4 py-2 rounded-full bg-black dark:bg-white dark:text-black text-white text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      Buka & Cetak
+                      Buka
                     </button>
 
                     <button
@@ -198,7 +184,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
                         fase: doc.fase,
                         mapel: doc.mataPelajaran
                       })}
-                      className="px-2.5 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 text-blue-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                      className="px-3.5 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-colors cursor-pointer flex items-center gap-1 min-h-[38px]"
                       title="Unduh Format Microsoft Word (.docx)"
                     >
                       <Download className="w-3.5 h-3.5" />
