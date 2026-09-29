@@ -81,9 +81,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-sky-200">
+            <span className="inline-flex items-center gap-1.5 text-sky-200">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Akun Belajar.id
+            Profil pengguna
           </span>
           <button
             onClick={onOpenGuideModal}
@@ -137,7 +137,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           ) : isVerified ? (
             <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              Terverifikasi Belajar.id
+              Profil terverifikasi
             </span>
           ) : (
             <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-300 text-xs font-bold animate-pulse">

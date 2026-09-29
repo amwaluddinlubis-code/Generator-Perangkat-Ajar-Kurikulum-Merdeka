@@ -47,10 +47,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   
   // Login form states
-  const [loginEmail, setLoginEmail] = useState<string>('amwaluddin.lubis@gmail.com');
-  const [loginPassword, setLoginPassword] = useState<string>('••••••••••••');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [rememberMe, setRememberMe] = useState<boolean>(true);
+  const [loginEmail, setLoginEmail] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Register form states
@@ -124,24 +121,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
       
-      {/* Top Ministry Banner */}
-      <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border-b border-slate-800/80 px-4 sm:px-8 py-2.5 text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
+      <div className="bg-slate-950 border-b border-slate-800 px-4 sm:px-8 py-2.5 text-xs text-slate-300 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
-            🇮🇩
-          </div>
-          <span className="font-semibold text-white tracking-wide">
-            KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA
+          <GraduationCap className="h-4 w-4 text-sky-300" />
+          <span className="font-semibold text-white">
+            Ruang Guru Merdeka
           </span>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] text-slate-400">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Server SSO Belajar.id Aktif
-          </span>
-          <span className="hidden sm:inline">•</span>
-          <span className="hidden sm:inline">Permendikbudristek No. 12 Tahun 2024</span>
+          <span>Ruang kerja penyusunan perangkat ajar</span>
         </div>
       </div>
 
@@ -168,13 +157,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     Ruang Guru Merdeka
                   </h1>
                   <p className="text-xs sm:text-sm text-blue-300 font-medium mt-1">
-                    Generator AI Perangkat Ajar Terintegrasi Akun Belajar.id
+                    Perencanaan pembelajaran untuk guru Indonesia
                   </p>
                 </div>
               </div>
 
               <p className="text-sm text-slate-300 leading-relaxed mt-4">
-                Platform resmi penyusun perangkat ajar cerdas bagi guru SD, SMP, SMA, dan SMK. Rancang modul ajar berdiferensiasi, soal ujian AKM/HOTS, dan administrasi supervisi hanya dalam hitungan menit sesuai standar kurikulum nasional.
+                Susun bahan ajar sesuai jenjang, materi, dan kebutuhan kelas. Tinjau hasilnya, sesuaikan isi, lalu ekspor atau simpan untuk digunakan kembali.
               </p>
             </div>
 
@@ -229,11 +218,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </div>
             </div>
 
-            {/* Official Compliance Statement */}
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border border-blue-500/30 flex items-center gap-3 text-xs text-blue-200">
-              <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0" />
+            <div className="p-4 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center gap-3 text-xs text-slate-300">
+              <ShieldCheck className="w-6 h-6 text-sky-300 shrink-0" />
               <span>
-                Diawasi & divalidasi oleh <b>BPMP & Verifikator Kurikulum</b> (Bpk. Amwaluddin Lubis, M.Pd.) demi keabsahan perangkat pembelajaran.
+                Akses Belajar.id resmi belum terhubung. Gunakan akun demo untuk mencoba, atau ajukan profil guru untuk ditinjau.
               </span>
             </div>
 
@@ -266,9 +254,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </button>
                 </div>
 
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  SSO Aktif
+                  <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg flex items-center gap-1">
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  Mode demo
                 </span>
               </div>
 
@@ -284,43 +272,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               {activeTab === 'login' && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   
-                  {/* Google Belajar.id Fast SSO Button */}
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin(demoUsers[0] || {
-                      id: 'user-admin-1',
-                      name: 'Amwaluddin Lubis, M.Pd.',
-                      email: 'amwaluddin.lubis@gmail.com',
-                      schoolName: 'Balai Penjaminan Mutu Pendidikan (BPMP)',
-                      jenjang: 'SMA',
-                      mataPelajaran: 'Pengawas Kurikulum',
-                      role: 'SUPER_ADMIN',
-                      status: 'VERIFIED',
-                      registeredAt: new Date().toISOString()
-                    })}
-                    className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:border-blue-400 bg-white hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold transition-all shadow-xs flex items-center justify-center gap-2.5 cursor-pointer group"
-                  >
-                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                    </svg>
-                    <span>Masuk Instan dengan Akun Belajar.id (Google)</span>
-                  </button>
-
-                  <div className="flex items-center gap-3 my-3">
-                    <div className="flex-1 border-t border-slate-200" />
-                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                      atau dengan kredensial
-                    </span>
-                    <div className="flex-1 border-t border-slate-200" />
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-3 text-xs leading-relaxed text-sky-950">
+                    Email hanya digunakan sebagai identitas profil aplikasi. Jangan masukkan kata sandi Belajar.id di sini.
                   </div>
 
                   {/* Email Input */}
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                      Email Akun Belajar.id
+                      Email untuk profil guru
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -328,7 +287,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                         type="email"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        placeholder="contoh: nama.guru@guru.smp.belajar.id"
+                        placeholder="nama@sekolah.id"
                         className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         required
                       />
@@ -348,62 +307,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Password Input */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-slate-800">
-                        Kata Sandi / PIN Belajar.id
-                      </label>
-                      <a href="#" onClick={(e) => { e.preventDefault(); alert('Untuk memulihkan kata sandi Belajar.id, silakan hubungi Kapten/Co-Kapten Belajar.id daerah atau kunjungi pusat bantuan belajar.id.'); }} className="text-[11px] text-blue-600 hover:underline">
-                        Lupa sandi?
-                      </a>
-                    </div>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        placeholder="Masukkan kata sandi..."
-                        className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 transform -translate-y-1/2 cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Remember Me */}
-                  <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>Ingat saya di perangkat ini</span>
-                    </label>
-                  </div>
-
                   {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={isLoading}
                     className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
-                    <span>{isLoading ? 'Memverifikasi Akun...' : 'Masuk ke Ruang Guru'}</span>
+                    <span>{isLoading ? 'Membuka ruang kerja...' : 'Lanjutkan dengan email'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
                   {/* Quick Persona Access for Testing */}
                   <div className="pt-4 border-t border-slate-100">
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-medium">
-                      <span>Pilih Akun Demo / Pengujian Langsung:</span>
+                      <span>Akun demo untuk mencoba:</span>
                       <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-bold">
                         1-Klik Masuk
                       </span>
@@ -442,7 +359,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               {activeTab === 'register' && (
                 <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
                   <div className="p-3 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 text-xs">
-                    Pendaftaran khusus Bapak/Ibu Pendidik untuk mendapatkan akun resmi penyusun modul ajar Kurikulum Merdeka.
+                    Buat profil guru lokal. Akun baru akan berstatus menunggu verifikasi oleh administrator aplikasi.
                   </div>
 
                   <div>
@@ -551,7 +468,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       {/* Official Footer */}
       <footer className="border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500 bg-slate-950">
         <p>
-          © 2026 Ruang Guru Merdeka • Dikelola sesuai Standar Kurikulum Nasional Permendikbudristek No. 12 Tahun 2024
+          Ruang Guru Merdeka • Alat bantu penyusunan perangkat ajar
         </p>
       </footer>
 

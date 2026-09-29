@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { EducationalDocument, TeacherUser } from '../types';
 import { 
   renderMarkdownToHtml, 
@@ -42,6 +42,20 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   onBackToGenerator,
   isSaved = false
 }) => {
+  const [activeView, setActiveView] = useState<'preview' | 'raw' | 'edit'>('preview');
+  const [editableContent, setEditableContent] = useState<string>(document?.content || '');
+  const [copied, setCopied] = useState<boolean>(false);
+  const [justSaved, setJustSaved] = useState<boolean>(isSaved);
+  const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!document) return;
+    setEditableContent(document.content);
+    setActiveView('preview');
+    setJustSaved(isSaved);
+  }, [document?.id, document?.content, isSaved]);
+
   if (!document) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
@@ -52,18 +66,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           Belum Ada Dokumen yang Dibuat
         </h3>
         <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
-          Gunakan formulir Generator Ajar di sebelah kiri untuk menyusun Modul Ajar, RPP, Soal Ujian, atau LKPD sesuai standar Permendikbudristek No. 12 Tahun 2024.
+          Pilih format, tentukan kelas dan materi, lalu susun dokumen untuk ditinjau dan diekspor.
         </p>
       </div>
     );
   }
-
-  const [activeView, setActiveView] = useState<'preview' | 'raw' | 'edit'>('preview');
-  const [editableContent, setEditableContent] = useState<string>(document.content);
-  const [copied, setCopied] = useState<boolean>(false);
-  const [justSaved, setJustSaved] = useState<boolean>(isSaved);
-  const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
-  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   const handleCopy = async () => {
     const success = await copyToClipboard(editableContent);

@@ -38,7 +38,6 @@ interface GeneratorFormProps {
   currentUser: TeacherUser;
   onGenerate: (params: GeneratorParams) => Promise<void>;
   isGenerating: boolean;
-  onSwitchToVerifiedUser?: () => void;
   activeDocType?: DocType;
   onSelectDocType?: (type: DocType) => void;
 }
@@ -47,7 +46,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   currentUser,
   onGenerate,
   isGenerating,
-  onSwitchToVerifiedUser,
   activeDocType,
   onSelectDocType
 }) => {
@@ -92,6 +90,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [nip, setNip] = useState<string>(currentUser.nip || '');
 
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const [formStep, setFormStep] = useState<number>(0);
 
   // Update jenjang and sync fases and mapel
   const handleJenjangChange = (newJenjang: Jenjang) => {
@@ -170,6 +169,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     });
   };
 
+  const handleNextStep = () => {
+    if (formStep === 1) {
+      const form = document.querySelector('form');
+      if (!form?.reportValidity()) return;
+    }
+    setFormStep((step) => Math.min(step + 1, 2));
+  };
+
   const isVerified = currentUser.status === 'VERIFIED';
   const availableFases = JENJANG_CONFIGS[jenjang]?.fases || [];
   const currentFaseObj = availableFases.find(f => f.fase === fase) || availableFases[0];
@@ -179,32 +186,19 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       
       {/* Verification Notice Banner if Pending */}
       {!isVerified && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="bg-amber-50 border-b border-amber-200 p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-700 shrink-0">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
               <h4 className="text-sm font-bold text-amber-900">
-                Akun Belajar.id Anda ({currentUser.email}) Menunggu Verifikasi Admin
+                {currentUser.status === 'PENDING' ? 'Profil menunggu verifikasi' : 'Profil belum terverifikasi'}
               </h4>
               <p className="text-xs text-amber-800 mt-0.5">
-                Sesuai kebijakan keamanan, akun guru baru diverifikasi oleh Verifikator Kurikulum (Bpk. Amwaluddin Lubis, M.Pd.) sebelum akses penuh.
+                Status profil untuk {currentUser.email} belum disetujui administrator aplikasi. Hubungi administrator jika status ini belum berubah.
               </p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            {onSwitchToVerifiedUser && (
-              <button
-                type="button"
-                onClick={onSwitchToVerifiedUser}
-                className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-              >
-                <UserCheck className="w-3.5 h-3.5" />
-                Coba Sebagai Admin / Guru Terverifikasi
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -215,13 +209,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           <div>
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold uppercase tracking-wider mb-2">
               <Sparkles className="w-3.5 h-3.5" />
-              Generator AI Standar Kurikulum Merdeka
+              Draf berbantuan AI
             </span>
             <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Penyusun Perangkat Ajar & Modul Belajar.id
+              Susun {DOC_TYPE_INFO[docType].label}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
-              Ditenagai AI dengan acuan resmi Permendikbudristek No. 12 Tahun 2024, BSKAP No. 032/H/KR/2024, dan Panduan Pembelajaran & Asesmen (PPA 2024).
+              Tentukan kelas dan materi, sesuaikan rancangan, lalu tinjau hasil sebelum diekspor.
             </p>
           </div>
 
@@ -234,9 +228,51 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-6 sm:space-y-8">
+      <form onSubmit={handleSubmit} className="p-5 sm:p-7">
+        <ol className="grid grid-cols-3 gap-2 mb-7" aria-label="Tahapan penyusunan dokumen">
+          {[
+            { title: 'Format & kelas', detail: 'Pilih dokumen dan jenjang' },
+            { title: 'Rancangan', detail: 'Isi topik pembelajaran' },
+            { title: 'Periksa & susun', detail: 'Lengkapi identitas dokumen' }
+          ].map((step, index) => (
+            <li key={step.title}>
+              <button
+                type="button"
+                onClick={() => index < formStep && setFormStep(index)}
+                aria-current={formStep === index ? 'step' : undefined}
+                className={`w-full border-t-2 pt-3 text-left transition-colors ${
+                  formStep === index ? 'border-blue-700 text-blue-800' :
+                  formStep > index ? 'border-emerald-500 text-slate-700' : 'border-slate-200 text-slate-400'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-xs font-bold sm:text-sm">
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${
+                    formStep === index ? 'bg-blue-700 text-white' :
+                    formStep > index ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {formStep > index ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  {step.title}
+                </span>
+                <span className="mt-1 hidden pl-8 text-[11px] text-slate-500 sm:block">{step.detail}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+
+        <div className="mb-6 rounded-xl bg-slate-50 px-4 py-3">
+          <h3 className="text-sm font-bold text-slate-900">
+            {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Rancang kebutuhan pembelajaran' : 'Periksa identitas sebelum menyusun'}
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+            {formStep === 0 ? 'Pilih jenis dokumen, jenjang, fase, dan kelas yang akan menggunakan perangkat ini.' :
+              formStep === 1 ? 'Tentukan mata pelajaran, materi, alokasi waktu, dan kebutuhan belajar murid.' :
+                'Nama dan sekolah mengikuti profil Anda. Sesuaikan bila dokumen ini dibuat untuk keperluan lain.'}
+          </p>
+        </div>
 
         {/* 1. Pilih Jenis Perangkat Ajar */}
+        {formStep === 0 && <>
         <div>
           <label className="block text-sm font-bold text-slate-900 mb-2.5">
             1. Pilih Jenis Dokumen Perangkat Ajar
@@ -384,6 +420,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
         </div>
 
+        </>}
+
+        {formStep === 1 && <>
         {/* 3. Mata Pelajaran & Topik */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
@@ -692,6 +731,34 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
         )}
 
+        </>}
+
+        {formStep === 2 && <>
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+          <h4 className="mb-3 text-xs font-bold uppercase text-slate-500">Ringkasan dokumen</h4>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-[11px] text-slate-500">Format</dt>
+              <dd className="text-sm font-semibold text-slate-900">{DOC_TYPE_INFO[docType].label}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] text-slate-500">Kelas</dt>
+              <dd className="text-sm font-semibold text-slate-900">{jenjang} · {tingkat} · {fase}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] text-slate-500">Mata pelajaran</dt>
+              <dd className="text-sm font-semibold text-slate-900">{customMapel.trim() || mataPelajaran}</dd>
+            </div>
+            <div>
+              <dt className="text-[11px] text-slate-500">Topik</dt>
+              <dd className="text-sm font-semibold text-slate-900">{topik}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-600">
+            Dokumen dibuat atas nama <b>{authorName}</b> · {schoolName}. Anda masih dapat mengubah identitas di pengaturan tambahan.
+          </p>
+        </div>
+
         {/* Advanced Options Accordion */}
         <div className="border border-slate-200 rounded-2xl overflow-hidden">
           <button
@@ -701,7 +768,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           >
             <span className="flex items-center gap-2">
               <Settings2 className="w-4 h-4 text-slate-500" />
-              Pengaturan Lanjutan & Kop Surat Satuan Pendidikan
+              Sesuaikan identitas dan opsi tambahan
             </span>
             <span className="text-blue-600 font-semibold text-xs flex items-center gap-1">
               {showAdvanced ? 'Tutup Pengaturan' : 'Buka Pengaturan'}
@@ -830,37 +897,35 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           )}
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-2">
+        <div className="mt-7 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <button
-            type="submit"
+            type="button"
+            onClick={() => setFormStep((step) => Math.max(step - 1, 0))}
             disabled={isGenerating}
-            className={`w-full py-4 px-6 rounded-2xl font-extrabold text-sm sm:text-base transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${
-              isGenerating
-                ? 'bg-blue-400 text-white cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 active:scale-[0.99]'
-            }`}
+            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:invisible"
           >
-            {isGenerating ? (
-              <span className="flex items-center gap-2.5">
-                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                Menyusun Perangkat Ajar Sesuai Permendikbudristek No. 12 Tahun 2024...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
-                Generate {DOC_TYPE_INFO[docType].label} dengan AI
-              </span>
-            )}
+            Kembali
           </button>
-
-          <p className="text-center text-xs text-slate-500 mt-2.5">
-            Hasil tersusun lengkap dengan Capaian Pembelajaran, Diferensiasi, Asesmen & Rubrik KKTP, LKPD, serta Kop Surat Resmi Sekolah.
-          </p>
+          {formStep < 2 ? (
+            <button
+              type="button"
+              onClick={handleNextStep}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800"
+            >
+              Lanjutkan <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={isGenerating}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isGenerating ? <Clock className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {isGenerating ? 'Sedang menyusun…' : `Susun ${DOC_TYPE_INFO[docType].label}`}
+            </button>
+          )}
         </div>
+        </>}
 
       </form>
     </div>

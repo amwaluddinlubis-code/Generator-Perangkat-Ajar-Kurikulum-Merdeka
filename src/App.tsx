@@ -35,40 +35,21 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<TeacherUser | null>(() => {
-    // Check if user previously logged out
-    const isLoggedOut = localStorage.getItem('ruang_guru_logged_out');
-    if (isLoggedOut === 'true') {
-      return null;
-    }
-    // Check if cached user session exists
     const cachedUser = localStorage.getItem('ruang_guru_current_user');
     if (cachedUser) {
       try {
         return JSON.parse(cachedUser);
       } catch (e) {
-        // ignore
+        localStorage.removeItem('ruang_guru_current_user');
       }
     }
-    // Default fallback
-    return {
-      id: 'user-admin-1',
-      name: 'Amwaluddin Lubis, M.Pd.',
-      email: 'amwaluddin.lubis@gmail.com',
-      schoolName: 'Balai Penjaminan Mutu Pendidikan (BPMP)',
-      nip: '19820514 200801 1 008',
-      jenjang: 'SMA',
-      mataPelajaran: 'Pengawas Kurikulum & Bahasa',
-      role: 'SUPER_ADMIN',
-      status: 'VERIFIED',
-      registeredAt: '2026-01-10T08:00:00.000Z',
-      verifiedAt: '2026-01-10T08:00:00.000Z',
-      verifiedBy: 'Sistem Pusat Belajar.id'
-    };
+    return null;
   });
 
   const [users, setUsers] = useState<TeacherUser[]>([]);
   const [documents, setDocuments] = useState<EducationalDocument[]>([]);
   const [currentDoc, setCurrentDoc] = useState<EducationalDocument | null>(null);
+  const [showDocumentResult, setShowDocumentResult] = useState<boolean>(false);
   
   // Navigation State with dedicated sidebar targets
   const [activeTarget, setActiveTarget] = useState<NavigationTarget>('modul_ajar');
@@ -90,27 +71,14 @@ export default function App() {
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
-      // 1. Current user (if not logged out)
-      const isLoggedOut = localStorage.getItem('ruang_guru_logged_out');
-      if (isLoggedOut !== 'true') {
-        const userRes = await fetch('/api/users/current');
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          if (userData.user && !currentUser) {
-            setCurrentUser(userData.user);
-            localStorage.setItem('ruang_guru_current_user', JSON.stringify(userData.user));
-          }
-        }
-      }
-
-      // 2. All users list
+      // Load available demo and verification profiles.
       const usersRes = await fetch('/api/users');
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         if (usersData.users) setUsers(usersData.users);
       }
 
-      // 3. Documents
+      // Load documents for the archive and recent activity.
       const docsRes = await fetch('/api/documents');
       if (docsRes.ok) {
         const docsData = await docsRes.json();
@@ -228,12 +196,12 @@ export default function App() {
       };
 
       setCurrentDoc(newDoc);
+      setShowDocumentResult(true);
       // Auto-save to documents list
       await handleSaveDocument(newDoc);
       showToast('Perangkat ajar berhasil disusun dan siap diekspor .docx / .pdf!', 'success');
       
-      // Scroll to document viewer smoothly
-      window.scrollTo({ top: 350, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (err: any) {
       console.error('Generate error:', err);
@@ -400,7 +368,11 @@ export default function App() {
       <Sidebar
         currentUser={currentUser}
         activeTarget={activeTarget}
-        onSelectTarget={(target) => setActiveTarget(target)}
+        onSelectTarget={(target) => {
+          setActiveTarget(target);
+          setShowDocumentResult(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
         onOpenAuthModal={() => setAuthModalOpen(true)}
         onLogout={() => setLogoutModalOpen(true)}
         pendingCount={pendingUsersCount}
@@ -432,66 +404,28 @@ export default function App() {
           
           {/* VIEW 1: DEDICATED GENERATOR WORKSPACE (FOR EACH PERANGKAT AJAR) */}
           {isDocTypeTarget && (
-            <div className="space-y-6 sm:space-y-8">
-              
-              {/* Quick Hero Banner with Contextual Perangkat Ajar Info */}
-              <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 rounded-3xl p-6 sm:p-7 text-white shadow-lg relative overflow-hidden no-print">
-                <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-12 translate-y-8">
-                  <BookOpen className="w-96 h-96 text-white" />
-                </div>
-
-                <div className="relative z-10 max-w-3xl">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      Standar Kemendikdasmen RI 2024
-                    </span>
-                    <span className="px-3 py-1 rounded-full bg-emerald-400/20 text-emerald-200 text-xs font-bold border border-emerald-400/30">
-                      SD • SMP • SMA • SMK
-                    </span>
-                  </div>
-
-                  <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-tight">
-                    Studio Penyusun Perangkat Ajar & Modul Belajar.id
-                  </h1>
-                  <p className="text-xs sm:text-sm text-blue-100 mt-1.5 font-medium leading-relaxed">
-                    Menghasilkan dokumen lengkap dengan Capaian Pembelajaran BSKAP 032/H/KR/2024, Pembelajaran Berdiferensiasi, Asesmen & Rubrik KKTP, serta dapat diekspor langsung ke format <b>.docx</b> dan <b>.pdf</b>.
-                  </p>
-                </div>
+            showDocumentResult && currentDoc ? (
+              <DocumentViewer
+                key={currentDoc.id}
+                document={currentDoc}
+                currentUser={currentUser}
+                onSaveToRepository={handleSaveDocument}
+                onBackToGenerator={() => {
+                  setShowDocumentResult(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : (
+              <div className="mx-auto w-full max-w-5xl">
+                <GeneratorForm
+                  currentUser={currentUser}
+                  onGenerate={handleGenerate}
+                  isGenerating={isGenerating}
+                  activeDocType={activeTarget as DocType}
+                  onSelectDocType={(newType) => setActiveTarget(newType)}
+                />
               </div>
-
-              {/* Generator Form and Preview Layout */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-                
-                {/* Left Column: Generator Form (5 Cols) */}
-                <div className="lg:col-span-6 xl:col-span-5 no-print">
-                  <GeneratorForm
-                    currentUser={currentUser}
-                    onGenerate={handleGenerate}
-                    isGenerating={isGenerating}
-                    activeDocType={activeTarget as DocType}
-                    onSelectDocType={(newType) => setActiveTarget(newType)}
-                    onSwitchToVerifiedUser={() => {
-                      const adminAcc = users.find(u => u.role === 'SUPER_ADMIN') || users[0];
-                      if (adminAcc) setCurrentUser(adminAcc);
-                      showToast('Beralih ke akun Admin Verifikator (Amwaluddin Lubis, M.Pd.)', 'success');
-                    }}
-                  />
-                </div>
-
-                {/* Right Column: Document Viewer (7 Cols) */}
-                <div className="lg:col-span-6 xl:col-span-7">
-                  <DocumentViewer
-                    document={currentDoc}
-                    currentUser={currentUser}
-                    onSaveToRepository={handleSaveDocument}
-                    onBackToGenerator={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  />
-                </div>
-
-              </div>
-
-            </div>
+            )
           )}
 
           {/* VIEW 2: STATISTIK & PROFIL GURU (D3.JS) */}
@@ -503,9 +437,14 @@ export default function App() {
               onSelectDocument={(doc) => {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
-                window.scrollTo({ top: 350, behavior: 'smooth' });
+                setShowDocumentResult(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              onCreateNew={() => setActiveTarget('modul_ajar')}
+              onCreateNew={() => {
+                setActiveTarget('modul_ajar');
+                setShowDocumentResult(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           )}
 
@@ -517,10 +456,15 @@ export default function App() {
               onSelectDocument={(doc) => {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
-                window.scrollTo({ top: 350, behavior: 'smooth' });
+                setShowDocumentResult(true);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteDocument={handleDeleteDocument}
-              onCreateNew={() => setActiveTarget('modul_ajar')}
+              onCreateNew={() => {
+                setActiveTarget('modul_ajar');
+                setShowDocumentResult(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
             />
           )}
 
