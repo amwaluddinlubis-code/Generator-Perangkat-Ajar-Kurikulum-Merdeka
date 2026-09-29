@@ -237,7 +237,16 @@ export default function App() {
 
     } catch (err: any) {
       console.error('Generate error:', err);
-      showToast(err.message || 'Terjadi kesalahan saat menyusun dokumen', 'error');
+      let friendlyMsg = 'Terjadi kesalahan saat menyusun dokumen. Silakan coba kembali.';
+      const raw = String(err?.message || '');
+      if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
+        friendlyMsg = 'Server AI mengalami lonjakan antrean sesaat. Sistem telah mengoptimalkan koneksi alternatif, silakan klik tombol "Susun Perangkat Ajar" sekali lagi.';
+      } else if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
+        friendlyMsg = 'Batas frekuensi permintaan tercapai. Silakan tunggu beberapa detik lalu coba kembali.';
+      } else if (raw.length > 0 && !raw.includes('{')) {
+        friendlyMsg = raw;
+      }
+      showToast(friendlyMsg, 'error');
     } finally {
       setIsGenerating(false);
     }
