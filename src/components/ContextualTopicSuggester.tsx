@@ -86,7 +86,7 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                Inspirasi Topik & Materi Pokok Resmi (BSKAP 032/H/KR/2024)
+                Inspirasi Topik & Materi Pokok Resmi (BSKAP 046/H/KR/2025)
               </h4>
               <span className="px-2 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
                 {fase} • {tingkat} ({jenjang})

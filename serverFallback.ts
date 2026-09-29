@@ -2,7 +2,11 @@
  * Fallback Generator for Kurikulum Merdeka Documents
  * Used when upstream AI models experience transient 503 High Demand spikes
  * to ensure teachers are NEVER blocked from generating complete, exportable documents.
+ *
+ * Rujukan CP: BSKAP 046/H/KR/2025; mapel Agama & Budi Pekerti memakai
+ * revisi BKPDM 020 Tahun 2026 (lihat src/server/curriculumRefs.ts).
  */
+import { cpReference, isAgamaMapel } from './src/server/curriculumRefs.js';
 
 export interface FallbackParams {
   docType: string;
@@ -36,14 +40,19 @@ export function generateFallbackDocument(params: FallbackParams): string {
     schoolName = 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'
   } = params;
 
-  const dimensiList = Array.isArray(dimensiP5) && dimensiP5.length 
-    ? dimensiP5.join(', ') 
+  const dimensiList = Array.isArray(dimensiP5) && dimensiP5.length
+    ? dimensiP5.join(', ')
     : 'Bernalar Kritis, Gotong Royong, Mandiri';
+
+  const cpRef = cpReference(mataPelajaran);
+  const agamaNote = isAgamaMapel(mataPelajaran)
+    ? ' Pembelajaran diarahkan pada pengamalan nilai ajaran agama dalam sikap, pengetahuan, dan keterampilan sehari-hari sesuai CP revisi BKPDM 020 Tahun 2026.'
+    : '';
 
   if (docType === 'modul_ajar') {
     return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA 2024)
 ## Satuan Pendidikan: ${schoolName}
-**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikbudristek No. 12 Tahun 2024 & BSKAP 032/H/KR/2024**
+**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikbudristek No. 12 Tahun 2024 & ${cpRef}**
 
 ---
 
@@ -65,7 +74,7 @@ export function generateFallbackDocument(params: FallbackParams): string {
 ### II. KOMPONEN INTI
 
 #### 1. Capaian Pembelajaran (CP)
-Peserta didik mampu memahami konsep esensial, menganalisis keterkaitan fenomena nyata, serta menerapkan penalaran kritis dalam menyelesaikan permasalahan kontekstual terkait **${topik}** sesuai standar capaian pembelajaran **BSKAP No. 032/H/KR/2024**.
+Peserta didik mampu memahami konsep esensial, menganalisis keterkaitan fenomena nyata, serta menerapkan penalaran kritis dalam menyelesaikan permasalahan kontekstual terkait **${topik}** sesuai ${cpRef}.${agamaNote}
 
 #### 2. Tujuan Pembelajaran (TP)
 1. Melalui pengamatan stimulus masalah kontekstual, peserta didik mampu mengidentifikasi karakteristik dan konsep dasar **${topik}** dengan teliti dan mandiri.
@@ -146,7 +155,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 * **KKTP**: Kriteria Ketercapaian Tujuan Pembelajaran sebagai pedoman evaluasi ketuntasan belajar siswa.
 
 #### 3. Sumber & Daftar Pustaka
-1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2024). *Keputusan Kepala BSKAP No. 032/H/KR/2024 tentang Capaian Pembelajaran*. Kemendikbudristek RI.
+1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2025). *Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran*. Kemendikdasmen RI.${isAgamaMapel(mataPelajaran) ? '\n2. Badan Kebijakan Pendidikan Dasar dan Menengah (BKPDM). (2026). *Keputusan Kepala BKPDM No. 020 Tahun 2026 tentang Perubahan CP Pendidikan Agama dan Budi Pekerti*. Kemendikdasmen RI.' : ''}
 2. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pembelajaran dan Asesmen Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah*. BSKAP Kemendikbudristek RI.`;
   }
 
@@ -370,7 +379,7 @@ Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
 ---
 
 ### I. RASIONAL & CAPAIAN PEMBELAJARAN (CP)
-Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik menguasai konsep esensial **${topik}** dan mampu menerapkannya dalam konteks nyata. Dokumen ini disusun berdasarkan Keputusan Kepala BSKAP No. 032/H/KR/2024 sebagai pijakan perencanaan, pelaksanaan, dan evaluasi pembelajaran selama satu tahun ajaran.
+Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik menguasai konsep esensial **${topik}** dan mampu menerapkannya dalam konteks nyata. Dokumen ini disusun berdasarkan ${cpRef} sebagai pijakan perencanaan, pelaksanaan, dan evaluasi pembelajaran selama satu tahun ajaran.${agamaNote}
 
 ### II. MATRIKS ALUR TUJUAN PEMBELAJARAN (ATP)
 
@@ -528,7 +537,7 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 ---
 
 ### II. URAIAN CAPAIAN & TUJUAN PEMBELAJARAN
-Berdasarkan Keputusan Kepala BSKAP No. 032/H/KR/2024 dan PPA 2024, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.
+Berdasarkan ${cpRef} dan PPA 2024, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.${agamaNote}
 
 ### III. SINTAKS & AKTIVITAS PEMBELAJARAN
 1. **Kegiatan Awal**: Apersepsi, pengenalan tujuan, dan asesmen awal kesiapan siswa.

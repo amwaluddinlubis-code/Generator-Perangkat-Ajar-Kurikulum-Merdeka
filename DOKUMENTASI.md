@@ -188,7 +188,19 @@ npm run dev
 
 ---
 
-## 9. Batasan yang Diketahui
+## 9. Rujukan Regulasi Kurikulum (CP)
+
+- **CP umum semua mapel:** Keputusan Kepala BSKAP No. **046/H/KR/2025** (mencabut 032/H/KR/2024). Meliputi Fase Fondasi (PAUD), Fase A–C (SD), D (SMP), E–F (SMA/SMK); Fase A selaras 6 kemampuan fondasi PAUD.
+- **CP Agama & Budi Pekerti:** direvisi terbatas oleh Keputusan Kepala BKPDM No. **020 Tahun 2026** (Lampiran II & V dari 046/2025). Mapel lain tidak berubah.
+- **Implementasi di aplikasi** (`src/server/curriculumRefs.ts`, satu-satunya sumber sitasi):
+  - Prompt AI memakai `cpReference(mapel)`; mapel agama otomatis mendapat blok ketentuan 020/2026 (tiga ranah sikap–pengetahuan–keterampilan, pengamalan nilai sehari-hari).
+  - Template cadangan memakai sitasi + Daftar Pustaka yang sama, plus kalimat pengamalan untuk mapel agama.
+  - Validator menandai dokumen agama tanpa dimensi "pengamalan" sebagai `needs_review`.
+  - UI (panduan, fase, statistik) merujuk 046/H/KR/2025.
+
+---
+
+## 10. Batasan yang Diketahui
 
 - Statistik bulanan memakai tren contoh (bukan murni data nyata).
 - SQLite saat ini ditujukan untuk deployment single-node. Untuk multi-instance/cloud, storage tenant/session perlu dipindahkan ke PostgreSQL atau database terkelola bersama.
@@ -198,7 +210,7 @@ npm run dev
 
 ---
 
-## 10. Status Kesiapan Produk
+## 11. Status Kesiapan Produk
 
 Branch `main` tetap menjadi baseline prototype lama. Branch `feat/security-baseline` sekarang menjadi kandidat **pilot internal single-node** setelah automated gate PASS dan sebelum Browser QA.
 
@@ -223,7 +235,7 @@ Branch `main` tetap menjadi baseline prototype lama. Branch `feat/security-basel
 | Browser QA | **DEFERRED — menunggu user memulai pengujian** |
 | Public production readiness | Belum diklaim |
 
-## 11. Sasaran Produk Produksi Multi-Guru
+## 12. Sasaran Produk Produksi Multi-Guru
 
 Target produk adalah aplikasi SaaS/internal platform yang memungkinkan banyak guru dari banyak sekolah menggunakan generator secara aman, dengan batas kepemilikan data yang jelas.
 
@@ -246,7 +258,7 @@ Model akses harus berbasis `tenantId`/`schoolId`. Filter di frontend tidak boleh
 - Guru hanya dapat mengubah/menghapus dokumennya sendiri, kecuali role yang berwenang.
 - Dokumen soal, identitas siswa, dan data sekolah tidak boleh otomatis tampil di katalog publik.
 
-## 12. Arah Arsitektur Target
+## 13. Arah Arsitektur Target
 
 ```text
 React + TypeScript
@@ -294,7 +306,7 @@ Database transaksional (SQLite, `node:sqlite`) sudah menjadi satu-satunya penyim
 
 Gambar dan lampiran jangan disimpan sebagai data-URL di dokumen. Simpan file pada object storage dan hanya simpan metadata serta URL internal yang memiliki masa berlaku.
 
-## 13. Roadmap Implementasi
+## 14. Roadmap Implementasi
 
 ### Fase 0 — Baseline dan keamanan P0 — SELESAI
 
@@ -365,7 +377,7 @@ Implemented dan diuji otomatis:
 
 **Kriteria selesai:** tim dapat mendeteksi kegagalan, memulihkan data, dan melakukan rollback tanpa mengedit data produksi secara manual.
 
-## 14. Kontrak API Produksi
+## 15. Kontrak API Produksi
 
 Semua endpoint bisnis harus:
 
@@ -390,7 +402,7 @@ Format error yang disarankan:
 }
 ```
 
-## 15. Pengujian Minimum Sebelum Go-Live
+## 16. Pengujian Minimum Sebelum Go-Live
 
 ### Unit test
 
@@ -423,7 +435,7 @@ Minimal satu alur lengkap untuk setiap role:
 5. Dokumen diekspor ke Word/PDF.
 6. Admin melihat audit trail.
 
-## 16. Definition of Done Produksi
+## 17. Definition of Done Produksi
 
 Aplikasi dapat disebut siap produksi apabila seluruh kondisi berikut terpenuhi:
 
@@ -439,7 +451,7 @@ Aplikasi dapat disebut siap produksi apabila seluruh kondisi berikut terpenuhi:
 - staging telah digunakan untuk uji pilot minimal beberapa sekolah;
 - tersedia runbook untuk deployment, rollback, backup, restore, dan insiden keamanan.
 
-## 17. Keputusan Produk yang Harus Ditentukan
+## 18. Keputusan Produk yang Harus Ditentukan
 
 Sebelum implementasi Fase 1, pemilik produk perlu menetapkan:
 
@@ -455,7 +467,7 @@ Keputusan tersebut memengaruhi schema database, authorization policy, biaya oper
 
 ---
 
-## 18. Update Implementasi — Security + Tenant Baseline
+## 19. Update Implementasi — Security + Tenant Baseline
 
 Branch `feat/security-baseline` telah melampaui baseline Fase 0 dan baseline tenancy single-node Fase 1.
 
@@ -493,7 +505,7 @@ CI terakhir yang berhasil menjalankan branch ini:
 
 Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim sebagai deployment multi-instance/public production karena OAuth/OIDC resmi, PostgreSQL/managed database, object storage, observability, dan load testing belum selesai.
 
-## 19. Status Implementasi Terkini — Security + Tenant Baseline
+## 20. Status Implementasi Terkini — Security + Tenant Baseline
 
 **Branch kerja:** `feat/security-baseline`
 

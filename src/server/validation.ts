@@ -1,4 +1,5 @@
 import { LIMITS, PASSWORD_MIN_LENGTH, isNonEmptyString, exceedsLength } from './security.js';
+import { isAgamaMapel } from './curriculumRefs.js';
 
 export const DOC_TYPES = [
   'modul_ajar',
@@ -372,7 +373,7 @@ const STRUCTURE_MARKERS: Record<string, Array<{ label: string; patterns: RegExp[
 export function validateDocumentStructure(
   docType: string,
   content: string,
-  opts?: { expectedQuestions?: number; modelUsed?: string }
+  opts?: { expectedQuestions?: number; modelUsed?: string; mapel?: string }
 ): DocumentQuality {
   const text = String(content || '');
   const stats = {
@@ -396,6 +397,13 @@ export function validateDocumentStructure(
       if (!marker.patterns.some(pattern => pattern.test(text))) {
         issues.push(`Bagian "${marker.label}" tidak terdeteksi — periksa kelengkapan dokumen.`);
       }
+    }
+  }
+
+  // Mapel Agama & Budi Pekerti (BKPDM 020/2026): wajib memuat dimensi pengamalan.
+  if (opts?.mapel && isAgamaMapel(opts.mapel)) {
+    if (!/(pengamalan|mengamalkan|akhlak)/i.test(text)) {
+      issues.push('Dokumen mapel Agama belum memuat dimensi "pengamalan nilai" sesuai BKPDM 020 Tahun 2026.');
     }
   }
 

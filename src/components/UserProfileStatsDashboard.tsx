@@ -296,7 +296,7 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
             <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">Permendikbud 12/2024</span>
           </div>
           <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
-            BSKAP 032/H/KR/2024 & PPA
+            BSKAP 046/H/KR/2025 & PPA
           </p>
         </div>
 

@@ -629,10 +629,10 @@ export default function App() {
                 <div className="prose-educational space-y-4">
                   <div className="p-5 rounded-2xl bg-[#f5f5f7]">
                     <h3 className="text-[14.5px] font-semibold mb-1">
-                      Landasan hukum kurikulum nasional 2024
+                      Landasan hukum kurikulum nasional
                     </h3>
                     <p className="!text-[13.5px] !text-[#424245]">
-                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, dan berorientasi Profil Pelajar Pancasila.
+                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Capaian Pembelajaran mengacu <b>BSKAP 046/H/KR/2025</b> (mencabut 032/H/KR/2024); khusus mapel Agama & Budi Pekerti memakai revisi <b>BKPDM 020 Tahun 2026</b>.
                     </p>
                   </div>
 
@@ -642,6 +642,7 @@ export default function App() {
                         Fase pembelajaran
                       </h4>
                       <ul className="!text-[13px] space-y-1.5 !text-[#424245]">
+                        <li><b>Fondasi</b>: PAUD (selaras 6 kemampuan fondasi ke Fase A)</li>
                         <li><b>Fase A</b>: Kelas 1–2 SD</li>
                         <li><b>Fase B</b>: Kelas 3–4 SD</li>
                         <li><b>Fase C</b>: Kelas 5–6 SD</li>
@@ -656,7 +657,7 @@ export default function App() {
                         3 komponen esensial Modul Ajar
                       </h4>
                       <ol className="!text-[13px] space-y-1.5 !text-[#424245]">
-                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 032/H/KR/2024.</li>
+                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 046/H/KR/2025.</li>
                         <li>2. <b>Langkah pembelajaran</b> berdiferensiasi.</li>
                         <li>3. <b>Rencana asesmen</b> + rubrik KKTP.</li>
                       </ol>

@@ -55,6 +55,11 @@ import {
   validateUserPatch
 } from './src/server/validation.js';
 import {
+  agamaCpGuidance,
+  cpReference,
+  isAgamaMapel
+} from './src/server/curriculumRefs.js';
+import {
   canAccessDocument,
   canChangeTenant,
   canDeleteUser,
@@ -358,7 +363,7 @@ let documents: EducationalDocument[] = [
 
 ### III. KOMPONEN INTI
 
-#### A. Capaian Pembelajaran (CP) - Keputusan Kepala BSKAP No. 032/H/KR/2024
+#### A. Capaian Pembelajaran (CP) - Keputusan Kepala BSKAP No. 046/H/KR/2025
 Peserta didik menganalisis hubungan antara bentuk serta fungsi bagian tubuh pada tumbuhan (akar, batang, daun, bunga, dan buah) serta mengaitkannya dengan kebutuhan hidup tumbuhan dalam ekosistem.
 
 #### B. Tujuan Pembelajaran (TP) & Indikator Ketercapaian
@@ -1265,7 +1270,7 @@ STRUKTUR RESMI YANG WAJIB ADA:
    - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda Tatap Muka.
 
 2. **KOMPONEN INTI**:
-   - Capaian Pembelajaran (CP) sesuai BSKAP No. 032/H/KR/2024 untuk ${mataPelajaran} ${calculatedFase}.
+   - Capaian Pembelajaran (CP) sesuai ${cpReference(mataPelajaran)} untuk ${mataPelajaran} ${calculatedFase}.
    - Tujuan Pembelajaran (TP) yang jelas (mengandung Audience, Behavior, Condition, Degree).
    - Indikator Ketercapaian Tujuan Pembelajaran (IKTP).
    - Pemahaman Bermakna (manfaat nyata di kehidupan sehari-hari).
@@ -1391,7 +1396,9 @@ KOMPONEN WAJIB:
 Anda adalah Pakar Kurikulum Nasional Indonesia & Pengembang Perangkat Ajar Senior di Kementerian Pendidikan Dasar dan Menengah RI (Kemendikdasmen / Kemendikbudristek).
 Anda memiliki pemahaman mendalam tentang:
 - **Permendikbudristek No. 12 Tahun 2024** (Kurikulum Merdeka sebagai Kurikulum Nasional).
-- **Keputusan Kepala BSKAP No. 032/H/KR/2024** (Capaian Pembelajaran PAUD, Dikdas, dan Dikmen).
+- **Keputusan Kepala BSKAP No. 046/H/KR/2025** (CP PAUD Fase Fondasi, Dikdas, dan Dikmen; mencabut 032/H/KR/2024).
+- **Keputusan Kepala BKPDM No. 020 Tahun 2026** (revisi CP Pendidikan Agama dan Budi Pekerti: iman-takwa, akhlak, pengamalan).
+- Fase A disusun selaras 6 kemampuan fondasi PAUD untuk transisi berkesinambungan ke SD.
 - **Panduan Pembelajaran dan Asesmen (PPA) 2024**.
 - Paradigma Pembelajaran Berdiferensiasi (Diferensiasi Konten, Proses, Produk).
 - Asesmen Berkelanjutan (Diagnostik, Formatif, Sumatif) & AKM (Asesmen Kompetensi Minimum).
@@ -1416,7 +1423,7 @@ INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Nama Penyusun: ${authorName || 'Bapak/Ibu Guru'}
 - Nama Sekolah: ${schoolName || 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'}
 ${catatanTambahan ? `- Catatan Khusus Guru: ${JSON.stringify(catatanTambahan)}` : ''}
-
+${isAgamaMapel(mataPelajaran) ? `\n${agamaCpGuidance(mataPelajaran, calculatedFase)}\n` : ''}
 ${specificInstructions}
 </USER_DATA>
 
@@ -1513,7 +1520,8 @@ PANDUAN PENULISAN:
 
     const quality = validateDocumentStructure(docType, generatedText, {
       expectedQuestions: Number((soalConfig as any)?.jumlahSoal) || 0,
-      modelUsed
+      modelUsed,
+      mapel: mataPelajaran
     });
 
     recordAudit(req, 'generation.create', 'document', undefined, true, requester.id);

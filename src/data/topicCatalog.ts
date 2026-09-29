@@ -18,7 +18,7 @@ export interface CurriculumTopicItem {
 export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
   // =========================================================================
   // SD - FASE A (KELAS 1 & KELAS 2)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- Bahasa Indonesia SD Fase A ---
@@ -213,7 +213,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SD - FASE B (KELAS 3 & KELAS 4)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- IPAS SD Fase B ---
@@ -394,7 +394,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SD - FASE C (KELAS 5 & KELAS 6)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- IPAS SD Fase C ---
@@ -559,7 +559,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SMP - FASE D (KELAS 7, KELAS 8, KELAS 9)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- IPA SMP Fase D ---
@@ -942,7 +942,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SMA - FASE E (KELAS 10)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- Biologi SMA Fase E ---
@@ -1139,7 +1139,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SMA - FASE F (KELAS 11 & KELAS 12)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- Biologi SMA Fase F ---
@@ -1378,7 +1378,7 @@ export const CURRICULUM_TOPICS: CurriculumTopicItem[] = [
 
   // =========================================================================
   // SMK - FASE E & FASE F (VOKASI & KEJURUAN)
-  // Standar BSKAP 032/H/KR/2024
+  // Standar BSKAP 046/H/KR/2025
   // =========================================================================
 
   // --- Rekayasa Perangkat Lunak (RPL) SMK ---
