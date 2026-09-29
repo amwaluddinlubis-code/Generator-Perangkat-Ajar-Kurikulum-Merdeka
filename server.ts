@@ -867,7 +867,12 @@ app.get('/api/audit-logs', (req: Request, res: Response) => {
   if (!requester) return;
 
   const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
-  res.json({ success: true, logs: getAuditLogs(limit) });
+  res.json({
+    success: true,
+    logs: requester.role === 'SUPER_ADMIN'
+      ? getAuditLogs(limit)
+      : getAuditLogs(limit, requester.schoolId)
+  });
 });
 
 // 6. Documents repository
