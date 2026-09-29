@@ -42,6 +42,15 @@ import {
   validateLoginPayload,
   validateUserPatch
 } from './src/server/validation.js';
+import {
+  canAccessDocument,
+  canChangeTenant,
+  canDeleteUser,
+  canListUser,
+  canUpdateUser,
+  canVerifyUser
+} from './src/server/authorization.js';
+
 
 
 dotenv.config();
@@ -707,9 +716,7 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 app.get('/api/users', (req: Request, res: Response) => {
   const requester = requireAdmin(req, res);
   if (!requester) return;
-  const visibleUsers = requester.role === 'SUPER_ADMIN'
-    ? users
-    : users.filter(u => u.schoolId === requester.schoolId || u.id === requester.id);
+  const visibleUsers = users.filter(user => canListUser(requester, user));
   res.json({ success: true, users: visibleUsers });
 });
 
@@ -726,16 +733,11 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
 
   const user = getDbUserById(String(userId));
   if (!user) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Guru tidak ditemukan.' } });
-  if (user.role === 'SUPER_ADMIN' || (user.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN')) {
+  if (!canVerifyUser(requester, user)) {
+    recordAudit(req, 'user.verify.denied', 'user', user.id, false, requester.id);
     return res.status(403).json({
       success: false,
-      error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun dengan hak admin hanya dapat dikelola oleh Super Admin.' }
-    });
-  }
-  if (requester.role === 'ADMIN' && user.schoolId !== requester.schoolId) {
-    return res.status(403).json({
-      success: false,
-      error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
+      error: { code: 'USER_VERIFY_FORBIDDEN', message: 'Anda tidak memiliki kewenangan untuk memverifikasi akun ini.' }
     });
   }
 
@@ -772,20 +774,15 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   const target = getDbUserById(id);
   if (!target) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' } });
 
-  const isAdmin = requester.role === 'SUPER_ADMIN' || requester.role === 'ADMIN';
   const isSelf = requester.id === id;
-  if (!isAdmin && !isSelf) {
+  if (!canUpdateUser(requester, target)) {
     recordAudit(req, 'user.update.denied', 'user', id, false, requester.id);
-    return res.status(403).json({ success: false, error: { code: 'PROFILE_ACCESS_DENIED', message: 'Anda hanya boleh mengubah profil sendiri.' } });
+    return res.status(403).json({
+      success: false,
+      error: { code: 'PROFILE_ACCESS_DENIED', message: 'Anda tidak memiliki kewenangan untuk mengubah profil ini.' }
+    });
   }
-  if (target.role === 'SUPER_ADMIN' && !isSelf) return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah.' } });
-  if (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN' && !isSelf) {
-    return res.status(403).json({ success: false, error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Profil admin hanya dapat dikelola oleh Super Admin.' } });
-  }
-  if (requester.role === 'ADMIN' && !isSelf && target.schoolId !== requester.schoolId) {
-    return res.status(403).json({ success: false, error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' } });
-  }
-  if (schoolName !== undefined && clean(schoolName) && clean(schoolName) !== target.schoolName && requester.role !== 'SUPER_ADMIN') {
+  if (schoolName !== undefined && clean(schoolName) && clean(schoolName) !== target.schoolName && !canChangeTenant(requester)) {
     return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Hanya Super Admin yang dapat memindahkan akun ke sekolah lain.' } });
   }
 
@@ -844,16 +841,11 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
       error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' }
     });
   }
-  if (target.role === 'SUPER_ADMIN' || (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN')) {
+  if (!canDeleteUser(requester, target)) {
+    recordAudit(req, 'user.delete.denied', 'user', id, false, requester.id);
     return res.status(403).json({
       success: false,
-      error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun admin hanya dapat dihapus oleh Super Admin.' }
-    });
-  }
-  if (requester.role === 'ADMIN' && target.schoolId !== requester.schoolId) {
-    return res.status(403).json({
-      success: false,
-      error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
+      error: { code: 'USER_DELETE_FORBIDDEN', message: 'Anda tidak memiliki kewenangan untuk menghapus akun ini.' }
     });
   }
 
@@ -948,8 +940,7 @@ app.delete('/api/documents/:id', (req: Request, res: Response) => {
   const target = getDbDocumentById(id);
   if (!target) return res.status(404).json({ success: false, error: { code: 'DOCUMENT_NOT_FOUND', message: 'Dokumen tidak ditemukan.' } });
 
-  const allowed = requester.role === 'SUPER_ADMIN' || target.authorId === requester.id || (requester.role === 'ADMIN' && target.schoolId === requester.schoolId);
-  if (!allowed) {
+  if (!canAccessDocument(requester, target)) {
     recordAudit(req, 'document.delete.denied', 'document', id, false, requester.id);
     return res.status(403).json({ success: false, error: { code: 'DOCUMENT_ACCESS_DENIED', message: 'Anda tidak memiliki akses ke dokumen ini.' } });
   }
