@@ -1403,6 +1403,10 @@ async function setupVite() {
   });
 }
 
-setupVite().catch(err => {
-  console.error('Failed to start server:', err);
-});
+export { app };
+
+if (!process.argv.includes('--test')) {
+  setupVite().catch(err => {
+    console.error('Failed to start server:', err);
+  });
+}
