@@ -14,6 +14,8 @@ export interface TeacherUser {
   name: string;
   email: string;
   schoolName: string;
+  /** Immutable primary tenant/school identifier derived by the server. */
+  schoolId: string;
   npsn?: string;
   nip?: string;
   jenjang: Jenjang;
@@ -40,6 +42,8 @@ export interface EducationalDocument {
   authorId: string;
   authorName: string;
   schoolName: string;
+  /** Server-owned tenant boundary. Never accepted from client input. */
+  schoolId: string;
   isPublic?: boolean;
   durationMinutes?: number;
 }
