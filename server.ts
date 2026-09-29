@@ -75,7 +75,7 @@ app.use((req: Request, res: Response, next) => {
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",
-    "object-src 'none'
+    "object-src 'none'"
   ].join('; '));
   if (process.env.NODE_ENV === 'production') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
