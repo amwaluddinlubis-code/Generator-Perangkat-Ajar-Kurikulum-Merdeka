@@ -14,6 +14,7 @@ import {
   deleteUser as deleteDbUser,
   getAuditLogs,
   getDocumentById as getDbDocumentById,
+  getOrCreateSchool,
   getUserByEmail as getDbUserByEmail,
   getUserById as getDbUserById,
   initializeDatabase,
@@ -659,7 +660,7 @@ app.get('/api/users', (req: Request, res: Response) => {
   if (!requester) return;
   const visibleUsers = requester.role === 'SUPER_ADMIN'
     ? users
-    : users.filter(u => u.schoolName === requester.schoolName || u.id === requester.id);
+    : users.filter(u => u.schoolId === requester.schoolId || u.id === requester.id);
   res.json({ success: true, users: visibleUsers });
 });
 
@@ -674,7 +675,7 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: { code: 'INVALID_VERIFICATION', message: 'Data verifikasi tidak valid.' } });
   }
 
-  const user = users.find(u => u.id === userId);
+  const user = getDbUserById(String(userId));
   if (!user) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Guru tidak ditemukan.' } });
   if (user.role === 'SUPER_ADMIN' || (user.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN')) {
     return res.status(403).json({
@@ -682,7 +683,7 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
       error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun dengan hak admin hanya dapat dikelola oleh Super Admin.' }
     });
   }
-  if (requester.role === 'ADMIN' && user.schoolName !== requester.schoolName) {
+  if (requester.role === 'ADMIN' && user.schoolId !== requester.schoolId) {
     return res.status(403).json({
       success: false,
       error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
@@ -698,9 +699,9 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
     user.verifiedBy = undefined;
   }
 
-  saveDB();
+  const persistedUser = updateDbUser(user);
   recordAudit(req, 'user.verify', 'user', user.id, true, requester.id);
-  res.json({ success: true, message: 'Status guru ' + user.name + ' berhasil diubah menjadi: ' + status, user });
+  res.json({ success: true, message: 'Status guru ' + persistedUser.name + ' berhasil diubah menjadi: ' + status, user: persistedUser });
 });
 
 // 4b. Update user (server derives requester from the session cookie)
@@ -710,7 +711,7 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
 
   const { id } = req.params;
   const { name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
-  const target = users.find(u => u.id === id);
+  const target = getDbUserById(id);
   if (!target) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' } });
 
   const isAdmin = requester.role === 'SUPER_ADMIN' || requester.role === 'ADMIN';
@@ -723,11 +724,11 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   if (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN' && !isSelf) {
     return res.status(403).json({ success: false, error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Profil admin hanya dapat dikelola oleh Super Admin.' } });
   }
-  if (requester.role === 'ADMIN' && !isSelf && target.schoolName !== requester.schoolName) {
+  if (requester.role === 'ADMIN' && !isSelf && target.schoolId !== requester.schoolId) {
     return res.status(403).json({ success: false, error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' } });
   }
-  if (requester.role === 'ADMIN' && isSelf && schoolName !== undefined) {
-    return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Admin tidak dapat mengganti sekolah sendiri.' } });
+  if (schoolName !== undefined && clean(schoolName) && clean(schoolName) !== target.schoolName && requester.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Hanya Super Admin yang dapat memindahkan akun ke sekolah lain.' } });
   }
 
   const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
@@ -737,25 +738,32 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
 
   if (isAdmin) {
     if (clean(name)) target.name = clean(name);
-    if (clean(schoolName)) target.schoolName = clean(schoolName);
     if (['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang))) target.jenjang = jenjang;
     if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
     if (nip !== undefined) target.nip = clean(nip) || undefined;
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
+    if (requester.role === 'SUPER_ADMIN' && clean(schoolName) && clean(schoolName) !== target.schoolName) {
+      const nextSchoolId = getOrCreateSchool(clean(schoolName), clean(npsn) || target.npsn, ['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang)) ? String(jenjang) : target.jenjang);
+      target.schoolId = nextSchoolId;
+      updateSchool(nextSchoolId, {
+        name: clean(schoolName),
+        npsn: clean(npsn) || target.npsn,
+        jenjang: ['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang)) ? String(jenjang) : target.jenjang
+      });
+    }
     if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && requester.role === 'SUPER_ADMIN' && !isSelf && target.role !== 'SUPER_ADMIN') {
       target.role = role;
     }
   } else {
     if (clean(name)) target.name = clean(name);
-    if (clean(schoolName)) target.schoolName = clean(schoolName);
     if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
     if (nip !== undefined) target.nip = clean(nip) || undefined;
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
   }
 
-  saveDB();
+  const persistedUser = updateDbUser(target);
   recordAudit(req, 'user.update', 'user', target.id, true, requester.id);
-  res.json({ success: true, message: 'Profil ' + target.name + ' berhasil diperbarui', user: target });
+  res.json({ success: true, message: 'Profil ' + persistedUser.name + ' berhasil diperbarui', user: persistedUser });
 });
 
 // 5. Delete teacher
@@ -771,7 +779,7 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
     });
   }
 
-  const target = users.find(u => u.id === id);
+  const target = getDbUserById(id);
   if (!target) {
     return res.status(404).json({
       success: false,
@@ -784,15 +792,14 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
       error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun admin hanya dapat dihapus oleh Super Admin.' }
     });
   }
-  if (requester.role === 'ADMIN' && target.schoolName !== requester.schoolName) {
+  if (requester.role === 'ADMIN' && target.schoolId !== requester.schoolId) {
     return res.status(403).json({
       success: false,
       error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
     });
   }
 
-  users = users.filter(u => u.id !== id);
-  saveDB();
+  deleteDbUser(id);
   recordAudit(req, 'user.delete', 'user', id, true, requester.id);
   res.json({ success: true, message: 'Data guru berhasil dihapus' });
 });
@@ -802,7 +809,7 @@ app.get('/api/audit-logs', (req: Request, res: Response) => {
   if (!requester) return;
 
   const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
-  res.json({ success: true, logs: auditLogs.slice(0, limit) });
+  res.json({ success: true, logs: getAuditLogs(limit) });
 });
 
 // 6. Documents repository
