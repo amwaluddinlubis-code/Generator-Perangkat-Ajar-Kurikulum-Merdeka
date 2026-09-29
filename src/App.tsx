@@ -35,17 +35,9 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(() => {
-    const cachedUser = localStorage.getItem('ruang_guru_current_user');
-    if (cachedUser) {
-      try {
-        return JSON.parse(cachedUser);
-      } catch (e) {
-        localStorage.removeItem('ruang_guru_current_user');
-      }
-    }
-    return null;
-  });
+  // Identity is established by the server-side session cookie.
+  // localStorage is intentionally not used as an authentication source.
+  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null);
 
   const [users, setUsers] = useState<TeacherUser[]>([]);
   const [documents, setDocuments] = useState<EducationalDocument[]>([]);
@@ -73,53 +65,48 @@ export default function App() {
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
-      // Load available demo and verification profiles.
-      const usersRes = await fetch('/api/users');
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        if (usersData.users) {
-          setUsers(usersData.users);
-          // Revalidasi sesi: profil tersimpan bisa basi bila admin
-          // mengubah status / menghapus akun dari perangkat lain.
-          try {
-            const raw = localStorage.getItem('ruang_guru_current_user');
-            if (raw) {
-              const stored = JSON.parse(raw) as TeacherUser;
-              const fresh = (usersData.users as TeacherUser[]).find(u => u.id === stored.id);
-              if (!fresh) {
-                localStorage.removeItem('ruang_guru_current_user');
-                setCurrentUser(null);
-                showToast('Akun Anda telah dihapus oleh admin. Silakan masuk kembali.', 'info');
-              } else if (JSON.stringify(fresh) !== JSON.stringify(stored)) {
-                setCurrentUser(fresh);
-                localStorage.setItem('ruang_guru_current_user', JSON.stringify(fresh));
-                if (fresh.status !== stored.status) {
-                  showToast(
-                    fresh.status === 'VERIFIED'
-                      ? 'Kabar baik — akun Anda telah diverifikasi admin.'
-                      : `Status akun Anda berubah menjadi: ${fresh.status}`,
-                    'info'
-                  );
-                }
-              }
-            }
-          } catch { /* abaikan data lokal rusak */ }
-        }
+      const currentRes = await fetch('/api/users/current');
+      if (!currentRes.ok) {
+        setCurrentUser(null);
+        setUsers([]);
+        setDocuments([]);
+        return;
       }
 
-      // Load documents for the archive and recent activity.
+      const currentData = await currentRes.json();
+      if (!currentData.user) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const activeUser = currentData.user as TeacherUser;
+      setCurrentUser(activeUser);
+
+      if (activeUser.role === 'ADMIN' || activeUser.role === 'SUPER_ADMIN') {
+        const usersRes = await fetch('/api/users');
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          if (Array.isArray(usersData.users)) setUsers(usersData.users);
+        }
+      } else {
+        setUsers([]);
+      }
+
       const docsRes = await fetch('/api/documents');
       if (docsRes.ok) {
         const docsData = await docsRes.json();
-        if (docsData.documents) {
+        if (Array.isArray(docsData.documents)) {
           setDocuments(docsData.documents);
-          if (docsData.documents.length > 0 && !currentDoc) {
-            setCurrentDoc(docsData.documents[0]);
-          }
+          if (docsData.documents.length > 0) setCurrentDoc(prev => prev || docsData.documents[0]);
         }
+      } else if (docsRes.status === 401 || docsRes.status === 403) {
+        setDocuments([]);
       }
     } catch (err) {
       console.warn('Backend server connecting or loading offline defaults:', err);
+      setCurrentUser(null);
+      setUsers([]);
+      setDocuments([]);
     }
   };
 
@@ -155,14 +142,13 @@ export default function App() {
 
       const activeTeacher: TeacherUser = resData.user;
       setCurrentUser(activeTeacher);
-      localStorage.removeItem('ruang_guru_logged_out');
-      localStorage.setItem('ruang_guru_current_user', JSON.stringify(activeTeacher));
 
-      // Reload users list
-      const usersRes = await fetch('/api/users');
-      if (usersRes.ok) {
-        const uJson = await usersRes.json();
-        setUsers(uJson.users);
+      if (activeTeacher.role === 'ADMIN' || activeTeacher.role === 'SUPER_ADMIN') {
+        const usersRes = await fetch('/api/users');
+        if (usersRes.ok) {
+          const uJson = await usersRes.json();
+          setUsers(uJson.users);
+        }
       }
 
       showToast(resData.message || `Selamat datang, ${activeTeacher.name}!`, 'success');
@@ -181,9 +167,10 @@ export default function App() {
     } catch (e) {
       // offline logout ok
     }
-    localStorage.setItem('ruang_guru_logged_out', 'true');
-    localStorage.removeItem('ruang_guru_current_user');
     setCurrentUser(null);
+    setUsers([]);
+    setDocuments([]);
+    setCurrentDoc(null);
     setLogoutModalOpen(false);
     setAuthModalOpen(false);
     showToast('Anda telah berhasil keluar dari akun Ruang Guru Merdeka', 'info');
@@ -201,7 +188,12 @@ export default function App() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
+        body: JSON.stringify({
+          ...params,
+          authorId: undefined,
+          authorName: undefined,
+          schoolName: undefined
+        })
       });
 
       const data = await response.json();
@@ -222,9 +214,9 @@ export default function App() {
         content: data.content,
         createdAt: new Date().toISOString(),
         authorId: currentUser.id,
-        authorName: params.authorName || currentUser.name,
-        schoolName: params.schoolName || currentUser.schoolName,
-        isPublic: true,
+        authorName: currentUser.name,
+        schoolName: currentUser.schoolName,
+        isPublic: false,
         durationMinutes: data.durationMinutes || 3.2
       };
 
@@ -268,8 +260,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          status,
-          adminName: currentUser.name
+          status
         })
       });
 
@@ -304,7 +295,7 @@ export default function App() {
       const res = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields, requesterId: currentUser?.id })
+        body: JSON.stringify(fields)
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -313,7 +304,6 @@ export default function App() {
       setUsers(prev => prev.map(u => u.id === userId ? data.user : u));
       if (currentUser && currentUser.id === userId) {
         setCurrentUser(data.user);
-        localStorage.setItem('ruang_guru_current_user', JSON.stringify(data.user));
       }
       showToast(data.message, 'success');
     } catch (err: any) {
