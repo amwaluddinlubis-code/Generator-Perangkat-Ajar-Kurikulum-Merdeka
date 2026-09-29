@@ -649,7 +649,10 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 app.get('/api/users', (req: Request, res: Response) => {
   const requester = requireAdmin(req, res);
   if (!requester) return;
-  res.json({ success: true, users });
+  const visibleUsers = requester.role === 'SUPER_ADMIN'
+    ? users
+    : users.filter(u => u.schoolName === requester.schoolName || u.id === requester.id);
+  res.json({ success: true, users: visibleUsers });
 });
 
 // 4. Admin verify / reject / update teacher status
@@ -665,7 +668,12 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
 
   const user = users.find(u => u.id === userId);
   if (!user) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Guru tidak ditemukan.' } });
-  if (user.role === 'SUPER_ADMIN') return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah melalui endpoint ini.' } });
+  if (user.role === 'SUPER_ADMIN' || (user.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN')) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun dengan hak admin hanya dapat dikelola oleh Super Admin.' }
+    });
+  }
 
   user.status = status;
   if (status === 'VERIFIED') {
@@ -698,6 +706,12 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     return res.status(403).json({ success: false, error: { code: 'PROFILE_ACCESS_DENIED', message: 'Anda hanya boleh mengubah profil sendiri.' } });
   }
   if (target.role === 'SUPER_ADMIN' && !isSelf) return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah.' } });
+  if (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN' && !isSelf) {
+    return res.status(403).json({ success: false, error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Profil admin hanya dapat dikelola oleh Super Admin.' } });
+  }
+  if (requester.role === 'ADMIN' && isSelf && schoolName !== undefined) {
+    return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Admin tidak dapat mengganti sekolah sendiri.' } });
+  }
 
   const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
   if (name !== undefined && !isNonEmptyString(name, LIMITS.name)) return res.status(400).json({ success: false, error: { code: 'INVALID_NAME', message: 'Nama wajib diisi dan terlalu panjang.' } });
@@ -711,7 +725,9 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
     if (nip !== undefined) target.nip = clean(nip) || undefined;
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
-    if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') target.role = role;
+    if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && requester.role === 'SUPER_ADMIN' && !isSelf && target.role !== 'SUPER_ADMIN') {
+      target.role = role;
+    }
   } else {
     if (clean(name)) target.name = clean(name);
     if (clean(schoolName)) target.schoolName = clean(schoolName);
@@ -745,10 +761,10 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
       error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' }
     });
   }
-  if (target.role === 'SUPER_ADMIN') {
+  if (target.role === 'SUPER_ADMIN' || (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN')) {
     return res.status(403).json({
       success: false,
-      error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat dihapus.' }
+      error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun admin hanya dapat dihapus oleh Super Admin.' }
     });
   }
 
