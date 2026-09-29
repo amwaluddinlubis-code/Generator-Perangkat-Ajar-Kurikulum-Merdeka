@@ -5,6 +5,18 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { generateFallbackDocument } from './serverFallback.js';
+import {
+  buildExpiredSessionCookie,
+  buildSessionCookie,
+  checkRateLimit,
+  createSession,
+  getSessionTokenFromCookieHeader,
+  getSessionUserIdFromCookieHeader,
+  isNonEmptyString,
+  LIMITS,
+  revokeSessionToken,
+  exceedsLength
+} from './src/server/security.js';
 
 dotenv.config();
 
@@ -14,8 +26,34 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.disable('x-powered-by');
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+app.use((req: Request, res: Response, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
+
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const origin = req.get('origin');
+    if (origin) {
+      try {
+        const parsedOrigin = new URL(origin);
+        if (parsedOrigin.host !== req.get('host')) {
+          return res.status(403).json({ success: false, error: { code: 'ORIGIN_NOT_ALLOWED', message: 'Permintaan lintas-origin tidak diizinkan.' } });
+        }
+      } catch {
+        return res.status(403).json({ success: false, error: { code: 'ORIGIN_NOT_ALLOWED', message: 'Origin permintaan tidak valid.' } });
+      }
+    }
+  }
+  next();
+});
 
 // Initialize Google Gemini AI SDK
 const ai = new GoogleGenAI();
@@ -36,6 +74,17 @@ interface TeacherUser {
   registeredAt: string;
   verifiedAt?: string;
   verifiedBy?: string;
+}
+
+interface AuditLog {
+  id: string;
+  actorUserId?: string;
+  action: string;
+  resourceType: string;
+  resourceId?: string;
+  success: boolean;
+  ip?: string;
+  createdAt: string;
 }
 
 interface EducationalDocument {
@@ -167,6 +216,8 @@ let users: TeacherUser[] = [
     registeredAt: '2026-03-28T09:12:00.000Z'
   }
 ];
+
+let auditLogs: AuditLog[] = [];
 
 let documents: EducationalDocument[] = [
   {
@@ -387,7 +438,7 @@ const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
 function saveDBNow() {
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents }, null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, auditLogs }, null, 2));
   } catch (err) {
     console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
   }
@@ -408,12 +459,80 @@ function loadDB() {
     const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
     if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
     if (Array.isArray(raw.documents)) documents = raw.documents;
-    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents from db.json`);
+    if (Array.isArray(raw.auditLogs)) auditLogs = raw.auditLogs;
+    console.log('[DB] Loaded ' + users.length + ' users, ' + documents.length + ' documents and ' + auditLogs.length + ' audit logs from db.json');
   } catch (err) {
     console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
   }
 }
 loadDB();
+
+function getAuthenticatedUser(req: Request): TeacherUser | null {
+  const sessionUserId = getSessionUserIdFromCookieHeader(req.headers.cookie);
+  if (!sessionUserId) return null;
+  return users.find(u => u.id === sessionUserId) || null;
+}
+
+function requireAuth(req: Request, res: Response): TeacherUser | null {
+  const user = getAuthenticatedUser(req);
+  if (!user) {
+    res.status(401).json({ success: false, error: { code: 'AUTH_REQUIRED', message: 'Sesi masuk tidak ditemukan atau sudah berakhir.' } });
+    return null;
+  }
+  if (user.status === 'REJECTED') {
+    res.setHeader('Set-Cookie', buildExpiredSessionCookie(process.env.NODE_ENV === 'production'));
+    res.status(403).json({ success: false, error: { code: 'ACCOUNT_REJECTED', message: 'Akun tidak memiliki akses ke aplikasi.' } });
+    return null;
+  }
+  return user;
+}
+
+function requireVerifiedUser(req: Request, res: Response): TeacherUser | null {
+  const user = requireAuth(req, res);
+  if (!user) return null;
+  if (user.status !== 'VERIFIED') {
+    res.status(403).json({ success: false, error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun masih menunggu verifikasi admin.' } });
+    return null;
+  }
+  return user;
+}
+
+function requireAdmin(req: Request, res: Response): TeacherUser | null {
+  const user = requireVerifiedUser(req, res);
+  if (!user) return null;
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    res.status(403).json({ success: false, error: { code: 'ADMIN_ACCESS_REQUIRED', message: 'Akses admin diperlukan untuk tindakan ini.' } });
+    return null;
+  }
+  return user;
+}
+
+function recordAudit(req: Request, action: string, resourceType: string, resourceId: string | undefined, success: boolean, actorUserId?: string) {
+  auditLogs.unshift({
+    id: 'audit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    actorUserId,
+    action,
+    resourceType,
+    resourceId,
+    success,
+    ip: req.ip,
+    createdAt: new Date().toISOString()
+  });
+  if (auditLogs.length > 5000) auditLogs = auditLogs.slice(0, 5000);
+  saveDB();
+}
+
+function rateLimitExceeded(req: Request, res: Response, key: string, maxRequests: number, windowMs: number): boolean {
+  const result = checkRateLimit(key, maxRequests, windowMs);
+  if (result.allowed) return false;
+  res.setHeader('Retry-After', String(result.retryAfterSeconds));
+  res.status(429).json({ success: false, error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.' } });
+  return true;
+}
+
+function requireText(value: unknown, maxLength: number): string | null {
+  return isNonEmptyString(value, maxLength) ? value.trim() : null;
+}
 
 // Helper to validate Belajar.id email format
 function isBelajarIdEmail(email: string): boolean {
@@ -437,60 +556,62 @@ function isBelajarIdEmail(email: string): boolean {
 // Routes
 // 1. Current user session / default user
 app.get('/api/users/current', (req: Request, res: Response) => {
-  const userId = req.headers['x-user-id'] as string;
-  let user = users.find(u => u.id === userId);
-  if (!user) {
-    // Default to the creator / Super Admin Amwaluddin Lubis for immediate full-featured access
-    user = users.find(u => u.email === 'amwaluddin.lubis@gmail.com') || users[0];
-  }
+  const user = requireAuth(req, res);
+  if (!user) return;
   res.json({ success: true, user });
 });
 
 // 2. Belajar.id Login / Switcher
 app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   const { email, name, schoolName, jenjang, mataPelajaran } = req.body;
+  const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
 
-  if (!email) {
-    return res.status(400).json({ success: false, message: 'Email Belajar.id wajib diisi' });
+  if (!isNonEmptyString(cleanEmail, LIMITS.email)) {
+    return res.status(400).json({ success: false, error: { code: 'INVALID_EMAIL', message: 'Email Belajar.id wajib diisi.' } });
   }
 
-  const cleanEmail = email.toLowerCase().trim();
+  if (rateLimitExceeded(req, res, 'login:ip:' + req.ip, 10, 60_000)) return;
+  if (rateLimitExceeded(req, res, 'login:email:' + cleanEmail, 5, 60_000)) return;
+
   if (!isBelajarIdEmail(cleanEmail)) {
-    return res.status(400).json({
-      success: false,
-      message: 'Gunakan email Belajar.id yang valid (contoh: nama@guru.smp.belajar.id)'
-    });
+    recordAudit(req, 'auth.login.rejected', 'user', undefined, false);
+    return res.status(400).json({ success: false, error: { code: 'INVALID_LOGIN_DOMAIN', message: 'Gunakan email Belajar.id yang valid.' } });
   }
-  let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
 
+  const existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
   if (existingUser) {
-    return res.json({
-      success: true,
-      message: `Selamat datang kembali, ${existingUser.name}!`,
-      user: existingUser
-    });
+    if (existingUser.status === 'REJECTED') {
+      recordAudit(req, 'auth.login.rejected', 'user', existingUser.id, false, existingUser.id);
+      return res.status(403).json({ success: false, error: { code: 'ACCOUNT_REJECTED', message: 'Akun tidak memiliki akses ke aplikasi.' } });
+    }
+
+    const token = createSession(existingUser.id);
+    res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
+    recordAudit(req, 'auth.login.success', 'user', existingUser.id, true, existingUser.id);
+    return res.json({ success: true, message: 'Selamat datang kembali, ' + existingUser.name + '!', user: existingUser });
   }
 
-  // Determine role and status
+  const safeName = typeof name === 'string' && name.trim().length <= LIMITS.name ? name.trim() : '';
+  const safeSchoolName = typeof schoolName === 'string' && schoolName.trim().length <= LIMITS.schoolName ? schoolName.trim() : '';
+  const safeMapel = typeof mataPelajaran === 'string' && mataPelajaran.trim().length <= LIMITS.subject ? mataPelajaran.trim() : '';
+
   const isSuper = cleanEmail === 'amwaluddin.lubis@gmail.com' || cleanEmail.includes('admin@');
   const role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU' = isSuper ? 'SUPER_ADMIN' : 'GURU';
-  // New teachers are PENDING unless they are admin
   const status: 'VERIFIED' | 'PENDING' = isSuper ? 'VERIFIED' : 'PENDING';
 
-  // Extract jenjang from email if not specified
-  let detectedJenjang: 'SD' | 'SMP' | 'SMA' | 'SMK' = jenjang || 'SMP';
+  let detectedJenjang: 'SD' | 'SMP' | 'SMA' | 'SMK' = 'SMP';
   if (cleanEmail.includes('.sd.')) detectedJenjang = 'SD';
   else if (cleanEmail.includes('.smp.')) detectedJenjang = 'SMP';
   else if (cleanEmail.includes('.sma.')) detectedJenjang = 'SMA';
   else if (cleanEmail.includes('.smk.')) detectedJenjang = 'SMK';
 
   const newUser: TeacherUser = {
-    id: `user-${Date.now()}`,
-    name: name || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase(),
+    id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    name: safeName || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase(),
     email: cleanEmail,
-    schoolName: schoolName || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
+    schoolName: safeSchoolName || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
     jenjang: detectedJenjang,
-    mataPelajaran: mataPelajaran || 'Semua Mata Pelajaran',
+    mataPelajaran: safeMapel || 'Semua Mata Pelajaran',
     role,
     status,
     registeredAt: new Date().toISOString(),
@@ -501,85 +622,87 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   users.unshift(newUser);
   saveDB();
 
-  res.json({
+  const token = createSession(newUser.id);
+  res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
+  recordAudit(req, 'auth.register.success', 'user', newUser.id, true, newUser.id);
+
+  return res.json({
     success: true,
     message: status === 'VERIFIED'
       ? 'Akun Admin berhasil diaktifkan!'
-      : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi oleh Admin Kurikulum (Bpk. Amwaluddin Lubis).',
+      : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi admin.',
     user: newUser
   });
 });
 
 // 2b. Logout endpoint
 app.post('/api/auth/logout', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'Berhasil keluar dari akun. Sesi telah diakhiri.'
-  });
+  const user = getAuthenticatedUser(req);
+  const token = getSessionTokenFromCookieHeader(req.headers.cookie);
+  revokeSessionToken(token || undefined);
+  res.setHeader('Set-Cookie', buildExpiredSessionCookie(process.env.NODE_ENV === 'production'));
+  recordAudit(req, 'auth.logout', 'user', user?.id, true, user?.id);
+  res.json({ success: true, message: 'Berhasil keluar dari akun. Sesi telah diakhiri.' });
 });
 
 // 3. User list (for Admin verification panel)
 app.get('/api/users', (req: Request, res: Response) => {
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
   res.json({ success: true, users });
 });
 
 // 4. Admin verify / reject / update teacher status
 app.post('/api/users/verify', (req: Request, res: Response) => {
-  const { userId, status, adminName } = req.body;
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
+
+  const { userId, status } = req.body;
   if (!userId || !['VERIFIED', 'PENDING', 'REJECTED'].includes(status)) {
-    return res.status(400).json({ success: false, message: 'Data verifikasi tidak valid' });
+    recordAudit(req, 'user.verify.invalid', 'user', String(userId || ''), false, requester.id);
+    return res.status(400).json({ success: false, error: { code: 'INVALID_VERIFICATION', message: 'Data verifikasi tidak valid.' } });
   }
 
   const user = users.find(u => u.id === userId);
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'Guru tidak ditemukan' });
-  }
+  if (!user) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'Guru tidak ditemukan.' } });
+  if (user.role === 'SUPER_ADMIN') return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah melalui endpoint ini.' } });
 
   user.status = status;
   if (status === 'VERIFIED') {
     user.verifiedAt = new Date().toISOString();
-    user.verifiedBy = adminName || 'Amwaluddin Lubis, M.Pd.';
+    user.verifiedBy = requester.name;
   } else {
     user.verifiedAt = undefined;
     user.verifiedBy = undefined;
   }
 
   saveDB();
-
-  res.json({
-    success: true,
-    message: `Status guru ${user.name} berhasil diubah menjadi: ${status}`,
-    user
-  });
+  recordAudit(req, 'user.verify', 'user', user.id, true, requester.id);
+  res.json({ success: true, message: 'Status guru ' + user.name + ' berhasil diubah menjadi: ' + status, user });
 });
 
-// 4b. Update user (manajemen user dua level)
-// - Admin: boleh ubah profil siapa pun + role (GURU/ADMIN), kecuali SUPER_ADMIN.
-// - Guru: hanya profil sendiri (nama, sekolah, mapel, NIP, NPSN).
-// - Status HANYA via /api/users/verify. Email & id tidak bisa diubah.
+// 4b. Update user (server derives requester from the session cookie)
 app.put('/api/users/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { requesterId, name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
+  const requester = requireAuth(req, res);
+  if (!requester) return;
 
+  const { id } = req.params;
+  const { name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
   const target = users.find(u => u.id === id);
-  if (!target) {
-    return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
-  }
-  const requester = users.find(u => u.id === String(requesterId || ''));
-  if (!requester) {
-    return res.status(403).json({ success: false, message: 'Identitas peminta tidak valid' });
-  }
+  if (!target) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' } });
 
   const isAdmin = requester.role === 'SUPER_ADMIN' || requester.role === 'ADMIN';
   const isSelf = requester.id === id;
   if (!isAdmin && !isSelf) {
-    return res.status(403).json({ success: false, message: 'Anda hanya boleh mengubah profil sendiri' });
+    recordAudit(req, 'user.update.denied', 'user', id, false, requester.id);
+    return res.status(403).json({ success: false, error: { code: 'PROFILE_ACCESS_DENIED', message: 'Anda hanya boleh mengubah profil sendiri.' } });
   }
-  if (target.role === 'SUPER_ADMIN' && !isSelf) {
-    return res.status(403).json({ success: false, message: 'Akun Super Admin tidak dapat diubah' });
-  }
+  if (target.role === 'SUPER_ADMIN' && !isSelf) return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah.' } });
 
   const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
+  if (name !== undefined && !isNonEmptyString(name, LIMITS.name)) return res.status(400).json({ success: false, error: { code: 'INVALID_NAME', message: 'Nama wajib diisi dan terlalu panjang.' } });
+  if (schoolName !== undefined && exceedsLength(schoolName, LIMITS.schoolName)) return res.status(400).json({ success: false, error: { code: 'INVALID_SCHOOL_NAME', message: 'Nama sekolah terlalu panjang.' } });
+  if (mataPelajaran !== undefined && exceedsLength(mataPelajaran, LIMITS.subject)) return res.status(400).json({ success: false, error: { code: 'INVALID_SUBJECT', message: 'Mata pelajaran terlalu panjang.' } });
 
   if (isAdmin) {
     if (clean(name)) target.name = clean(name);
@@ -588,104 +711,96 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
     if (nip !== undefined) target.nip = clean(nip) || undefined;
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
-    // Role: admin boleh GURU<->ADMIN; tidak boleh menyentuh role diri sendiri/SUPER_ADMIN
-    if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') {
-      target.role = role;
-    }
+    if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') target.role = role;
   } else {
-    // Guru: profil sendiri, tanpa jenjang/role/status
-    if (clean(name)) target.name = clean(name);
-    if (clean(schoolName)) target.schoolName = clean(schoolName);
-    if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
-    if (nip !== undefined) target.nip = clean(nip) || undefined;
-    if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
-  }
-
-  saveDB();
-  res.json({ success: true, message: `Profil ${target.name} berhasil diperbarui`, user: target });
-});
-
-// 5. Delete teacher
-app.delete('/api/users/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const initialLength = users.length;
-  users = users.filter(u => u.id !== id);
-  if (users.length === initialLength) {
-    return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
-  }
-  saveDB();
-  res.json({ success: true, message: 'Data guru berhasil dihapus' });
-});
-
-// 6. Documents repository
+    if (clean(name// 6. Documents repository
 app.get('/api/documents', (req: Request, res: Response) => {
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
+
   const { authorId, jenjang, docType } = req.query;
-  let filtered = [...documents];
+  let filtered = requester.role === 'SUPER_ADMIN'
+    ? [...documents]
+    : requester.role === 'ADMIN'
+      ? documents.filter(d => d.schoolName === requester.schoolName)
+      : documents.filter(d => d.authorId === requester.id);
 
   if (authorId && authorId !== 'all') {
-    filtered = filtered.filter(d => d.authorId === authorId || d.isPublic);
+    filtered = requester.role === 'SUPER_ADMIN'
+      ? filtered.filter(d => d.authorId === String(authorId))
+      : filtered.filter(d => d.authorId === requester.id);
   }
-  if (jenjang && jenjang !== 'all') {
-    filtered = filtered.filter(d => d.jenjang === jenjang);
-  }
-  if (docType && docType !== 'all') {
-    filtered = filtered.filter(d => d.docType === docType);
-  }
+  if (jenjang && jenjang !== 'all') filtered = filtered.filter(d => d.jenjang === jenjang);
+  if (docType && docType !== 'all') filtered = filtered.filter(d => d.docType === docType);
 
   res.json({ success: true, documents: filtered });
 });
 
 app.post('/api/documents', (req: Request, res: Response) => {
-  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, authorId, authorName, schoolName, durationMinutes } = req.body;
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
 
-  if (!title || !content) {
-    return res.status(400).json({ success: false, message: 'Judul dan konten dokumen wajib diisi' });
+  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, durationMinutes } = req.body;
+  if (!requireText(title, 240) || !requireText(content, LIMITS.documentContent)) {
+    return res.status(400).json({ success: false, error: { code: 'INVALID_DOCUMENT', message: 'Judul dan konten dokumen wajib diisi dan ukurannya harus wajar.' } });
+  }
+  if (!['modul_ajar', 'rpp', 'soal_ujian', 'kktp_atp', 'lkpd', 'prota_promes', 'modul_p5'].includes(String(docType))) {
+    return res.status(400).json({ success: false, error: { code: 'INVALID_DOCUMENT_TYPE', message: 'Jenis perangkat ajar tidak valid.' } });
   }
 
   const newDoc: EducationalDocument = {
-    id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    title,
-    docType: docType || 'modul_ajar',
-    jenjang: jenjang || 'SD',
-    tingkat: tingkat || 'Kelas 4',
-    fase: fase || 'Fase B',
-    mataPelajaran: mataPelajaran || 'Umum',
-    topik: topik || title,
-    content,
+    id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+    title: String(title).trim(),
+    docType,
+    jenjang: ['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang)) ? jenjang : requester.jenjang,
+    tingkat: typeof tingkat === 'string' && tingkat.trim().length <= 80 ? tingkat.trim() : 'Kelas 4',
+    fase: typeof fase === 'string' && fase.trim().length <= 40 ? fase.trim() : 'Fase B',
+    mataPelajaran: typeof mataPelajaran === 'string' && mataPelajaran.trim().length <= LIMITS.subject ? mataPelajaran.trim() : requester.mataPelajaran,
+    topik: typeof topik === 'string' && topik.trim().length <= LIMITS.topic ? topik.trim() : String(title).trim(),
+    content: String(content),
     createdAt: new Date().toISOString(),
-    authorId: authorId || 'user-admin-1',
-    authorName: authorName || 'Guru Merdeka Belajar',
-    schoolName: schoolName || 'Sekolah Penggerak',
-    isPublic: true,
-    durationMinutes: durationMinutes || Number((2.8 + Math.random() * 0.9).toFixed(1))
+    authorId: requester.id,
+    authorName: requester.name,
+    schoolName: requester.schoolName,
+    isPublic: false,
+    durationMinutes: typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) ? Math.min(Math.max(durationMinutes, 0), 999) : undefined
   };
 
   documents.unshift(newDoc);
   saveDB();
+  recordAudit(req, 'document.create', 'document', newDoc.id, true, requester.id);
   res.json({ success: true, message: 'Dokumen perangkat ajar berhasil disimpan ke arsip!', document: newDoc });
 });
 
 app.delete('/api/documents/:id', (req: Request, res: Response) => {
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
+
   const { id } = req.params;
+  const target = documents.find(d => d.id === id);
+  if (!target) return res.status(404).json({ success: false, error: { code: 'DOCUMENT_NOT_FOUND', message: 'Dokumen tidak ditemukan.' } });
+
+  const allowed = requester.role === 'SUPER_ADMIN' || target.authorId === requester.id || (requester.role === 'ADMIN' && target.schoolName === requester.schoolName);
+  if (!allowed) {
+    recordAudit(req, 'document.delete.denied', 'document', id, false, requester.id);
+    return res.status(403).json({ success: false, error: { code: 'DOCUMENT_ACCESS_DENIED', message: 'Anda tidak memiliki akses ke dokumen ini.' } });
+  }
+
   documents = documents.filter(d => d.id !== id);
   saveDB();
+  recordAudit(req, 'document.delete', 'document', id, true, requester.id);
   res.json({ success: true, message: 'Dokumen berhasil dihapus dari arsip' });
 });
 
 // 7. AI Perangkat Ajar Generator using Gemini 3.8 Flash
 app.post('/api/generate', async (req: Request, res: Response) => {
-  try {
-    // Kunci jenjang: 1 guru hanya untuk 1 tingkat sekolah sesuai profil.
-    // Admin/Super Admin bebas lintas jenjang (tugas verifikasi & supervisi).
-    const reqAuthorId = String((req.body as any)?.authorId || '');
-    const authorUser = users.find(u => u.id === reqAuthorId);
-    if (authorUser && authorUser.role === 'GURU') {
-      req.body.jenjang = authorUser.jenjang;
-    }
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
+  if (rateLimitExceeded(req, res, 'generate:user:' + requester.id, 6, 60_000)) return;
 
+  try {
     const {
       docType,
-      jenjang,
       tingkat,
       fase,
       mataPelajaran,
@@ -695,15 +810,50 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       targetPeserta,
       dimensiP5,
       soalConfig,
-      authorName,
-      schoolName,
       catatanTambahan
     } = req.body;
 
-    if (!mataPelajaran || !topik) {
+    const jenjang = requester.role === 'GURU'
+      ? requester.jenjang
+      : (['SD', 'SMP', 'SMA', 'SMK'].includes(String(req.body.jenjang)) ? req.body.jenjang : requester.jenjang);
+    const authorName = requester.name;
+    const schoolName = requester.schoolName;
+
+    if (!requireText(mataPelajaran, LIMITS.subject) || !requireText(topik, LIMITS.topic)) {
       return res.status(400).json({
         success: false,
-        message: 'Mata pelajaran dan topik materi pokok wajib diisi!'
+        error: { code: 'INVALID_GENERATOR_INPUT', message: 'Mata pelajaran dan topik wajib diisi dan ukurannya harus wajar.' }
+      });
+    }
+
+    if (
+      exceedsLength(alokasiWaktu, LIMITS.generatorField) ||
+      exceedsLength(modelPembelajaran, LIMITS.generatorField) ||
+      exceedsLength(targetPeserta, LIMITS.generatorField) ||
+      exceedsLength(catatanTambahan?.instruksiKhusus, LIMITS.generatorField) ||
+      (Array.isArray(dimensiP5) && dimensiP5.join(',').length > LIMITS.generatorField)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'GENERATOR_INPUT_TOO_LARGE', message: 'Input generator terlalu panjang.' }
+      });
+    }
+
+    const promptSize = [
+      mataPelajaran,
+      topik,
+      alokasiWaktu,
+      modelPembelajaran,
+      targetPeserta,
+      Array.isArray(dimensiP5) ? dimensiP5.join(',') : '',
+      JSON.stringify(soalConfig || {}),
+      JSON.stringify(catatanTambahan || {})
+    ].join('\n').length;
+
+    if (promptSize > LIMITS.generatorPromptTotal) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'GENERATOR_PROMPT_TOO_LARGE', message: 'Total input generator terlalu panjang.' }
       });
     }
 
@@ -957,6 +1107,8 @@ PANDUAN PENULISAN:
 
     const calculatedDuration = Number((2.8 + Math.random() * 0.9).toFixed(1));
 
+    recordAudit(req, 'generation.create', 'document', undefined, true, requester.id);
+
     res.json({
       success: true,
       title: generatedTitle,
@@ -988,11 +1140,18 @@ PANDUAN PENULISAN:
 // 7b. AI Image Generator (ilustrasi dokumen) — model gemini-2.5-flash-image,
 // memakai GEMINI_API_KEY yang sama dengan generator teks.
 app.post('/api/generate-image', async (req: Request, res: Response) => {
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
+  if (rateLimitExceeded(req, res, 'generate-image:user:' + requester.id, 10, 60_000)) return;
+
   try {
     const { prompt, aspectRatio } = req.body as { prompt?: string; aspectRatio?: string };
 
-    if (!prompt || !String(prompt).trim()) {
-      return res.status(400).json({ success: false, message: 'Deskripsi gambar (prompt) wajib diisi.' });
+    if (!isNonEmptyString(prompt, LIMITS.imagePrompt)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_IMAGE_PROMPT', message: 'Deskripsi gambar wajib diisi dan dibatasi panjangnya.' }
+      });
     }
     if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return res.status(400).json({
@@ -1024,6 +1183,7 @@ app.post('/api/generate-image', async (req: Request, res: Response) => {
     }
 
     const mime = imgPart.inlineData.mimeType || 'image/png';
+    recordAudit(req, 'generation.image.create', 'image', undefined, true, requester.id);
     res.json({
       success: true,
       imageUrl: `data:${mime};base64,${imgPart.inlineData.data}`,
