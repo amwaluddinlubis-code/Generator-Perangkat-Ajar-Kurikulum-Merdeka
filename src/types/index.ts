@@ -101,6 +101,7 @@ export interface GeneratorParams {
   nip?: string;
   kepalaSekolah?: string;
   nipKepalaSekolah?: string;
+  classroomContext?: ClassroomContext;
   catatanTambahan?: {
     temaP5?: string;
     instruksiKhusus?: string;
@@ -112,4 +113,18 @@ export interface GeneratorParams {
     semesterProta?: string;
     tahunAjaran?: string;
   };
+}
+
+export type TeacherVoice = 'hangat' | 'reflektif' | 'praktis' | 'dialogis' | 'kreatif';
+
+/** Cerita dan pertimbangan guru yang menjadi sumber konteks manusiawi dokumen. */
+export interface ClassroomContext {
+  teacherStory: string;
+  studentProfile: string;
+  learningNeeds: string;
+  localContext: string;
+  priorKnowledge: string;
+  emotionalConsiderations: string;
+  teacherIntent: string;
+  teacherVoice: TeacherVoice;
 }

@@ -75,6 +75,30 @@ test('dokumen AI lengkap berstatus AI', () => {
   assert.deepEqual(quality.issues, []);
 });
 
+test('kualitas menandai konteks guru yang belum memadai', () => {
+  const content = '# Modul\n## Informasi Umum\n## Capaian Pembelajaran dan Tujuan Pembelajaran\n## Kegiatan Pembelajaran Inti dan Penutup\n## Asesmen dan Rubrik KKTP\n## Lampiran\n' + 'x'.repeat(900);
+  const quality = validateDocumentStructure('modul_ajar', content, {
+    modelUsed: 'gemini-3.8-flash',
+    classroomContext: { teacherStory: 'Singkat' }
+  });
+  assert.equal(quality.status, 'needs_review');
+  assert.ok(quality.issues.some(issue => issue.includes('Cerita guru')));
+});
+
+test('konteks guru lengkap tidak menambah isu human-centered', () => {
+  const content = '# Modul\n## Informasi Umum\n## Capaian Pembelajaran dan Tujuan Pembelajaran\n## Kegiatan Pembelajaran Inti dan Penutup\n## Asesmen dan Rubrik KKTP\n## Lampiran\n' + 'x'.repeat(900);
+  const quality = validateDocumentStructure('modul_ajar', content, {
+    modelUsed: 'gemini-3.8-flash',
+    classroomContext: {
+      teacherStory: 'Murid memakai pecahan saat berbagi bekal dan perlu alasan yang adil.',
+      studentProfile: 'Kelas heterogen dan suka benda konkret.',
+      learningNeeds: 'Sebagian perlu visual dan waktu berpikir.',
+      teacherIntent: 'Murid berani menjelaskan strategi dengan empati.'
+    }
+  });
+  assert.ok(!quality.issues.some(issue => issue.includes('Konteks manusiawi') || issue.includes('Cerita guru') || issue.includes('Profil/kebutuhan')));
+});
+
 test('fallback per-jenis mengikuti parameter guru', async () => {
   const { generateFallbackDocument } = await import('../serverFallback.ts');
 

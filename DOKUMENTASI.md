@@ -12,6 +12,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
 | Prompt berversi | `src/server/prompts/` — 1 file per jenis + `base.ts` + builder; versi tercatat di meta/audit; test snapshot per jenis |
+| Generasi berpusat pada guru | Form menangkap cerita guru, profil/kebutuhan murid, konteks lokal, pengetahuan awal, pertimbangan emosi, niat, dan nada suara; hasil diberi `needs_review` bila konteks belum memadai |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
 | Ekspor | `.docx` asli (Calibri 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
 | Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
@@ -552,6 +553,14 @@ Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim 
 ## 20. Status Implementasi Terkini — Security + Tenant Baseline
 
 **Branch kerja:** `feat/security-baseline`
+
+### P0 — Generasi manusiawi (selesai 30 September 2026)
+
+- Wizard generator meminta cerita guru minimal, niat pembelajaran, dan sedikitnya dua konteks kelas.
+- Konteks diteruskan sebagai data terpisah ke prompt, dengan batas keamanan agar tidak dianggap instruksi sistem.
+- Panduan prompt melarang klaim tentang emosi/diagnosis/kondisi murid yang tidak diberikan dan mengharuskan alasan pedagogis yang konkret.
+- Validator kualitas menandai keluaran `needs_review` bila cerita, niat, atau konteks kelas terlalu tipis.
+- Versi prompt dinaikkan ke `2026-09-30`; cakupan diuji melalui prompt dan quality tests.
 
 ### Selesai dan terverifikasi otomatis
 

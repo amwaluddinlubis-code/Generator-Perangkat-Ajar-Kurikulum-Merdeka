@@ -3,7 +3,8 @@ import {
   Jenjang, 
   DocType, 
   GeneratorParams, 
-  TeacherUser 
+  TeacherUser,
+  TeacherVoice
 } from '../types';
 import {
   JENJANG_CONFIGS,
@@ -87,6 +88,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setBentukSoal([]);
     setKomposisi({ mudah: '', sedang: '', sukar: '' });
     setTemaP5('');
+    setTeacherStory('');
+    setStudentProfile('');
+    setLearningNeeds('');
+    setLocalContext('');
+    setPriorKnowledge('');
+    setEmotionalConsiderations('');
+    setTeacherIntent('');
+    setTeacherVoice('hangat');
     setModelPembelajaran((MODEL_PEMBELAJARAN_PER_JENJANG[j] || MODEL_PEMBELAJARAN_PER_JENJANG.SD)[0].value);
     setExtraError(null);
     setSchoolName(currentUser.schoolName || '');
@@ -131,6 +140,16 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [targetPeserta, setTargetPeserta] = useState<string>('Peserta didik reguler/tipikal dengan diferensiasi gaya belajar');
   const [dimensiP5, setDimensiP5] = useState<string[]>([]);
   const [dimensiError, setDimensiError] = useState<boolean>(false);
+
+  // Konteks ini menjaga agar hasil tetap berakar pada pengalaman guru dan kelas nyata.
+  const [teacherStory, setTeacherStory] = useState('');
+  const [studentProfile, setStudentProfile] = useState('');
+  const [learningNeeds, setLearningNeeds] = useState('');
+  const [localContext, setLocalContext] = useState('');
+  const [priorKnowledge, setPriorKnowledge] = useState('');
+  const [emotionalConsiderations, setEmotionalConsiderations] = useState('');
+  const [teacherIntent, setTeacherIntent] = useState('');
+  const [teacherVoice, setTeacherVoice] = useState<TeacherVoice>('hangat');
 
   // Soal config (custom penuh oleh guru)
   const [jumlahSoal, setJumlahSoal] = useState<string>('');
@@ -177,6 +196,15 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       if (komposisiTotal !== 100) return 'Komposisi kesulitan harus total 100%.';
     }
     if (docType === 'modul_p5' && !temaP5) return 'Pilih tema projek P5.';
+    return null;
+  };
+
+  const validateHumanContext = (): string | null => {
+    if (teacherStory.trim().length < 20) return 'Ceritakan pengalaman atau alasan Anda memilih materi ini (minimal 20 karakter).';
+    if (teacherIntent.trim().length < 10) return 'Tuliskan niat utama Anda untuk membantu murid melalui pembelajaran ini.';
+    const filled = [studentProfile, learningNeeds, localContext, priorKnowledge, emotionalConsiderations]
+      .filter(value => value.trim().length >= 10).length;
+    if (filled < 2) return 'Lengkapi sedikitnya dua konteks kelas: profil, kebutuhan, konteks lokal, pengetahuan awal, atau pertimbangan emosional.';
     return null;
   };
 
@@ -246,6 +274,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    const humanContextErr = validateHumanContext();
+    if (humanContextErr) {
+      setExtraError(humanContextErr);
+      setFormStep(1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
 
     onGenerate({
@@ -276,6 +311,16 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       authorName,
       schoolName,
       nip,
+      classroomContext: {
+        teacherStory: teacherStory.trim(),
+        studentProfile: studentProfile.trim(),
+        learningNeeds: learningNeeds.trim(),
+        localContext: localContext.trim(),
+        priorKnowledge: priorKnowledge.trim(),
+        emotionalConsiderations: emotionalConsiderations.trim(),
+        teacherIntent: teacherIntent.trim(),
+        teacherVoice
+      },
       catatanTambahan: {
         temaP5,
         lampiran,
@@ -299,6 +344,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       const typeErr = validateTypeSpecific();
       if (typeErr) {
         setExtraError(typeErr);
+        return;
+      }
+      const humanContextErr = validateHumanContext();
+      if (humanContextErr) {
+        setExtraError(humanContextErr);
+        document.getElementById('teacher-story')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
     }
@@ -550,6 +601,31 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           currentTopik={topik}
           onSelectTopic={handleSelectContextualTopic}
         />
+
+        <section aria-label="Cerita guru dan konteks kelas" className="mt-5 rounded-2xl border border-[#34c759]/25 bg-[#34c759]/[0.06] p-4 sm:p-5">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#34c759]/15 text-[#248a3d]"><UserCheck className="h-5 w-5" /></div>
+            <div>
+              <p className="section-label">Cerita guru & konteks kelas</p>
+              <p className="field-hint mt-1">Ceritakan kelas Anda dengan bahasa sendiri. AI hanya membantu merapikan; keputusan pedagogis tetap milik Anda.</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="field-label field-required" htmlFor="teacher-story">Mengapa materi ini penting bagi kelas Anda?</label>
+              <textarea id="teacher-story" value={teacherStory} onChange={e => { setTeacherStory(e.target.value); setExtraError(null); }} required minLength={20} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Contoh: Anak-anak sering memakai pecahan saat membagi makanan di rumah, tetapi masih ragu menjelaskan alasannya..." />
+            </div>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <div><label className="field-label" htmlFor="student-profile">Seperti apa murid di kelas ini?</label><textarea id="student-profile" value={studentProfile} onChange={e => setStudentProfile(e.target.value)} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Minat, kebiasaan belajar, keragaman kemampuan..." /></div>
+              <div><label className="field-label" htmlFor="learning-needs">Kebutuhan belajar yang perlu diperhatikan</label><textarea id="learning-needs" value={learningNeeds} onChange={e => setLearningNeeds(e.target.value)} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Dukungan, tantangan, atau diferensiasi yang dibutuhkan..." /></div>
+              <div><label className="field-label" htmlFor="local-context">Konteks lokal atau kehidupan sehari-hari</label><textarea id="local-context" value={localContext} onChange={e => setLocalContext(e.target.value)} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Lingkungan, budaya, pekerjaan orang tua, atau isu sekitar..." /></div>
+              <div><label className="field-label" htmlFor="prior-knowledge">Pengetahuan awal murid</label><textarea id="prior-knowledge" value={priorKnowledge} onChange={e => setPriorKnowledge(e.target.value)} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Apa yang sudah mereka pahami atau sering keliru?" /></div>
+              <div><label className="field-label" htmlFor="emotional-considerations">Pertimbangan relasi dan emosi</label><textarea id="emotional-considerations" value={emotionalConsiderations} onChange={e => setEmotionalConsiderations(e.target.value)} maxLength={2000} rows={3} className="apple-input resize-y" placeholder="Cara menjaga rasa aman, percaya diri, dan saling menghargai..." /></div>
+              <div><label className="field-label" htmlFor="teacher-voice">Nada suara dokumen</label><select id="teacher-voice" value={teacherVoice} onChange={e => setTeacherVoice(e.target.value as TeacherVoice)} className="apple-input"><option value="hangat">Hangat dan menyemangati</option><option value="reflektif">Reflektif dan penuh pertimbangan</option><option value="praktis">Praktis dan lugas</option><option value="dialogis">Dialogis dan dekat dengan murid</option><option value="kreatif">Kreatif dan ekspresif</option></select></div>
+            </div>
+            <div><label className="field-label field-required" htmlFor="teacher-intent">Niat utama Anda sebagai guru</label><textarea id="teacher-intent" value={teacherIntent} onChange={e => { setTeacherIntent(e.target.value); setExtraError(null); }} required minLength={10} maxLength={2000} rows={2} className="apple-input resize-y" placeholder="Setelah pembelajaran ini, perubahan apa yang paling ingin Anda lihat pada murid?" /></div>
+          </div>
+        </section>
 
         {/* Waktu, model & profil */}
         <section aria-label="Waktu, model, dan profil" className="mt-5">
@@ -1121,6 +1197,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <div>
               <dt className="text-[11.5px] text-[#6e6e73] dark:text-[#98989d]">Topik</dt>
               <dd className="text-[14px] font-semibold">{topik}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-[11.5px] text-[#6e6e73] dark:text-[#98989d]">Konteks manusiawi</dt>
+              <dd className="text-[14px] font-semibold">{teacherVoice} · {teacherStory ? 'cerita guru siap dipakai' : 'belum diisi'}</dd>
             </div>
           </dl>
           <p className="mt-3 border-t border-black/10 dark:border-white/10 pt-3 text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">

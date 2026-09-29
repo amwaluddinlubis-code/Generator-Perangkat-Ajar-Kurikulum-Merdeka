@@ -1299,7 +1299,8 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       targetPeserta,
       dimensiP5,
       soalConfig,
-      catatanTambahan
+      catatanTambahan,
+      classroomContext
     } = generatorValidation.value as Record<string, any>;
 
     const jenjang = requester.role === 'GURU'
@@ -1318,6 +1319,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       docType, jenjang, tingkat, fase: calculatedFase,
       mataPelajaran, topik, alokasiWaktu, modelPembelajaran, targetPeserta,
       dimensiP5, authorName, schoolName, soalConfig, catatanTambahan
+      , classroomContext
     };
     const fullPrompt = buildGeneratorPrompt(promptCtx);
     const promptIssues = validateBuiltPrompt(fullPrompt, promptCtx);
@@ -1416,7 +1418,8 @@ app.post('/api/generate', async (req: Request, res: Response) => {
     const quality = validateDocumentStructure(docType, generatedText, {
       expectedQuestions: Number((soalConfig as any)?.jumlahSoal) || 0,
       modelUsed,
-      mapel: mataPelajaran
+      mapel: mataPelajaran,
+      classroomContext
     });
 
     recordAudit(req, 'generation.create', 'document', undefined, true, requester.id);

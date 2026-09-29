@@ -185,6 +185,22 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
     }
   }
 
+  if (input.classroomContext !== undefined) {
+    if (!input.classroomContext || typeof input.classroomContext !== 'object' || Array.isArray(input.classroomContext)) {
+      errors.push('Konteks kelas tidak valid.');
+    } else {
+      const context = input.classroomContext as Record<string, unknown>;
+      for (const field of ['teacherStory', 'studentProfile', 'learningNeeds', 'localContext', 'priorKnowledge', 'emotionalConsiderations', 'teacherIntent']) {
+        if (context[field] !== undefined && (typeof context[field] !== 'string' || exceedsLength(context[field], LIMITS.generatorField))) {
+          errors.push(`Konteks ${field} terlalu panjang atau tidak valid.`);
+        }
+      }
+      if (context.teacherVoice !== undefined && !['hangat', 'reflektif', 'praktis', 'dialogis', 'kreatif'].includes(String(context.teacherVoice))) {
+        errors.push('Gaya suara guru tidak valid.');
+      }
+    }
+  }
+
   const promptSize = [
     input.mataPelajaran,
     input.topik,
@@ -193,7 +209,8 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
     input.targetPeserta,
     Array.isArray(input.dimensiP5) ? input.dimensiP5.join(',') : '',
     JSON.stringify(input.soalConfig || {}),
-    JSON.stringify(input.catatanTambahan || {})
+    JSON.stringify(input.catatanTambahan || {}),
+    JSON.stringify(input.classroomContext || {})
   ].join('\n').length;
 
   if (promptSize > LIMITS.generatorPromptTotal) errors.push('Total input generator terlalu panjang.');
@@ -392,7 +409,7 @@ const STRUCTURE_MARKERS: Record<string, Array<{ label: string; patterns: RegExp[
 export function validateDocumentStructure(
   docType: string,
   content: string,
-  opts?: { expectedQuestions?: number; modelUsed?: string; mapel?: string }
+  opts?: { expectedQuestions?: number; modelUsed?: string; mapel?: string; classroomContext?: Record<string, unknown> }
 ): DocumentQuality {
   const text = String(content || '');
   const stats = {
@@ -401,6 +418,15 @@ export function validateDocumentStructure(
     questions: (text.match(/(?:^|\n)\s*(?:\*\*)?(?:soal|nomor|butir)\s+\d+/gi) || []).length
   };
   const issues: string[] = [];
+
+  const humanContext = opts?.classroomContext;
+  const humanFields = humanContext ? ['studentProfile', 'learningNeeds', 'localContext', 'priorKnowledge', 'emotionalConsiderations'] : [];
+  const humanFilled = humanFields.filter(field => typeof humanContext?.[field] === 'string' && String(humanContext[field]).trim().length >= 10).length;
+  if (humanContext) {
+    if (String(humanContext.teacherStory || '').trim().length < 20) issues.push('Cerita guru terlalu singkat; tambahkan pengalaman atau alasan pedagogis yang nyata.');
+    if (String(humanContext.teacherIntent || '').trim().length < 10) issues.push('Niat guru belum cukup jelas untuk memandu keputusan pembelajaran.');
+    if (humanFilled < 2) issues.push('Profil/kebutuhan/konteks murid belum cukup untuk personalisasi dokumen.');
+  }
 
   if (stats.chars < 800) issues.push('Dokumen terlalu pendek (di bawah 800 karakter) — kemungkinan terpotong.');
   for (const pattern of PLACEHOLDER_PATTERNS) {

@@ -76,6 +76,26 @@ test('prompt mapel agama memuat ketentuan 020/2026', () => {
   assert.ok(prompt.includes('PENGAMALAN'), 'penekanan pengamalan ada');
 });
 
+test('prompt membawa cerita guru dan aturan anti-generik', () => {
+  const prompt = buildGeneratorPrompt({
+    ...BASE_CTX,
+    classroomContext: {
+      teacherStory: 'Murid sering membagi bekal dan perlu memahami pecahan secara adil.',
+      studentProfile: 'Kelas heterogen, senang bekerja dengan benda konkret.',
+      learningNeeds: 'Sebagian murid perlu contoh visual dan waktu berpikir.',
+      localContext: 'Contoh diambil dari pasar dan bekal keluarga.',
+      priorKnowledge: 'Murid mengenal setengah dan seperempat.',
+      emotionalConsiderations: 'Jaga agar murid tidak malu saat menjelaskan kesalahan.',
+      teacherIntent: 'Murid berani menjelaskan strategi dan menghargai teman.',
+      teacherVoice: 'hangat'
+    }
+  });
+  assert.ok(prompt.includes('Murid sering membagi bekal'));
+  assert.ok(prompt.includes('BERANGKAT DARI MANUSIA NYATA'));
+  assert.ok(prompt.includes('Guru tetap pemilik keputusan'));
+  assert.deepEqual(validateBuiltPrompt(prompt, { ...BASE_CTX, classroomContext: { teacherStory: 'x' } }), []);
+});
+
 test('prompt soal memakai konfigurasi guru', () => {
   const prompt = buildGeneratorPrompt({
     ...BASE_CTX,
