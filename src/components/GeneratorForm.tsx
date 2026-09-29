@@ -38,21 +38,21 @@ interface GeneratorFormProps {
   onGenerate: (params: GeneratorParams) => Promise<void>;
   isGenerating: boolean;
   activeDocType?: DocType;
-  onSelectDocType?: (type: DocType) => void;
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   currentUser,
   onGenerate,
   isGenerating,
-  activeDocType,
-  onSelectDocType
+  activeDocType
 }) => {
   const [docType, setDocType] = useState<DocType>(activeDocType || 'modul_ajar');
 
+  // Jenis dokumen sepenuhnya mengikuti pilihan sidebar.
   useEffect(() => {
     if (activeDocType && activeDocType !== docType) {
       setDocType(activeDocType);
+      setFormStep(0);
     }
   }, [activeDocType]);
 
@@ -72,11 +72,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setNip(currentUser.nip || '');
     setFormStep(0);
   }, [currentUser.id]);
-
-  const handleDocTypeChange = (newType: DocType) => {
-    setDocType(newType);
-    onSelectDocType?.(newType);
-  };
 
   const defaultAlokasi = (j: Jenjang) =>
     j === 'SD' ? '2 JP (2 x 35 Menit) - 1 Pertemuan' :
@@ -247,57 +242,38 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Isi kebutuhan pembelajaran' : 'Periksa sebelum menyusun'}
           </h3>
           <p className="mt-1 text-[13.5px] text-[#6e6e73] dark:text-[#98989d]">
-            {formStep === 0 ? 'Pilih jenis dokumen, lalu fase dan kelas di jenjang Anda.' :
+            {formStep === 0 ? 'Jenis dokumen mengikuti sidebar — tentukan fase dan kelas di jenjang Anda.' :
               formStep === 1 ? 'Tentukan mata pelajaran, materi, alokasi waktu, dan kebutuhan murid.' :
                 'Dokumen dibuat atas nama Anda — sesuaikan bila perlu.'}
           </p>
         </div>
 
-        {/* 1. Pilih Jenis Perangkat Ajar */}
+        {/* 1. Jenis dokumen — mengikuti pilihan sidebar */}
         {formStep === 0 && <>
         <div>
           <p className="text-[14px] font-semibold mb-3">
             Jenis dokumen
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {(Object.keys(DOC_TYPE_INFO) as DocType[]).map((typeKey) => {
-              const info = DOC_TYPE_INFO[typeKey];
-              const isSelected = docType === typeKey;
-              return (
-                <button
-                  key={typeKey}
-                  type="button"
-                  onClick={() => handleDocTypeChange(typeKey)}
-                  aria-pressed={isSelected}
-                  className={`p-4 rounded-2xl border text-left transition-all min-h-[104px] flex flex-col justify-between cursor-pointer ${
-                    isSelected
-                      ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
-                      : 'border-black/10 dark:border-white/15 hover:border-black/30 dark:hover:border-white/30 hover:bg-[#f5f5f7] dark:hover:bg-white/5'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={isSelected ? '' : 'text-[#424245] dark:text-[#c7c7cc]'}>
-                        {typeKey === 'modul_ajar' && <FileText className="w-5 h-5" />}
-                        {typeKey === 'rpp' && <Layers className="w-5 h-5" />}
-                        {typeKey === 'soal_ujian' && <HelpCircle className="w-5 h-5" />}
-                        {typeKey === 'lkpd' && <BookOpen className="w-5 h-5" />}
-                        {typeKey === 'kktp_atp' && <Target className="w-5 h-5" />}
-                        {typeKey === 'prota_promes' && <Calendar className="w-5 h-5" />}
-                        {typeKey === 'modul_p5' && <Sparkles className="w-5 h-5" />}
-                      </span>
-                      {isSelected && <Check className="w-4 h-4" />}
-                    </div>
-                    <div className={`font-semibold text-[14px] leading-snug ${isSelected ? '' : ''}`}>
-                      {info.label}
-                    </div>
-                  </div>
-                  <p className={`text-[12px] mt-1 line-clamp-2 ${isSelected ? 'opacity-70' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>
-                    {info.desc}
-                  </p>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-3.5 rounded-2xl bg-black dark:bg-white dark:text-black text-white p-4 sm:p-5">
+            <div className="shrink-0">
+              {docType === 'modul_ajar' && <FileText className="w-6 h-6" />}
+              {docType === 'rpp' && <Layers className="w-6 h-6" />}
+              {docType === 'soal_ujian' && <HelpCircle className="w-6 h-6" />}
+              {docType === 'lkpd' && <BookOpen className="w-6 h-6" />}
+              {docType === 'kktp_atp' && <Target className="w-6 h-6" />}
+              {docType === 'prota_promes' && <Calendar className="w-6 h-6" />}
+              {docType === 'modul_p5' && <Sparkles className="w-6 h-6" />}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-[15px]">{DOC_TYPE_INFO[docType].label}</p>
+                <span className="text-[11.5px] font-semibold px-2 py-0.5 rounded-full bg-white/20 dark:bg-black/10">
+                  {DOC_TYPE_INFO[docType].badge}
+                </span>
+              </div>
+              <p className="text-[13px] opacity-70 mt-0.5">{DOC_TYPE_INFO[docType].desc}</p>
+              <p className="text-[12px] opacity-60 mt-1.5">Ganti jenis lewat menu sidebar.</p>
+            </div>
           </div>
         </div>
 

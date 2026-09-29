@@ -163,6 +163,13 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 * **Komposisi Level Kognitif**: C3 (Aplikasi), C4 (Analisis), C5 (Evaluasi), C6 (Kreasi)
 * **Bentuk Soal**: Pilihan Ganda (PG), Pilihan Ganda Kompleks (Model AKM), Menjodohkan, Isian Singkat, dan Uraian Analitis HOTS.
 
+| No | Materi / Indikator | Level Kognitif | Bentuk Soal | No. Butir |
+| :--- | :--- | :---: | :---: | :---: |
+| 1 | Konsep dasar ${topik} | C3 - Aplikasi | Pilihan Ganda | 1 |
+| 2 | Analisis masalah ${topik} | C4 - Analisis | PG Kompleks (AKM) | 2 - 3 |
+| 3 | Keterkaitan konsep ${topik} | C3 - Aplikasi | Menjodohkan | 4 |
+| 4 | Studi kasus ${topik} | C5/C6 - Evaluasi & Kreasi | Uraian HOTS | 5 |
+
 ---
 
 ### II. BUTIR SOAL UJIAN BERBASIS STIMULUS DATA & WACANA
@@ -272,6 +279,12 @@ Melalui model pembelajaran **${modelPembelajaran}**, peserta didik dapat:
 * **Sikap**: Observasi keaktifan dan gotong royong selama kerja kelompok.
 * **Pengetahuan**: Tanya jawab lisan dan kuis cepat exit-ticket 2 butir soal.
 * **Keterampilan**: Penilaian unjuk kerja laporan hasil analisis kelompok.
+
+| Aspek | Teknik | Instrumen |
+| :--- | :--- | :--- |
+| Sikap | Observasi | Lembar observasi Profil Pelajar Pancasila |
+| Pengetahuan | Tes lisan & tulis singkat | Exit ticket 2 butir + tanya jawab |
+| Keterampilan | Unjuk kerja | Rubrik laporan kelompok |
 
 ---
 

@@ -14,7 +14,7 @@ interface BelajarIdAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: TeacherUser;
-  onLogin: (data: { email: string; name?: string; schoolName?: string; jenjang?: Jenjang; mataPelajaran?: string }) => Promise<void>;
+  onLogin: (data: { email: string; password?: string; name?: string; schoolName?: string; jenjang?: Jenjang; mataPelajaran?: string }) => Promise<void>;
   onLogout?: () => void;
 }
 
@@ -28,6 +28,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   if (!isOpen) return null;
 
   const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [schoolName, setSchoolName] = useState<string>('');
   const [jenjang, setJenjang] = useState<Jenjang>('SD');
@@ -108,6 +109,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
     setLoading(true);
     await onLogin({
       email,
+      password: password || undefined,
       name,
       schoolName,
       jenjang,
@@ -253,6 +255,20 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                 <p className="text-[12px] text-[#86868b] mt-1.5">
                   @guru.sd / @guru.smp / @guru.sma / @guru.smk.belajar.id
                 </p>
+              </div>
+
+              <div>
+                <label className="block text-[13px] font-semibold mb-1.5">
+                  Kata sandi (bila sudah diatur)
+                </label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="apple-input"
+                />
               </div>
 
               <div>

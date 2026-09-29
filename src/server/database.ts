@@ -61,7 +61,6 @@ export interface DatabaseState {
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const IS_TEST_RUNTIME = process.env.NODE_ENV === 'test' || process.env.npm_lifecycle_event === 'test' || process.argv.includes('--test');
 const DB_PATH = process.env.RGM_DB_PATH || (IS_TEST_RUNTIME ? ':memory:' : path.join(DATA_DIR, 'app.sqlite'));
-const LEGACY_JSON_PATH = path.join(DATA_DIR, 'db.json');
 
 let database: DatabaseSync | null = null;
 
@@ -188,6 +187,24 @@ function getDb(): DatabaseSync {
   if (!userColumns.some(column => column.name === 'deleted_at')) {
     database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
   }
+  if (!userColumns.some(column => column.name === 'password_hash')) {
+    database.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+  }
+
+  const schoolColumns = database.prepare('PRAGMA table_info(schools)').all() as Array<{ name: string }>;
+  const schoolIdentityColumns: Array<[string, string]> = [
+    ['address', 'TEXT'],
+    ['city', 'TEXT'],
+    ['accreditation', 'TEXT'],
+    ['principal_name', 'TEXT'],
+    ['principal_nip', 'TEXT'],
+    ['logo_url', 'TEXT']
+  ];
+  for (const [column, type] of schoolIdentityColumns) {
+    if (!schoolColumns.some(existing => existing.name === column)) {
+      database.exec(`ALTER TABLE schools ADD COLUMN ${column} ${type}`);
+    }
+  }
 
   return database;
 }
@@ -304,26 +321,14 @@ function insertDocument(document: Record<string, any>): void {
   );
 }
 
-function migrateLegacyJson(seedUsers: Record<string, any>[], seedDocuments: Record<string, any>[], seedAuditLogs: Record<string, any>[]): void {
+function seedDatabaseIfEmpty(seedUsers: Record<string, any>[], seedDocuments: Record<string, any>[], seedAuditLogs: Record<string, any>[]): void {
   const db = getDb();
   const count = db.prepare('SELECT COUNT(*) AS count FROM users').get() as { count: number };
   if (Number(count.count) > 0) return;
 
-  let sourceUsers = seedUsers;
-  let sourceDocuments = seedDocuments;
-  let sourceAuditLogs = seedAuditLogs;
-
-  if (fs.existsSync(LEGACY_JSON_PATH)) {
-    try {
-      const legacy = JSON.parse(fs.readFileSync(LEGACY_JSON_PATH, 'utf8'));
-      if (Array.isArray(legacy.users) && legacy.users.length) sourceUsers = legacy.users;
-      if (Array.isArray(legacy.documents)) sourceDocuments = legacy.documents;
-      if (Array.isArray(legacy.auditLogs)) sourceAuditLogs = legacy.auditLogs;
-      console.log('[DB] Migrating legacy data/db.json into SQLite');
-    } catch (error) {
-      console.warn('[DB] Legacy db.json could not be read; using code seed:', (error as Error).message);
-    }
-  }
+  const sourceUsers = seedUsers;
+  const sourceDocuments = seedDocuments;
+  const sourceAuditLogs = seedAuditLogs;
 
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -361,6 +366,87 @@ export function getOrCreateSchool(name: string, npsn?: string, jenjang: string =
   return ensureSchool(name, npsn, jenjang);
 }
 
+export interface DbSchool {
+  id: string;
+  name: string;
+  npsn?: string;
+  jenjang: string;
+  status: string;
+  address?: string;
+  city?: string;
+  accreditation?: string;
+  principalName?: string;
+  principalNip?: string;
+  logoUrl?: string;
+  createdAt: string;
+}
+
+function mapSchool(row: Record<string, unknown>): DbSchool {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    npsn: row.npsn ? String(row.npsn) : undefined,
+    jenjang: String(row.jenjang),
+    status: String(row.status),
+    address: row.address ? String(row.address) : undefined,
+    city: row.city ? String(row.city) : undefined,
+    accreditation: row.accreditation ? String(row.accreditation) : undefined,
+    principalName: row.principal_name ? String(row.principal_name) : undefined,
+    principalNip: row.principal_nip ? String(row.principal_nip) : undefined,
+    logoUrl: row.logo_url ? String(row.logo_url) : undefined,
+    createdAt: String(row.created_at)
+  };
+}
+
+export function getSchoolById(schoolId: string): DbSchool | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM schools WHERE id = ?').get(schoolId) as Record<string, unknown> | undefined;
+  return row ? mapSchool(row) : null;
+}
+
+export function listSchools(): DbSchool[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM schools ORDER BY name ASC').all() as Record<string, unknown>[];
+  return rows.map(mapSchool);
+}
+
+export function updateSchoolIdentity(schoolId: string, patch: Record<string, any>): DbSchool {
+  const db = getDb();
+  const current = getSchoolById(schoolId);
+  if (!current) throw new Error('School not found');
+
+  const clean = (v: any) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  db.prepare(`
+    UPDATE schools SET
+      name = COALESCE(?, name),
+      npsn = COALESCE(?, npsn),
+      address = COALESCE(?, address),
+      city = COALESCE(?, city),
+      accreditation = COALESCE(?, accreditation),
+      principal_name = COALESCE(?, principal_name),
+      principal_nip = COALESCE(?, principal_nip)
+    WHERE id = ?
+  `).run(
+    typeof patch.name === 'string' && patch.name.trim() ? patch.name.trim() : null,
+    clean(patch.npsn),
+    clean(patch.address),
+    clean(patch.city),
+    clean(patch.accreditation),
+    clean(patch.principalName),
+    clean(patch.principalNip),
+    schoolId
+  );
+  return getSchoolById(schoolId)!;
+}
+
+export function setSchoolLogoUrl(schoolId: string, logoUrl: string | null): DbSchool {
+  const db = getDb();
+  const current = getSchoolById(schoolId);
+  if (!current) throw new Error('School not found');
+  db.prepare('UPDATE schools SET logo_url = ? WHERE id = ?').run(logoUrl, schoolId);
+  return getSchoolById(schoolId)!;
+}
+
 export function updateSchool(schoolId: string, patch: { name?: string; npsn?: string; jenjang?: string }): void {
   const db = getDb();
   const current = db.prepare('SELECT name, npsn, jenjang FROM schools WHERE id = ?').get(schoolId) as Record<string, unknown> | undefined;
@@ -382,7 +468,7 @@ export function updateSchool(schoolId: string, patch: { name?: string; npsn?: st
 
 export function initializeDatabase(seedUsers: Record<string, any>[], seedDocuments: Record<string, any>[], seedAuditLogs: Record<string, any>[]): void {
   getDb();
-  migrateLegacyJson(seedUsers, seedDocuments, seedAuditLogs);
+  seedDatabaseIfEmpty(seedUsers, seedDocuments, seedAuditLogs);
 }
 
 export function loadState(): DatabaseState {
@@ -409,6 +495,23 @@ export function loadState(): DatabaseState {
   `).all() as Record<string, unknown>[]).map(mapAudit);
 
   return { users, documents, auditLogs };
+}
+
+export function getUserPasswordHash(userId: string): string | null {
+  const db = getDb();
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL').get(userId) as { password_hash?: unknown } | undefined;
+  const hash = row?.password_hash;
+  return typeof hash === 'string' && hash.length > 0 ? hash : null;
+}
+
+export function setUserPasswordHash(userId: string, hash: string): void {
+  const db = getDb();
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ? AND deleted_at IS NULL').run(hash, userId);
+}
+
+export function clearUserPasswordHash(userId: string): void {
+  const db = getDb();
+  db.prepare('UPDATE users SET password_hash = NULL WHERE id = ? AND deleted_at IS NULL').run(userId);
 }
 
 export function getUserById(userId: string): DbUser | null {

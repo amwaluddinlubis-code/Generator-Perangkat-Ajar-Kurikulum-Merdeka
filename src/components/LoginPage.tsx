@@ -15,6 +15,7 @@ import {
 interface LoginPageProps {
   onLogin: (data: {
     email: string;
+    password?: string;
     name?: string;
     schoolName?: string;
     jenjang?: Jenjang;
@@ -32,6 +33,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   const [regName, setRegName] = useState<string>('');
@@ -49,7 +51,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       return;
     }
     try {
-      await onLogin({ email: loginEmail.trim() });
+      await onLogin({ email: loginEmail.trim(), password: loginPassword || undefined });
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal masuk. Periksa kembali email Anda.');
     }
@@ -160,7 +162,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     </button>
                   ))}
                 </div>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-2">Hanya email sebagai identitas profil — tanpa kata sandi Belajar.id.</p>
+                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-2">Isi kata sandi bila akun Anda sudah mengaturnya.</p>
+              </div>
+
+              <div>
+                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="login-password">Kata sandi (opsional)</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="apple-input"
+                  autoComplete="current-password"
+                />
               </div>
 
               <button type="submit" disabled={isLoading} className="btn-apple w-full">

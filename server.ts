@@ -15,8 +15,14 @@ import {
   getAuditLogs,
   getDocumentById as getDbDocumentById,
   getOrCreateSchool,
+  getSchoolById as getDbSchoolById,
   getUserByEmail as getDbUserByEmail,
   getUserById as getDbUserById,
+  getUserPasswordHash as getDbUserPasswordHash,
+  listSchools as listDbSchools,
+  setSchoolLogoUrl as setDbSchoolLogoUrl,
+  setUserPasswordHash as setDbUserPasswordHash,
+  updateSchoolIdentity as updateDbSchoolIdentity,
   initializeDatabase,
   loadState,
   updateSchool,
@@ -29,6 +35,8 @@ import {
   createSession,
   getSessionTokenFromCookieHeader,
   getSessionUserIdFromCookieHeader,
+  hashPassword,
+  verifyPassword,
   isNonEmptyString,
   LIMITS,
   revokeSessionToken,
@@ -36,10 +44,14 @@ import {
 } from './src/server/security.js';
 import {
   validateDocumentPayload,
+  validateDocumentStructure,
   validateGeneratedDocument,
   validateGeneratorPayload,
   validateImagePayload,
   validateLoginPayload,
+  validateLogoPayload,
+  validatePasswordPayload,
+  validateSchoolPayload,
   validateUserPatch
 } from './src/server/validation.js';
 import {
@@ -66,6 +78,11 @@ app.set('trust proxy', process.env.TRUST_PROXY === '1');
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Berkas statis logo sekolah (diunggah via API, maksimal ~500KB per file)
+const UPLOADS_DIR = path.resolve(process.cwd(), 'data', 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1d', dotfiles: 'deny' }));
 
 app.use((req: Request, res: Response, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -652,6 +669,16 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
       return res.status(403).json({ success: false, error: { code: 'ACCOUNT_REJECTED', message: 'Akun tidak memiliki akses ke aplikasi.' } });
     }
 
+    // Akun yang sudah punya kata sandi wajib menyertakan kata sandi yang benar.
+    const storedHash = getDbUserPasswordHash(existingUser.id);
+    if (storedHash) {
+      const supplied = loginValidation.value.password;
+      if (!supplied || !verifyPassword(supplied, storedHash)) {
+        recordAudit(req, 'auth.login.invalid_password', 'user', existingUser.id, false, existingUser.id);
+        return res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: 'Email atau kata sandi salah.' } });
+      }
+    }
+
     const token = createSession(existingUser.id);
     res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
     recordAudit(req, 'auth.login.success', 'user', existingUser.id, true, existingUser.id);
@@ -711,6 +738,161 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   res.setHeader('Set-Cookie', buildExpiredSessionCookie(process.env.NODE_ENV === 'production'));
   recordAudit(req, 'auth.logout', 'user', user?.id, true, user?.id);
   res.json({ success: true, message: 'Berhasil keluar dari akun. Sesi telah diakhiri.' });
+});
+
+// 2c. Set/change own password (session required)
+app.post('/api/auth/password', (req: Request, res: Response) => {
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  const validation = validatePasswordPayload(req.body);
+  if (!validation.ok || !validation.value) {
+    recordAudit(req, 'auth.password.invalid_input', 'user', user.id, false, user.id);
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_PASSWORD_INPUT', message: validation.errors.join(' ') }
+    });
+  }
+
+  if (rateLimitExceeded(req, res, 'password:' + user.id, 5, 60_000)) return;
+
+  const existing = getDbUserPasswordHash(user.id);
+  if (existing) {
+    if (!validation.value.currentPassword || !verifyPassword(validation.value.currentPassword, existing)) {
+      recordAudit(req, 'auth.password.current_mismatch', 'user', user.id, false, user.id);
+      return res.status(401).json({ success: false, error: { code: 'CURRENT_PASSWORD_MISMATCH', message: 'Kata sandi saat ini salah.' } });
+    }
+  }
+
+  setDbUserPasswordHash(user.id, hashPassword(validation.value.newPassword));
+  recordAudit(req, 'auth.password.changed', 'user', user.id, true, user.id);
+  res.json({ success: true, message: 'Kata sandi berhasil diperbarui.' });
+});
+
+// 2d. Admin reset another user's password
+app.post('/api/admin/users/:id/password', (req: Request, res: Response) => {
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
+
+  const target = getDbUserById(String(req.params.id));
+  if (!target) {
+    return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' } });
+  }
+  if (target.role === 'SUPER_ADMIN' && requester.id !== target.id) {
+    recordAudit(req, 'auth.password.reset_denied', 'user', target.id, false, requester.id);
+    return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah.' } });
+  }
+
+  const validation = validatePasswordPayload(req.body);
+  if (!validation.ok || !validation.value) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_PASSWORD_INPUT', message: validation.errors.join(' ') }
+    });
+  }
+
+  setDbUserPasswordHash(target.id, hashPassword(validation.value.newPassword));
+  recordAudit(req, 'auth.password.reset', 'user', target.id, true, requester.id);
+  res.json({ success: true, message: `Kata sandi ${target.name} berhasil direset.` });
+});
+
+// 2e. Konfigurasi identitas sekolah (kop dokumen siap pakai)
+// Baca: semua user terautentikasi (butuh untuk kop dokumen guru).
+// Ubah/logo: ADMIN sekolah sendiri atau SUPER_ADMIN lintas sekolah.
+function resolveSchoolAccess(req: Request, res: Response, schoolIdParam?: string) {
+  const requester = requireAuth(req, res);
+  if (!requester) return null;
+  const targetId = schoolIdParam || requester.schoolId;
+  if (requester.role !== 'SUPER_ADMIN' && targetId !== requester.schoolId) {
+    res.status(403).json({ success: false, error: { code: 'SCHOOL_ACCESS_DENIED', message: 'Akses sekolah lain ditolak.' } });
+    return null;
+  }
+  const school = getDbSchoolById(targetId);
+  if (!school) {
+    res.status(404).json({ success: false, error: { code: 'SCHOOL_NOT_FOUND', message: 'Sekolah tidak ditemukan.' } });
+    return null;
+  }
+  return { requester, school };
+}
+
+function requireSchoolAdmin(requester: TeacherUser, res: Response): boolean {
+  if (requester.role !== 'ADMIN' && requester.role !== 'SUPER_ADMIN') {
+    res.status(403).json({ success: false, error: { code: 'SCHOOL_ADMIN_REQUIRED', message: 'Hanya admin sekolah yang dapat mengubah identitas.' } });
+    return false;
+  }
+  return true;
+}
+
+app.get('/api/admin/schools/mine', (req: Request, res: Response) => {
+  const scope = resolveSchoolAccess(req, res);
+  if (!scope) return;
+  res.json({ success: true, school: scope.school });
+});
+
+app.get('/api/admin/schools', (req: Request, res: Response) => {
+  const requester = requireAuth(req, res);
+  if (!requester) return;
+  if (requester.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_REQUIRED', message: 'Hanya Super Admin.' } });
+  }
+  res.json({
+    success: true,
+    schools: listDbSchools().map(s => ({ id: s.id, name: s.name, jenjang: s.jenjang }))
+  });
+});
+
+app.get('/api/admin/schools/:id', (req: Request, res: Response) => {
+  const scope = resolveSchoolAccess(req, res, String(req.params.id));
+  if (!scope) return;
+  res.json({ success: true, school: scope.school });
+});
+
+app.put('/api/admin/schools/:id', (req: Request, res: Response) => {
+  const scope = resolveSchoolAccess(req, res, String(req.params.id));
+  if (!scope) return;
+  if (!requireSchoolAdmin(scope.requester, res)) return;
+
+  const validation = validateSchoolPayload(req.body);
+  if (!validation.ok || !validation.value) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_SCHOOL_INPUT', message: validation.errors.join(' ') }
+    });
+  }
+
+  const updated = updateDbSchoolIdentity(scope.school.id, validation.value);
+  recordAudit(req, 'school.updated', 'school', scope.school.id, true, scope.requester.id);
+  res.json({ success: true, message: 'Identitas sekolah berhasil diperbarui.', school: updated });
+});
+
+app.post('/api/admin/schools/:id/logo', (req: Request, res: Response) => {
+  const scope = resolveSchoolAccess(req, res, String(req.params.id));
+  if (!scope) return;
+  if (!requireSchoolAdmin(scope.requester, res)) return;
+
+  const validation = validateLogoPayload(req.body);
+  if (!validation.ok || !validation.value) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_LOGO_INPUT', message: validation.errors.join(' ') }
+    });
+  }
+
+  const safeId = scope.school.id.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'school';
+  const filename = `school-${safeId}.${validation.value.ext}`;
+  const base64 = validation.value.imageData.split(',')[1];
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), Buffer.from(base64, 'base64'));
+
+  // Hapus berkas logo lama berekstensi beda
+  for (const old of fs.readdirSync(UPLOADS_DIR)) {
+    if (old.startsWith(`school-${safeId}.`) && old !== filename) {
+      try { fs.unlinkSync(path.join(UPLOADS_DIR, old)); } catch { /* abaikan */ }
+    }
+  }
+
+  const updated = setDbSchoolLogoUrl(scope.school.id, `/uploads/${filename}`);
+  recordAudit(req, 'school.logo_updated', 'school', scope.school.id, true, scope.requester.id);
+  res.json({ success: true, message: 'Logo sekolah berhasil diunggah.', school: updated });
 });
 
 // 3. User list (for Admin verification panel)
@@ -1329,6 +1511,11 @@ PANDUAN PENULISAN:
 
     const calculatedDuration = Number((2.8 + Math.random() * 0.9).toFixed(1));
 
+    const quality = validateDocumentStructure(docType, generatedText, {
+      expectedQuestions: Number((soalConfig as any)?.jumlahSoal) || 0,
+      modelUsed
+    });
+
     recordAudit(req, 'generation.create', 'document', undefined, true, requester.id);
 
     res.json({
@@ -1337,6 +1524,7 @@ PANDUAN PENULISAN:
       content: generatedText,
       durationMinutes: calculatedDuration,
       modelUsed,
+      quality,
       meta: {
         docType,
         jenjang,
@@ -1346,6 +1534,7 @@ PANDUAN PENULISAN:
         topik,
         durationMinutes: calculatedDuration,
         modelUsed,
+        quality,
         generatedAt: new Date().toISOString()
       }
     });
@@ -1355,6 +1544,83 @@ PANDUAN PENULISAN:
     res.status(500).json({
       success: false,
       message: 'Gagal membuat perangkat ajar: ' + (error?.message || 'Terjadi kesalahan sistem.'),
+    });
+  }
+});
+
+// 7a. Regenerasi satu bagian dokumen (tanpa mengulang seluruh dokumen)
+app.post('/api/regenerate-section', async (req: Request, res: Response) => {
+  const requester = requireVerifiedUser(req, res);
+  if (!requester) return;
+  if (rateLimitExceeded(req, res, 'regen-section:user:' + requester.id, 10, 60_000)) return;
+
+  try {
+    if (!ai) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_PROVIDER_NOT_CONFIGURED', message: 'Generator AI belum dikonfigurasi pada server.' }
+      });
+    }
+
+    const {
+      docType, jenjang, tingkat, fase, mataPelajaran, topik, sectionTitle, content
+    } = req.body as Record<string, any>;
+
+    if (!sectionTitle || typeof sectionTitle !== 'string' || !sectionTitle.trim()) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_SECTION', message: 'Judul bagian wajib diisi.' } });
+    }
+    const cleanSection = sectionTitle.trim().slice(0, 120);
+    const context = typeof content === 'string' ? content.slice(0, 6000) : '';
+
+    const prompt = `Anda adalah Pakar Kurikulum Merdeka Indonesia. Tugas: tulis ulang SATU bagian dokumen perangkat ajar berikut dengan kualitas lebih baik, tetap dalam Bahasa Indonesia formal dan format Markdown.
+
+Konteks dokumen:
+- Jenis: ${String(docType || 'modul_ajar')}
+- Jenjang/Kelas/Fase: ${String(jenjang || '')} / ${String(tingkat || '')} / ${String(fase || '')}
+- Mata Pelajaran: ${String(mataPelajaran || '')} • Topik: ${String(topik || '')}
+
+Bagian yang ditulis ulang (heading asli wajib dipertahankan persis di baris pertama):
+"${cleanSection}"
+
+Isi dokumen saat ini (untuk konsistensi, jangan mengulang bagian lain):
+${context}
+
+Aturan:
+1. Baris pertama HARUS heading asli bagian tersebut (tulis persis).
+2. Hanya isi bagian itu; jangan menambah bagian baru di luar cakupannya.
+3. Tidak ada placeholder kosong; gunakan tabel Markdown bila memuat matriks/rubrik/jadwal.
+4. Langsung isi, tanpa pembuka/penutup percakapan.`;
+
+    let sectionText = '';
+    let lastError: any = null;
+    for (const m of ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.1-pro-preview']) {
+      try {
+        const response = await ai.models.generateContent({ model: m, contents: prompt } as never);
+        if ((response as any)?.text) {
+          sectionText = String((response as any).text).trim();
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    if (!sectionText) {
+      recordAudit(req, 'generation.regen_section.unavailable', 'document', undefined, false, requester.id);
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_UNAVAILABLE', message: 'AI sedang sibuk. Coba lagi beberapa saat.' }
+      });
+    }
+
+    const quality = validateDocumentStructure(String(docType || ''), sectionText, { modelUsed: 'gemini-regen' });
+    recordAudit(req, 'generation.regen_section.success', 'document', undefined, true, requester.id);
+    res.json({ success: true, section: sectionText, quality });
+  } catch (error: any) {
+    console.error('Error regenerating section:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'REGEN_FAILED', message: 'Gagal menyusun ulang bagian: ' + (error?.message || 'kesalahan sistem.') }
     });
   }
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { EducationalDocument, TeacherUser } from '../types';
+import { EducationalDocument, TeacherUser, SchoolConfig } from '../types';
 import { 
   renderMarkdownToHtml, 
   downloadWordDocument, 
@@ -21,6 +21,7 @@ import {
   ArrowLeft,
   FileDown,
   Loader2,
+  RefreshCw,
   ImagePlus,
   X
 } from 'lucide-react';
@@ -28,7 +29,9 @@ import {
 interface DocumentViewerProps {
   document: EducationalDocument | null;
   currentUser: TeacherUser;
+  school?: SchoolConfig | null;
   modelUsed?: string;
+  quality?: { status: string; issues: string[] } | null;
   onSaveToRepository?: (doc: EducationalDocument) => void;
   onBackToGenerator?: () => void;
   isSaved?: boolean;
@@ -37,7 +40,9 @@ interface DocumentViewerProps {
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   document,
   currentUser,
+  school = null,
   modelUsed = '',
+  quality = null,
   onSaveToRepository,
   onBackToGenerator,
   isSaved = false
@@ -48,6 +53,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [justSaved, setJustSaved] = useState<boolean>(isSaved);
   const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [showQuality, setShowQuality] = useState<boolean>(false);
+  const [regenSection, setRegenSection] = useState<string>('');
+  const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
+  const [regenError, setRegenError] = useState<string>('');
 
   useEffect(() => {
     if (!document) return;
@@ -87,25 +96,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const handleExportDocx = async () => {
     setIsExportingDocx(true);
     try {
-      await exportToDocx(document.title, editableContent, {
-        schoolName: document.schoolName || currentUser.schoolName,
-        authorName: document.authorName || currentUser.name,
-        jenjang: document.jenjang,
-        tingkat: document.tingkat,
-        fase: document.fase,
-        mapel: document.mataPelajaran,
-        nip: currentUser.nip
-      });
+      await exportToDocx(document.title, editableContent, exportMeta);
     } catch (err) {
       console.error('Docx export failed, falling back to html doc:', err);
-      downloadWordDocument(document.title, editableContent, {
-        schoolName: document.schoolName || currentUser.schoolName,
-        authorName: document.authorName || currentUser.name,
-        jenjang: document.jenjang,
-        tingkat: document.tingkat,
-        fase: document.fase,
-        mapel: document.mataPelajaran
-      });
+      downloadWordDocument(document.title, editableContent, exportMeta);
     } finally {
       setIsExportingDocx(false);
     }
@@ -191,7 +185,91 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setActiveView('preview');
   };
 
+  // Pecah konten menjadi bagian per heading (untuk regenerasi per bagian)
+  const contentSections = (() => {
+    const lines = editableContent.split('\n');
+    const sections: Array<{ title: string; level: number; start: number }> = [];
+    lines.forEach((line, idx) => {
+      const match = /^(#{1,3})\s+(.+)$/.exec(line.trim());
+      if (match) sections.push({ title: match[2].slice(0, 80), level: match[1].length, start: idx });
+    });
+    return sections;
+  })();
+
+  const handleRegenerateSection = async () => {
+    if (!regenSection || isRegenerating) return;
+    setIsRegenerating(true);
+    setRegenError('');
+    try {
+      const res = await fetch('/api/regenerate-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          docType: document.docType,
+          jenjang: document.jenjang,
+          tingkat: document.tingkat,
+          fase: document.fase,
+          mataPelajaran: document.mataPelajaran,
+          topik: document.topik,
+          sectionTitle: regenSection,
+          content: editableContent
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error?.message || data.message || 'Gagal meregenerasi bagian');
+      setEditableContent(prev => {
+        const lines = prev.split('\n');
+        const idx = contentSections.findIndex(s => s.title === regenSection);
+        if (idx < 0) return prev;
+        const start = contentSections[idx].start;
+        const level = contentSections[idx].level;
+        let end = lines.length;
+        for (let i = idx + 1; i < contentSections.length; i++) {
+          if (contentSections[i].level <= level) {
+            end = contentSections[i].start;
+            break;
+          }
+        }
+        return [...lines.slice(0, start), data.section.trim(), '', ...lines.slice(end)].join('\n');
+      });
+      setActiveView('preview');
+    } catch (err: any) {
+      setRegenError(err.message || 'Gagal meregenerasi bagian');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   const renderedHtml = renderMarkdownToHtml(editableContent);
+
+  // Identitas kop & pengesahan: konfigurasi sekolah bila ada, fallback profil.
+  const kop = {
+    schoolName: school?.name || document.schoolName || currentUser.schoolName,
+    npsn: school?.npsn || currentUser.npsn || '',
+    accreditation: school?.accreditation || '',
+    address: school?.address || '',
+    city: school?.city || 'Jakarta',
+    logoUrl: school?.logoUrl || '',
+    principalName: school?.principalName || '',
+    principalNip: school?.principalNip || ''
+  };
+
+  const exportMeta = {
+    schoolName: kop.schoolName,
+    authorName: document.authorName || currentUser.name,
+    jenjang: document.jenjang,
+    tingkat: document.tingkat,
+    fase: document.fase,
+    mapel: document.mataPelajaran,
+    nip: currentUser.nip,
+    npsn: kop.npsn,
+    address: kop.address,
+    accreditation: kop.accreditation,
+    city: kop.city,
+    logoUrl: kop.logoUrl,
+    principalName: kop.principalName,
+    principalNip: kop.principalNip
+  };
 
   return (
     <div className="space-y-4">
@@ -217,7 +295,21 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <span className="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-medium">
                 {document.mataPelajaran}
               </span>
-              {modelUsed && (
+              {quality ? (
+                <button
+                  onClick={() => setShowQuality(v => !v)}
+                  title={quality.issues.length ? quality.issues.join('\n') : 'Struktur dokumen lengkap'}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-medium cursor-pointer"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    quality.status === 'AI' ? 'bg-[#30b158]' :
+                    quality.status === 'fallback' ? 'bg-[#86868b]' : 'bg-[#ff9f0a] animate-pulse'
+                  }`} />
+                  {quality.status === 'AI' ? 'AI • Struktur lengkap'
+                    : quality.status === 'fallback' ? 'Template cadangan'
+                    : `Perlu ditinjau (${quality.issues.length})`}
+                </button>
+              ) : modelUsed ? (
                 <span
                   title={`Mesin penyusun: ${modelUsed}`}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-medium"
@@ -228,7 +320,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     <><FileText className="w-3 h-3" /> Template cadangan</>
                   )}
                 </span>
-              )}
+              ) : null}
             </div>
             <h1 className="text-base sm:text-lg font-extrabold text-slate-900 truncate max-w-[280px] sm:max-w-md mt-0.5">
               {document.title}
@@ -344,6 +436,66 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
       </div>
 
+      {/* Panel kualitas + regenerasi per bagian */}
+      {(quality && (showQuality || quality.issues.length > 0) || contentSections.length > 0) && (
+        <div className="apple-card p-4 sm:p-5 space-y-3 no-print">
+          {quality && quality.issues.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowQuality(v => !v)}
+                className="flex items-center gap-2 text-[13.5px] font-semibold cursor-pointer"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#ff9f0a] animate-pulse" />
+                {quality.issues.length} catatan kualitas — {showQuality ? 'sembunyikan' : 'tampilkan'}
+              </button>
+              {showQuality && (
+                <ul className="mt-2 space-y-1.5 text-[13px] text-[#424245] dark:text-[#c7c7cc]">
+                  {quality.issues.map((issue, idx) => (
+                    <li key={idx} className="flex items-start gap-2 rounded-xl bg-black/[0.03] dark:bg-white/5 px-3 py-2">
+                      <span className="mt-1.5 w-1 h-1 rounded-full bg-current shrink-0" />
+                      {issue}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {contentSections.length > 0 && (
+            <div className={quality && quality.issues.length > 0 ? 'pt-3 border-t border-black/10 dark:border-white/10' : ''}>
+              <p className="text-[13px] font-semibold mb-2">Susun ulang satu bagian</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={regenSection}
+                  onChange={(e) => { setRegenSection(e.target.value); setRegenError(''); }}
+                  className="apple-input flex-1"
+                  aria-label="Pilih bagian dokumen"
+                >
+                  <option value="">— Pilih bagian —</option>
+                  {contentSections.map((s, idx) => (
+                    <option key={idx} value={s.title}>{s.title}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleRegenerateSection}
+                  disabled={!regenSection || isRegenerating}
+                  className="btn-apple !min-h-[44px] sm:w-auto w-full disabled:opacity-50"
+                >
+                  {isRegenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  {isRegenerating ? 'Menyusun...' : 'Susun ulang'}
+                </button>
+              </div>
+              {regenError && (
+                <p className="text-[13px] text-[#b3261e] dark:text-[#ff9d97] mt-2">{regenError}</p>
+              )}
+              <p className="text-[12px] text-[#86868b] mt-1.5">
+                Hanya bagian terpilih yang ditulis ulang AI mengikuti konteks dokumen — sisanya tidak berubah.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Main Document Paper Display */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden print-container">
         
@@ -388,16 +540,27 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         {activeView === 'preview' && (
           <div className="doc-paper" id="printable-document-content">
 
-            {/* Kop resmi */}
+            {/* Kop resmi — dari konfigurasi sekolah */}
             <div className="doc-kop print-kop">
               <div className="kop-eyebrow">Kurikulum Merdeka • Permendikbudristek No. 12 Tahun 2024</div>
-              <h4>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</h4>
-              <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</h4>
-              <div className="kop-school">
-                {document.schoolName || currentUser.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}
-              </div>
+              {kop.logoUrl ? (
+                <div className="flex items-center justify-center gap-4">
+                  <img src={kop.logoUrl} alt="Logo sekolah" className="w-16 h-16 object-contain shrink-0" />
+                  <div className="text-left">
+                    <h4>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</h4>
+                    <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</h4>
+                    <div className="kop-school">{kop.schoolName}</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h4>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</h4>
+                  <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</h4>
+                  <div className="kop-school">{kop.schoolName}</div>
+                </>
+              )}
               <div className="kop-addr">
-                NPSN: {currentUser.npsn || '20104829'} • Akreditasi: A (Unggul) • Tahun Ajaran 2026/2027
+                {kop.address ? `${kop.address} • ` : ''}NPSN: {kop.npsn || '............'}{kop.accreditation ? ` • Akreditasi ${kop.accreditation}` : ''} • Tahun Ajaran 2026/2027
               </div>
               {/* Ornamen geometris */}
               <svg className="mx-auto mt-2" width="180" height="12" viewBox="0 0 180 12" aria-hidden="true">
@@ -432,17 +595,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   <p><b>Kepala Satuan Pendidikan</b></p>
                   <div className="h-20 flex items-end justify-center">
                     <p className="font-bold inline-block px-4" style={{ borderBottom: '1px solid #111' }}>
-                      Drs. H. Mulyadi, M.Pd.
+                      {kop.principalName || '........................................................'}
                     </p>
                   </div>
                   <p className="text-[10pt] mt-1">
-                    NIP. 19710318 199702 1 002
+                    NIP. {kop.principalNip || '................................'}
                   </p>
                 </div>
 
                 <div>
                   <p>
-                    Jakarta, {new Date(document.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {kop.city}, {new Date(document.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                   <p><b>Guru Mata Pelajaran / Kelas</b></p>
                   <div className="h-20 flex items-end justify-center">
@@ -451,7 +614,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     </p>
                   </div>
                   <p className="text-[10pt] mt-1">
-                    NIP. {currentUser.nip || '19890412 201402 2 003'}
+                    NIP. {currentUser.nip || '................................'}
                   </p>
                 </div>
               </div>

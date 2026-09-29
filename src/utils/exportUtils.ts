@@ -11,14 +11,15 @@ import {
   BorderStyle,
   AlignmentType,
   Packer,
+  ImageRun,
   LineRuleType,
   convertInchesToTwip
 } from 'docx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-/** Standar formal naskah dinas: Times New Roman 12pt, spasi 1.5, kertas A4 */
-const DOC_FONT = 'Times New Roman';
+/** Standar naskah dokumen: Calibri 12pt, spasi 1.5, kertas A4 */
+const DOC_FONT = 'Calibri';
 const BODY_SIZE = 24; // 12pt dalam half-point
 
 const ALLOWED_HTML_TAGS = new Set([
@@ -144,6 +145,40 @@ function parseFormattedTextRuns(
 }
 
 /**
+ * Muat gambar (mis. logo sekolah) untuk disematkan ke docx.
+ * Mengembalikan buffer + dimensi yang diskalakan ke tinggi target px.
+ */
+function loadImageForDocx(url: string, targetHeightPx: number): Promise<{ data: ArrayBuffer; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const scale = targetHeightPx / (img.naturalHeight || targetHeightPx);
+        const width = Math.max(1, Math.round((img.naturalWidth || targetHeightPx) * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = targetHeightPx;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas tidak tersedia');
+        ctx.drawImage(img, 0, 0, width, targetHeightPx);
+        canvas.toBlob(blob => {
+          if (!blob) {
+            reject(new Error('Gagal meraster gambar'));
+            return;
+          }
+          blob.arrayBuffer().then(data => resolve({ data, width, height: targetHeightPx })).catch(reject);
+        }, 'image/png');
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error('Gambar tidak dapat dimuat: ' + url));
+    img.src = url;
+  });
+}
+
+/**
  * Export to genuine Microsoft Word (.docx) file
  */
 export async function exportToDocx(
@@ -157,12 +192,35 @@ export async function exportToDocx(
     fase?: string;
     mapel?: string;
     nip?: string;
+    npsn?: string;
+    address?: string;
+    accreditation?: string;
+    city?: string;
+    logoUrl?: string;
+    principalName?: string;
+    principalNip?: string;
   }
 ): Promise<void> {
   const lines = markdownContent.split('\n');
   const docChildren: (Paragraph | Table)[] = [];
 
-  // 1. Kop resmi (Times New Roman, hitam formal)
+  // 1. Kop resmi (Calibri, hitam formal — dari konfigurasi sekolah)
+  const kopAddrParts: string[] = [];
+  if (metadata?.address) kopAddrParts.push(metadata.address);
+  kopAddrParts.push(`NPSN: ${metadata?.npsn || '............'}`);
+  if (metadata?.accreditation) kopAddrParts.push(`Akreditasi ${metadata.accreditation}`);
+
+  // Logo sekolah (best-effort): disematkan bila berkas dapat dimuat
+  const logoRuns: TextRun[] = [];
+  let logoImage: { data: ArrayBuffer; width: number; height: number } | null = null;
+  if (metadata?.logoUrl) {
+    try {
+      logoImage = await loadImageForDocx(metadata.logoUrl, 70);
+    } catch {
+      logoImage = null;
+    }
+  }
+
   docChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -214,16 +272,33 @@ export async function exportToDocx(
       },
       children: [
         new TextRun({
-          text: 'Implementasi Kurikulum Merdeka Berdasarkan Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen',
+          text: kopAddrParts.join(' • '),
           italics: true,
           size: 18,
-          color: '555555',
+          color: '444444',
           font: DOC_FONT
         })
       ]
     }),
     new Paragraph({ spacing: { after: 180 }, children: [] })
   );
+
+  // Sisipkan logo tepat di bawah kop bila tersedia
+  if (logoImage) {
+    docChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [
+          new ImageRun({
+            type: 'png',
+            data: logoImage.data,
+            transformation: { width: logoImage.width, height: logoImage.height }
+          })
+        ]
+      })
+    );
+  }
 
   // 2. Parse Markdown Body Content into docx paragraphs and tables
   let i = 0;
@@ -481,11 +556,11 @@ export async function exportToDocx(
                 new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Drs. H. Mulyadi, M.Pd.', bold: true, underline: {}, size: 24, font: DOC_FONT })]
+                  children: [new TextRun({ text: metadata?.principalName || '........................................................', bold: true, size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'NIP. 19710318 199702 1 002', size: 20, color: '555555', font: DOC_FONT })]
+                  children: [new TextRun({ text: `NIP. ${metadata?.principalNip || '................................'}`, size: 20, color: '555555', font: DOC_FONT })]
                 })
               ]
             }),
@@ -496,7 +571,7 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `Jakarta, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+                      text: `${metadata?.city || 'Jakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
                       size: 24,
                       font: DOC_FONT
                     })
@@ -523,7 +598,7 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `NIP. ${metadata?.nip || '19890412 201402 2 003'}`,
+                      text: `NIP. ${metadata?.nip || '................................'}`,
                       size: 20,
                       color: '555555',
                       font: DOC_FONT
@@ -639,6 +714,13 @@ export function downloadWordDocument(
     tingkat?: string;
     fase?: string;
     mapel?: string;
+    npsn?: string;
+    address?: string;
+    accreditation?: string;
+    city?: string;
+    logoUrl?: string;
+    principalName?: string;
+    principalNip?: string;
   }
 ) {
   const htmlBody = renderMarkdownToHtml(markdownContent);
@@ -655,14 +737,14 @@ export function downloadWordDocument(
         margin: 2.5cm 2cm 2.5cm 2cm;
       }
       body {
-        font-family: 'Times New Roman', Times, serif;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif;
         font-size: 12pt;
-        line-height: 1.35;
+        line-height: 1.5;
         color: #000;
         background-color: #fff;
       }
       h1, h2, h3, h4 {
-        font-family: 'Times New Roman', Times, serif;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif;
         color: #111;
         margin-top: 14pt;
         margin-bottom: 6pt;
@@ -703,10 +785,11 @@ export function downloadWordDocument(
   </head>
   <body>
     <div class="kop-surat">
+      <div class="kop-logo">${metadata?.logoUrl ? `<img src="${metadata.logoUrl}" alt="Logo" style="height: 60pt;">` : ''}</div>
       <div class="kop-kementerian">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA</div>
       <div class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</div>
       <div class="kop-sekolah">${metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}</div>
-      <div class="kop-alamat">Implementasi Kurikulum Merdeka Berdasarkan Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen</div>
+      <div class="kop-alamat">${metadata?.address ? metadata.address + ' • ' : ''}NPSN: ${metadata?.npsn || '............'}${metadata?.accreditation ? ' • Akreditasi ' + metadata.accreditation : ''} — Implementasi Kurikulum Merdeka Permendikbudristek No. 12 Tahun 2024</div>
     </div>
 
     ${htmlBody}
@@ -717,11 +800,11 @@ export function downloadWordDocument(
           <td style="border: none; width: 50%; text-align: center;">
             Mengetahui,<br>
             Kepala Satuan Pendidikan<br><br><br><br><br>
-            <b>Drs. H. Mulyadi, M.Pd.</b><br>
-            NIP. 19710318 199702 1 002
+            <b>${metadata?.principalName || '........................................................'}</b><br>
+            NIP. ${metadata?.principalNip || '................................'}
           </td>
           <td style="border: none; width: 50%; text-align: center;">
-            Jakarta, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
+            ${metadata?.city || 'Jakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
             Guru Mata Pelajaran / Kelas<br><br><br><br><br>
             <b>${metadata?.authorName || 'Bapak/Ibu Guru'}</b><br>
             NIP. ....................................................

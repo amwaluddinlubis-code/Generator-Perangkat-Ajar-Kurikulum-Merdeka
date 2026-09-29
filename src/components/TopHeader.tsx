@@ -31,6 +31,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
     if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
     if (activeTarget === 'admin') return { kicker: 'Admin', title: 'Verifikasi guru' };
+    if (activeTarget === 'school') return { kicker: 'Admin', title: 'Identitas sekolah' };
     if (activeTarget === 'guide') return { kicker: 'Regulasi', title: 'Panduan Kurikulum Merdeka' };
     const info = DOC_TYPE_INFO[activeTarget as DocType];
     return { kicker: 'Buat perangkat', title: info ? info.label : 'Generator' };

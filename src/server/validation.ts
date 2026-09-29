@@ -1,4 +1,4 @@
-import { LIMITS, isNonEmptyString, exceedsLength } from './security.js';
+import { LIMITS, PASSWORD_MIN_LENGTH, isNonEmptyString, exceedsLength } from './security.js';
 
 export const DOC_TYPES = [
   'modul_ajar',
@@ -32,6 +32,7 @@ export function validateLoginPayload(body: unknown): ValidationResult<{
   name?: string;
   schoolName?: string;
   mataPelajaran?: string;
+  password?: string;
 }> {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { ok: false, errors: ['Payload login harus berupa object.'] };
@@ -51,7 +52,15 @@ export function validateLoginPayload(body: unknown): ValidationResult<{
   if (input.schoolName !== undefined && input.schoolName !== null && !schoolName) return { ok: false, errors: ['Nama sekolah tidak valid.'] };
   if (input.mataPelajaran !== undefined && input.mataPelajaran !== null && !mataPelajaran) return { ok: false, errors: ['Mata pelajaran tidak valid.'] };
 
-  return { ok: true, value: { email, name, schoolName, mataPelajaran }, errors: [] };
+  let password: string | undefined;
+  if (input.password !== undefined && input.password !== null && input.password !== '') {
+    if (typeof input.password !== 'string' || input.password.length > LIMITS.password) {
+      return { ok: false, errors: ['Kata sandi tidak valid.'] };
+    }
+    password = input.password;
+  }
+
+  return { ok: true, value: { email, name, schoolName, mataPelajaran, password }, errors: [] };
 }
 
 export function validateUserPatch(body: unknown): ValidationResult<Record<string, unknown>> {
@@ -182,6 +191,35 @@ export function validateImagePayload(body: unknown): ValidationResult<{ prompt: 
   return { ok: true, value: { prompt: input.prompt.trim(), aspectRatio: input.aspectRatio ? String(input.aspectRatio) : undefined }, errors: [] };
 }
 
+export function validatePasswordPayload(body: unknown): ValidationResult<{
+  currentPassword?: string;
+  newPassword: string;
+}> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, errors: ['Payload kata sandi harus berupa object.'] };
+  }
+
+  const input = body as Record<string, unknown>;
+  const { newPassword } = input;
+  if (
+    typeof newPassword !== 'string' ||
+    newPassword.length < PASSWORD_MIN_LENGTH ||
+    newPassword.length > LIMITS.password
+  ) {
+    return { ok: false, errors: [`Kata sandi baru minimal ${PASSWORD_MIN_LENGTH} karakter dan maksimal ${LIMITS.password} karakter.`] };
+  }
+
+  let currentPassword: string | undefined;
+  if (input.currentPassword !== undefined && input.currentPassword !== null && input.currentPassword !== '') {
+    if (typeof input.currentPassword !== 'string' || (input.currentPassword as string).length > LIMITS.password) {
+      return { ok: false, errors: ['Kata sandi saat ini tidak valid.'] };
+    }
+    currentPassword = input.currentPassword as string;
+  }
+
+  return { ok: true, value: { currentPassword, newPassword }, errors: [] };
+}
+
 export function validateGeneratedDocument(title: unknown, content: unknown): ValidationResult<{ title: string; content: string }> {
   if (!isNonEmptyString(title, 240) || !isNonEmptyString(content, LIMITS.documentContent)) {
     return { ok: false, errors: ['Output generator kosong atau melebihi batas ukuran.'] };
@@ -203,4 +241,173 @@ export function validateGeneratedDocument(title: unknown, content: unknown): Val
     value: { title: String(title).trim(), content: text },
     errors: []
   };
+}
+
+export const SCHOOL_ACCREDITATIONS = ['A', 'B', 'C', 'Belum Terakreditasi'] as const;
+
+/** Logo sekolah: data-URL PNG/JPEG/WebP, maksimal ~500KB. */
+export const LOGO_MAX_BASE64_CHARS = 700_000;
+
+export function validateSchoolPayload(body: unknown): ValidationResult<Record<string, string>> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, errors: ['Payload sekolah harus berupa object.'] };
+  }
+
+  const input = body as Record<string, unknown>;
+  const value: Record<string, string> = {};
+  const rules: Array<[string, number, string?]> = [
+    ['name', 200],
+    ['npsn', 20],
+    ['address', 300],
+    ['city', 100],
+    ['principalName', 160],
+    ['principalNip', 30]
+  ];
+
+  for (const [field, max] of rules) {
+    const raw = input[field];
+    if (raw === undefined || raw === null || raw === '') continue;
+    if (typeof raw !== 'string' || !raw.trim() || raw.trim().length > max) {
+      return { ok: false, errors: [`Kolom ${field} tidak valid (maksimal ${max} karakter).`] };
+    }
+    value[field] = raw.trim();
+  }
+
+  const accreditation = input.accreditation;
+  if (accreditation !== undefined && accreditation !== null && accreditation !== '') {
+    if (typeof accreditation !== 'string' || !(SCHOOL_ACCREDITATIONS as readonly string[]).includes(accreditation)) {
+      return { ok: false, errors: ['Akreditasi tidak valid.'] };
+    }
+    value.accreditation = accreditation;
+  }
+
+  if (Object.keys(value).length === 0) {
+    return { ok: false, errors: ['Tidak ada perubahan yang dikirim.'] };
+  }
+
+  return { ok: true, value, errors: [] };
+}
+
+export function validateLogoPayload(body: unknown): ValidationResult<{ imageData: string; ext: string }> {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, errors: ['Payload logo harus berupa object.'] };
+  }
+
+  const imageData = (body as Record<string, unknown>).imageData;
+  if (typeof imageData !== 'string') {
+    return { ok: false, errors: ['Data gambar wajib diisi.'] };
+  }
+
+  const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(imageData.trim());
+  if (!match) {
+    return { ok: false, errors: ['Format logo harus PNG, JPEG, atau WebP (data-URL).'] };
+  }
+  if (imageData.length > LOGO_MAX_BASE64_CHARS) {
+    return { ok: false, errors: ['Ukuran logo maksimal ~500KB.'] };
+  }
+
+  return { ok: true, value: { imageData: imageData.trim(), ext: match[1] === 'jpeg' ? 'jpg' : match[1] }, errors: [] };
+}
+
+export interface DocumentQuality {
+  status: 'AI' | 'fallback' | 'needs_review';
+  issues: string[];
+  stats: { chars: number; tables: number; questions: number };
+}
+
+const PLACEHOLDER_PATTERNS = [
+  /\[isi[^\]]*\]/i,
+  /\[contoh[^\]]*\]/i,
+  /\[tulis[^\]]*\]/i,
+  /\blorem ipsum\b/i,
+  /\bTBD\b/,
+  /TODO:\s*isi/i
+];
+
+/** Penanda struktur minimum per jenis dokumen (case-insensitive). */
+const STRUCTURE_MARKERS: Record<string, Array<{ label: string; patterns: RegExp[] }>> = {
+  modul_ajar: [
+    { label: 'Informasi Umum', patterns: [/informasi umum/i] },
+    { label: 'Capaian/Tujuan Pembelajaran', patterns: [/capaian pembelajaran/i, /tujuan pembelajaran/i] },
+    { label: 'Kegiatan pembelajaran', patterns: [/kegiatan (pembelajaran|inti|pendahuluan|penutup)/i, /langkah(-langkah)? pembelajaran/i] },
+    { label: 'Asesmen/KKTP', patterns: [/asesmen/i, /kktp/i, /rubrik/i] },
+    { label: 'LKPD/lampiran', patterns: [/lkpd/i, /lampiran/i, /glosarium/i] }
+  ],
+  rpp: [
+    { label: 'Tujuan Pembelajaran', patterns: [/tujuan pembelajaran/i] },
+    { label: 'Langkah pembelajaran', patterns: [/langkah(-langkah)?/i, /pendahuluan/i, /penutup/i] },
+    { label: 'Asesmen', patterns: [/asesmen/i, /penilaian/i] }
+  ],
+  soal_ujian: [
+    { label: 'Kisi-kisi', patterns: [/kisi-?kisi/i] },
+    { label: 'Butir soal', patterns: [/soal\s*\d/i, /pilihan ganda/i] },
+    { label: 'Kunci/pembahasan', patterns: [/kunci/i, /pembahasan/i, /pedoman/i, /penskoran/i] }
+  ],
+  lkpd: [
+    { label: 'Petunjuk', patterns: [/petunjuk/i] },
+    { label: 'Aktivitas/tabel isian', patterns: [/aktivitas/i, /\|.*\|/] },
+    { label: 'Refleksi/penilaian', patterns: [/refleksi/i, /rubrik/i, /penilaian/i, /kesimpulan/i] }
+  ],
+  kktp_atp: [
+    { label: 'ATP', patterns: [/\batp\b/i, /alur tujuan/i] },
+    { label: 'KKTP', patterns: [/kktp/i, /ketercapaian/i, /ketuntasan/i] },
+    { label: 'Rubrik/interval', patterns: [/rubrik/i, /interval/i, /remedial/i] }
+  ],
+  prota_promes: [
+    { label: 'Prota', patterns: [/prota/i, /program tahunan/i] },
+    { label: 'Promes/semester', patterns: [/promes/i, /semester/i] },
+    { label: 'Alokasi/minggu', patterns: [/alokasi/i, /minggu/i, /jp\b/i] }
+  ],
+  modul_p5: [
+    { label: 'Tema/profil modul', patterns: [/tema/i, /profil modul/i, /dimensi/i] },
+    { label: 'Tahapan projek', patterns: [/tahap/i, /pengenalan/i, /aksi/i] },
+    { label: 'Asesmen/refleksi', patterns: [/asesmen/i, /refleksi/i, /gelar karya/i, /rubrik/i] }
+  ]
+};
+
+/**
+ * Validasi struktur minimum hasil dokumen.
+ * Mengembalikan status jujur: AI / fallback / needs_review + daftar masalah.
+ */
+export function validateDocumentStructure(
+  docType: string,
+  content: string,
+  opts?: { expectedQuestions?: number; modelUsed?: string }
+): DocumentQuality {
+  const text = String(content || '');
+  const stats = {
+    chars: text.length,
+    tables: (text.match(/^\s*\|.*\|\s*$/gm) || []).filter(line => !/^\s*\|[\s:\-|]*\|\s*$/.test(line)).length,
+    questions: (text.match(/(?:^|\n)\s*(?:\*\*)?soal\s+\d+/gi) || []).length
+  };
+  const issues: string[] = [];
+
+  if (stats.chars < 800) issues.push('Dokumen terlalu pendek (di bawah 800 karakter) — kemungkinan terpotong.');
+  for (const pattern of PLACEHOLDER_PATTERNS) {
+    if (pattern.test(text)) {
+      issues.push('Ditemukan placeholder kosong ([...], lorem, TBD) yang harus dilengkapi manual.');
+      break;
+    }
+  }
+
+  const markers = STRUCTURE_MARKERS[docType];
+  if (markers) {
+    for (const marker of markers) {
+      if (!marker.patterns.some(pattern => pattern.test(text))) {
+        issues.push(`Bagian "${marker.label}" tidak terdeteksi — periksa kelengkapan dokumen.`);
+      }
+    }
+  }
+
+  if (docType === 'soal_ujian' && opts?.expectedQuestions && opts.expectedQuestions > 0) {
+    if (stats.questions > 0 && stats.questions < opts.expectedQuestions) {
+      issues.push(`Jumlah soal terdeteksi (${stats.questions}) kurang dari permintaan (${opts.expectedQuestions}).`);
+    }
+    if (stats.questions === 0) {
+      issues.push('Tidak terdeteksi penomoran soal — periksa format butir soal.');
+    }
+  }
+
+  const isAi = /gemini/i.test(opts?.modelUsed || '');
+  return { status: !isAi ? 'fallback' : issues.length > 0 ? 'needs_review' : 'AI', issues, stats };
 }

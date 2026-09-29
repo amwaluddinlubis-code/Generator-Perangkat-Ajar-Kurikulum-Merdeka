@@ -12,6 +12,7 @@ import {
   BarChart3,
   Archive,
   ShieldCheck,
+  Building2,
   FileCheck,
   UserCircle2,
   ChevronLeft,
@@ -31,6 +32,7 @@ export type NavigationTarget =
   | 'stats'
   | 'repository'
   | 'admin'
+  | 'school'
   | 'guide';
 
 interface SidebarProps {
@@ -38,6 +40,7 @@ interface SidebarProps {
   onSelectTarget: (target: NavigationTarget) => void;
   pendingCount: number;
   docsCount: number;
+  isAdmin: boolean;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
@@ -49,6 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTarget,
   pendingCount,
   docsCount,
+  isAdmin,
   isCollapsed,
   setIsCollapsed,
   mobileOpen,
@@ -167,6 +171,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <FileCheck className="w-[18px] h-[18px] shrink-0" />
                 {!isCollapsed && <span className="text-[14px] font-semibold">Panduan</span>}
               </button>
+              {isAdmin && (
+                <button onClick={() => handleNavClick('school')} className={itemCls(activeTarget === 'school')} title={isCollapsed ? 'Sekolah' : undefined}>
+                  <Building2 className="w-[18px] h-[18px] shrink-0" />
+                  {!isCollapsed && <span className="text-[14px] font-semibold">Sekolah</span>}
+                </button>
+              )}
             </div>
           </div>
         </div>

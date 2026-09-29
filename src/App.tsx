@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  TeacherUser, 
-  EducationalDocument, 
-  GeneratorParams, 
+import {
+  TeacherUser,
+  EducationalDocument,
+  GeneratorParams,
+  SchoolConfig,
   DocType,
-  Jenjang 
+  Jenjang
 } from './types';
 import { Sidebar, NavigationTarget } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
@@ -16,6 +17,7 @@ import { BelajarIdAuthModal } from './components/BelajarIdAuthModal';
 import { CurriculumGuideModal } from './components/CurriculumGuideModal';
 import { UserProfileStatsDashboard } from './components/UserProfileStatsDashboard';
 import { ProfilePage } from './components/ProfilePage';
+import { SchoolSettingsPage } from './components/SchoolSettingsPage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
 import { 
@@ -43,6 +45,7 @@ export default function App() {
   const [documents, setDocuments] = useState<EducationalDocument[]>([]);
   const [currentDoc, setCurrentDoc] = useState<EducationalDocument | null>(null);
   const [showDocumentResult, setShowDocumentResult] = useState<boolean>(false);
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
   
   // Navigation State with dedicated sidebar targets
   const [activeTarget, setActiveTarget] = useState<NavigationTarget>('modul_ajar');
@@ -51,6 +54,7 @@ export default function App() {
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [lastModelUsed, setLastModelUsed] = useState<string>('');
+  const [lastQuality, setLastQuality] = useState<{ status: string; issues: string[] } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [guideModalOpen, setGuideModalOpen] = useState<boolean>(false);
@@ -118,12 +122,32 @@ export default function App() {
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
+  // Muat identitas sekolah untuk kop dokumen (semua peran boleh baca).
+  useEffect(() => {
+    if (!currentUser) {
+      setSchoolConfig(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/schools/mine');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.school) setSchoolConfig(data.school as SchoolConfig);
+        }
+      } catch {
+        /* abaikan — kop memakai fallback identitas profil */
+      }
+    })();
+  }, [currentUser?.id]);
+
   // Handle Login / Belajar.id Switcher
-  const handleLogin = async (data: { 
-    email: string; 
-    name?: string; 
-    schoolName?: string; 
-    jenjang?: Jenjang; 
+  const handleLogin = async (data: {
+    email: string;
+    password?: string;
+    name?: string;
+    schoolName?: string;
+    jenjang?: Jenjang;
     mataPelajaran?: string;
     nip?: string;
   }) => {
@@ -226,7 +250,13 @@ export default function App() {
       setShowDocumentResult(true);
       const used = data.modelUsed || '';
       setLastModelUsed(used);
-      if (/gemini/i.test(used)) {
+      const quality = data.quality && typeof data.quality.status === 'string'
+        ? { status: data.quality.status, issues: Array.isArray(data.quality.issues) ? data.quality.issues : [] }
+        : null;
+      setLastQuality(quality);
+      if (quality?.status === 'needs_review') {
+        showToast(`Dokumen jadi dengan ${quality.issues.length} catatan — periksa panel kualitas sebelum diekspor.`, 'info');
+      } else if (/gemini/i.test(used)) {
         showToast('Perangkat ajar berhasil disusun AI dan siap diekspor .docx / .pdf!', 'success');
       } else {
         showToast('AI sedang sibuk — dokumen disusun dari template cadangan terverifikasi.', 'info');
@@ -422,6 +452,7 @@ export default function App() {
         }}
         pendingCount={pendingUsersCount}
         docsCount={documents.length}
+        isAdmin={currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN'}
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
@@ -454,7 +485,9 @@ export default function App() {
                 key={currentDoc.id}
                 document={currentDoc}
                 currentUser={currentUser}
+                school={schoolConfig}
                 modelUsed={lastModelUsed}
+                quality={lastQuality}
                 onSaveToRepository={handleSaveDocument}
                 onBackToGenerator={() => {
                   setShowDocumentResult(false);
@@ -468,7 +501,6 @@ export default function App() {
                   onGenerate={handleGenerate}
                   isGenerating={isGenerating}
                   activeDocType={activeTarget as DocType}
-                  onSelectDocType={(newType) => setActiveTarget(newType)}
                 />
               </div>
             )
@@ -494,6 +526,7 @@ export default function App() {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
                 setShowDocumentResult(true);
+                setLastQuality(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onCreateNew={() => {
@@ -513,6 +546,7 @@ export default function App() {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
                 setShowDocumentResult(true);
+                setLastQuality(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteDocument={handleDeleteDocument}
@@ -554,6 +588,17 @@ export default function App() {
                   showToast(error instanceof Error ? error.message : 'Gagal menambahkan guru.', 'error');
                   throw error;
                 }
+              }}
+            />
+          )}
+
+          {/* VIEW 4b: IDENTITAS SEKOLAH (admin) */}
+          {activeTarget === 'school' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') && (
+            <SchoolSettingsPage
+              currentUser={currentUser}
+              onSchoolUpdated={(school) => {
+                setSchoolConfig(school);
+                showToast('Identitas sekolah diperbarui di semua dokumen.', 'success');
               }}
             />
           )}

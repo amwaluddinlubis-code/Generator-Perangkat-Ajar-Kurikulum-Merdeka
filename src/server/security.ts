@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import {
   checkRateLimitRecord,
   createSessionRecord,
@@ -120,5 +120,37 @@ export const LIMITS = {
   generatorField: 2_000,
   generatorPromptTotal: 12_000,
   documentContent: 500_000,
-  imagePrompt: 2_000
+  imagePrompt: 2_000,
+  password: 128
 } as const;
+
+export const PASSWORD_MIN_LENGTH = 8;
+
+/** Hash kata sandi dengan scrypt. Format: `scrypt$saltHex$hashHex`. */
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `scrypt$${salt}$${hash}`;
+}
+
+/** Verifikasi kata sandi terhadap hash (timing-safe). */
+export function verifyPassword(password: string, stored: string): boolean {
+  try {
+    const [algo, salt, expected] = String(stored).split('$');
+    if (algo !== 'scrypt' || !salt || !expected) return false;
+    const actual = scryptSync(password, salt, 64);
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (actual.length !== expectedBuf.length) return false;
+    return timingSafeEqual(actual, expectedBuf);
+  } catch {
+    return false;
+  }
+}
+
+export function isValidNewPassword(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length >= PASSWORD_MIN_LENGTH &&
+    value.length <= LIMITS.password
+  );
+}

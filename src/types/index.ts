@@ -48,8 +48,21 @@ export interface EducationalDocument {
   durationMinutes?: number;
 }
 
-export interface MonthlyProductivityData {
-  month: string;
+export interface SchoolConfig {
+  id: string;
+  name: string;
+  npsn?: string;
+  jenjang: string;
+  status: string;
+  address?: string;
+  city?: string;
+  accreditation?: string;
+  principalName?: string;
+  principalNip?: string;
+  logoUrl?: string;
+}
+
+export interface MonthlyProductivityData {  month: string;
   monthShort: string;
   year: number;
   total: number;

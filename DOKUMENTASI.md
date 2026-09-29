@@ -12,8 +12,9 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
-| Ekspor | `.docx` asli (Times New Roman 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
-| Akun | Masuk/daftar Belajar.id, status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
+| Ekspor | `.docx` asli (Calibri 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
+| Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
+| Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
 | Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP) |
 | Tema | Terang/gelap ala Apple, tersimpan otomatis, grafik adaptif |
@@ -26,7 +27,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 - **Backend:** Express 4.21 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
 - **AI:** `@google/genai` (teks multi-model + fallback; gambar: `gemini-2.5-flash-image`)
 - **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), salin clipboard
-- **Data:** SQLite file `data/app.sqlite` dengan transaksi, WAL, foreign keys, soft-delete, tenant `schoolId`, session store, rate-limit store, dan audit log. `data/db.json` hanya jalur migrasi legacy satu kali.
+- **Data:** SQLite file `data/app.sqlite` dengan transaksi, WAL, foreign keys, soft-delete, tenant `schoolId`, session store, rate-limit store, dan audit log. Tidak ada lagi penyimpanan JSON.
 
 ---
 
@@ -97,7 +98,14 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 | Method & Path | Fungsi | Catatan |
 |---|---|---|
 | `GET /api/users/current` | Profil aktif dari session cookie | Server menentukan identitas |
-| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Cookie HttpOnly; rate limit; validasi payload |
+| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Cookie HttpOnly; rate limit; validasi payload; bila akun punya kata sandi maka wajib benar |
+| `POST /api/auth/password` | Atur/ganti kata sandi sendiri (sesi) | Min. 8 karakter; wajib kata sandi lama bila sudah ada |
+| `POST /api/admin/users/:id/password` | Reset kata sandi user (admin) | Tidak untuk SUPER_ADMIN lain |
+| `GET /api/admin/schools/mine` | Identitas sekolah sendiri (semua peran login) | Kop dokumen memakai data ini |
+| `GET /api/admin/schools` | Daftar sekolah (Super Admin) | Untuk pemilih sekolah |
+| `GET /api/admin/schools/:id` | Detail sekolah (admin: milik sendiri) | Tenant check |
+| `PUT /api/admin/schools/:id` | Ubah nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP | Admin milik sendiri / Super Admin |
+| `POST /api/admin/schools/:id/logo` | Unggah logo PNG/JPEG/WebP ≤500KB | Tersaji di `/uploads/...`, tampil di kop + PDF + docx |
 | `POST /api/auth/logout` | Keluar + revoke session | Cookie dihapus server |
 | `GET /api/users` | Daftar user sesuai role + `schoolId` | Super Admin lintas tenant; Admin sekolah sendiri |
 | `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | Authorization policy + audit |
@@ -107,7 +115,8 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 | `GET /api/documents` | Daftar dokumen | Server filter berdasarkan role/ownership/`schoolId` |
 | `POST /api/documents` | Simpan dokumen | author + tenant berasal dari session; private default |
 | `DELETE /api/documents/:id` | Soft-delete dokumen | Ownership/tenant policy server-side |
-| `POST /api/generate` | Susun dokumen via AI/fallback | Session wajib; input + output divalidasi |
+| `POST /api/generate` | Susun dokumen via AI/fallback | Session wajib; input + output divalidasi; balikan `quality{status: AI|fallback|needs_review, issues[], stats}` |
+| `POST /api/regenerate-section` | Tulis ulang satu bagian (heading dipertahankan, konteks 6000 char) | Session + rate limit; 503 jujur bila AI sibuk |
 | `POST /api/generate-image` | Buat ilustrasi | Session wajib; rate limit + input validation |
 
 ---
@@ -154,15 +163,15 @@ npm run dev
 - Bahasa visual Apple: latar aurora gradien lembut, kartu putih, pil hitam, aksen biru `#0071e3`, target sentuh ≥ 44px.
 - Toggle bulan/matahari di header; pilihan tersimpan (`rgm-theme`); anti-kedip via skrip `index.html`.
 - Kertas dokumen (`.doc-paper`): lebar 210mm, serif formal, kop + ornamen + pengesahan; cetak via `@page A4`.
-- Standar naskah dinas di `.docx`: Times New Roman 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
+- Standar naskah di `.docx`: Calibri 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
 
 ---
 
 ## 7. Data & Akun Demo
 
 - Seed: 1 Super Admin, 1 Admin, guru terverifikasi/pending, dan 5 dokumen contoh.
-- Pada startup pertama, SQLite diisi dari `data/db.json` bila file legacy tersedia; jika tidak, seed kode digunakan.
-- Setelah migrasi, SQLite menjadi source of truth. Jangan menghapus `data/app.sqlite` pada instalasi yang sudah berisi data kecuali memang ingin memulai ulang.
+- Pada startup pertama, SQLite yang masih kosong diisi dari seed kode.
+- SQLite adalah satu-satunya source of truth. Jangan menghapus `data/app.sqlite` pada instalasi yang sudah berisi data kecuali memang ingin memulai ulang.
 - Login cepat tetap tersedia untuk akun seed di UI pilot.
 
 ## 8. Troubleshooting
@@ -174,7 +183,6 @@ npm run dev
 | Selalu "Template cadangan" | Isi `GEMINI_API_KEY` lalu restart |
 | "API key not valid" (ilustrasi) | Key salah/kedaluwarsa — buat baru di AI Studio |
 | Data tidak muncul | Pastikan `data/app.sqlite` dapat dibuat/ditulis oleh proses Node |
-| Migrasi legacy | Letakkan `data/db.json` legacy sebelum startup pertama; migrasi hanya dilakukan bila SQLite belum berisi user |
 | Restore | Hentikan server, jalankan `RGM_RESTORE_CONFIRM=YES npm run restore -- <backup.sqlite>`, lalu start kembali |
 | Fase kosong untuk SMP/SMA | Default generator mengikuti jenjang akun |
 
@@ -272,7 +280,7 @@ Route HTTP tidak boleh mengambil keputusan authorization dari `requesterId` yang
 
 ### Data dan penyimpanan
 
-Migrasikan `data/db.json` ke database transaksional. Minimal entitas target:
+Database transaksional (SQLite, `node:sqlite`) sudah menjadi satu-satunya penyimpanan. Entitas yang ada:
 
 - `users`
 - `schools`
@@ -309,7 +317,7 @@ Implemented dan diuji otomatis:
 
 Implemented dan diuji otomatis:
 
-- SQLite schema + migration dari `data/db.json`;
+- SQLite schema + seed kode (tanpa JSON);
 - `users`, `schools`, `school_memberships`, `documents`, `audit_logs`, `sessions`, dan `rate_limits`;
 - unique email + foreign keys;
 - tenant `schoolId` server-owned;
@@ -453,8 +461,7 @@ Branch `feat/security-baseline` telah melampaui baseline Fase 0 dan baseline ten
 
 ### Source of truth saat ini
 
-- SQLite `data/app.sqlite` adalah source of truth.
-- `data/db.json` hanya dipakai sebagai sumber migrasi legacy ketika SQLite belum memiliki user.
+- SQLite `data/app.sqlite` adalah satu-satunya source of truth (jalur JSON legacy dihapus).
 - Session, rate limit, audit, user, school, membership, dan dokumen disimpan di SQLite.
 - Browser tidak menjadi sumber identitas atau authorization.
 
