@@ -713,7 +713,15 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
     if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') target.role = role;
   } else {
-    if (clean(name// 6. Documents repository
+    if (clean(nameapp.get('/api/audit-logs', (req: Request, res: Response) => {
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
+
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+  res.json({ success: true, logs: auditLogs.slice(0, limit) });
+});
+
+// 6. Documents repository
 app.get('/api/documents', (req: Request, res: Response) => {
   const requester = requireVerifiedUser(req, res);
   if (!requester) return;
@@ -752,7 +760,9 @@ app.post('/api/documents', (req: Request, res: Response) => {
     id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
     title: String(title).trim(),
     docType,
-    jenjang: ['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang)) ? jenjang : requester.jenjang,
+    jenjang: requester.role === 'GURU'
+      ? requester.jenjang
+      : (['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang)) ? jenjang : requester.jenjang),
     tingkat: typeof tingkat === 'string' && tingkat.trim().length <= 80 ? tingkat.trim() : 'Kelas 4',
     fase: typeof fase === 'string' && fase.trim().length <= 40 ? fase.trim() : 'Fase B',
     mataPelajaran: typeof mataPelajaran === 'string' && mataPelajaran.trim().length <= LIMITS.subject ? mataPelajaran.trim() : requester.mataPelajaran,
