@@ -175,11 +175,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const currentFaseObj = availableFases.find(f => f.fase === fase) || availableFases[0];
 
   return (
-    <div className="apple-card overflow-hidden">
+    <div className="apple-card overflow-hidden shadow-[var(--app-shadow-md)]">
       
       {/* Verification Notice Banner if Pending */}
       {!isVerified && (
-        <div className="bg-[#fff8e5] border-b border-black/10 p-4 sm:p-5">
+        <div className="border-b border-[var(--app-border)] bg-[color-mix(in_srgb,var(--app-warning)_9%,transparent)] p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-[#ff9f0a]/15 flex items-center justify-center text-[#9a6700] shrink-0">
               <AlertCircle className="w-5 h-5" />
@@ -188,7 +188,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               <h4 className="text-[14px] font-semibold">
                 {currentUser.status === 'PENDING' ? 'Menunggu verifikasi admin' : 'Belum terverifikasi'}
               </h4>
-              <p className="text-[13px] text-[#6e6e73] mt-0.5">
+              <p className="mt-0.5 text-[13px] text-[var(--app-text-secondary)]">
                 Profil {currentUser.email} belum disetujui. Anda tetap bisa menyusun draf, hubungi admin bila status tak berubah.
               </p>
             </div>
@@ -197,18 +197,18 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       )}
 
       {/* Header Form — Apple hero */}
-      <div className="p-6 sm:p-10 pb-6 text-center border-b border-black/10">
-        <p className="apple-eyebrow">Draf berbantuan AI</p>
+      <div className="border-b border-[var(--app-border)] p-6 pb-7 sm:p-10">
+        <div className="mb-3 flex items-center gap-2"><span className="status-chip !bg-[var(--app-accent-soft)] !text-[var(--app-accent)]"><Sparkles className="h-3.5 w-3.5" /> Draf berbantuan AI</span></div>
         <h2 className="apple-headline !text-[30px] sm:!text-[38px] mt-1">
           Susun {DOC_TYPE_INFO[docType].label}.
         </h2>
-        <p className="apple-sub mt-2 max-w-xl mx-auto !text-[15px]">
+        <p className="apple-sub mt-3 max-w-2xl !text-[15px]">
           Tiga langkah singkat — pilih format dan kelas, isi materi, periksa lalu susun.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 sm:p-8">
-        <ol className="flex items-center justify-center gap-2 mb-8" aria-label="Tahapan penyusunan dokumen">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-8">
+        <ol className="glass-panel mx-auto flex w-fit max-w-full items-center justify-center gap-1 rounded-full p-1.5 mb-8 overflow-x-auto" aria-label="Tahapan penyusunan dokumen">
           {[
             { title: 'Format & kelas' },
             { title: 'Materi' },
@@ -219,7 +219,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 type="button"
                 onClick={() => index < formStep && setFormStep(index)}
                 aria-current={formStep === index ? 'step' : undefined}
-                className={`flex items-center gap-2 rounded-full pl-1.5 pr-4 py-1.5 text-[13px] font-semibold transition-all min-h-[36px] ${
+                className={`flex shrink-0 items-center gap-2 rounded-full pl-1.5 pr-4 py-1.5 text-[12.5px] font-semibold transition-all min-h-[36px] ${
                   formStep === index ? 'bg-black text-white dark:bg-white dark:text-black' :
                   formStep > index ? 'bg-black/5 dark:bg-white/10' : 'text-[#86868b]'
                 }`}
@@ -237,7 +237,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           ))}
         </ol>
 
-        <div className="mb-6 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 px-5 py-4 text-center">
+        <div className="soft-section mb-6 px-5 py-4">
           <h3 className="text-[15px] font-semibold">
             {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Isi kebutuhan pembelajaran' : 'Periksa sebelum menyusun'}
           </h3>
@@ -254,7 +254,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           <p className="text-[14px] font-semibold mb-3">
             Jenis dokumen
           </p>
-          <div className="flex items-center gap-3.5 rounded-2xl bg-black dark:bg-white dark:text-black text-white p-4 sm:p-5">
+          <div className="rounded-[20px] border border-[var(--app-border)] bg-[var(--app-text)] p-4 text-[var(--app-bg)] shadow-sm sm:p-5">
             <div className="shrink-0">
               {docType === 'modul_ajar' && <FileText className="w-6 h-6" />}
               {docType === 'rpp' && <Layers className="w-6 h-6" />}
@@ -278,13 +278,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         </div>
 
         {/* 2. Jenjang, Fase, & Kelas */}
-        <div className="bg-[#f5f5f7] dark:bg-white/5 p-4 sm:p-6 rounded-2xl space-y-4 mt-4">
+        <div className="soft-section mt-4 space-y-4 p-4 sm:p-6">
           <p className="text-[14px] font-semibold">
             Kelas & fase
           </p>
           
           {/* Jenjang terkunci profil — 1 akun untuk 1 jenjang */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-white dark:bg-white/5 border border-black/10 dark:border-white/15 px-4 py-3.5">
+          <div className="apple-card-solid flex items-center justify-between gap-3 px-4 py-3.5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-bold text-[13px] shrink-0">
                 {jenjang}
@@ -317,7 +317,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     setTingkat(fObj.kelas[0]);
                   }
                 }}
-                className="apple-input !bg-white"
+                className="apple-input !bg-[var(--app-surface-solid)]"
               >
                 {availableFases.map((f) => (
                   <option key={f.fase} value={f.fase}>
