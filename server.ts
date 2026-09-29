@@ -18,6 +18,7 @@ import {
   getUserById as getDbUserById,
   initializeDatabase,
   loadState,
+  updateSchool,
   updateUser as updateDbUser
 } from './src/server/database.js';
 import {
@@ -511,8 +512,10 @@ function requireAdmin(req: Request, res: Response): TeacherUser | null {
 }
 
 function recordAudit(req: Request, action: string, resourceType: string, resourceId: string | undefined, success: boolean, actorUserId?: string) {
-  auditLogs.unshift({
+  const actor = actorUserId ? getDbUserById(actorUserId) : null;
+  const entry: AuditLog = {
     id: 'audit-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    tenantId: actor?.schoolId,
     actorUserId,
     action,
     resourceType,
@@ -520,9 +523,10 @@ function recordAudit(req: Request, action: string, resourceType: string, resourc
     success,
     ip: req.ip,
     createdAt: new Date().toISOString()
-  });
+  };
+  appendAuditLog(entry);
+  auditLogs.unshift(entry);
   if (auditLogs.length > 5000) auditLogs = auditLogs.slice(0, 5000);
-  saveDB();
 }
 
 function rateLimitExceeded(req: Request, res: Response, key: string, maxRequests: number, windowMs: number): boolean {
