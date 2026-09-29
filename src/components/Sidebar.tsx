@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
             {!isCollapsed && (
               <span className="min-w-0 leading-tight">
-                <span className="block truncate text-[14px] font750 font-bold tracking-[-.02em]">Ruang Guru</span>
+                <span className="block truncate text-[14px] font-bold tracking-[-.02em]">Ruang Guru</span>
                 <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[var(--app-text-tertiary)]">Merdeka</span>
               </span>
             )}
