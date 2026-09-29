@@ -384,7 +384,7 @@ export default function App() {
         {/* Toast Notification — Apple pill */}
         {toast && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md">
+            <div className="toast-surface rounded-full px-5 py-3 text-[13.5px] font-medium flex items-center gap-2">
               {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158]" />}
               {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961]" />}
               {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a]" />}
@@ -428,12 +428,12 @@ export default function App() {
   ].includes(activeTarget);
 
   return (
-    <div className="min-h-screen text-[#1d1d1f] dark:text-[#f5f5f7] flex">
+    <div className="app-shell flex">
       
       {/* Toast Notification — Apple pill */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print">
-          <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md max-w-[92vw]">
+          <div className="toast-surface max-w-[92vw] rounded-full px-5 py-3 text-[13.5px] font-medium flex items-center gap-2">
             {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158] shrink-0" />}
             {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961] shrink-0" />}
             {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a] shrink-0" />}
@@ -460,8 +460,8 @@ export default function App() {
       />
 
       {/* Main App Layout Area — offset mengikuti lebar sidebar Apple */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-        isSidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[280px]'
+      <div className={`app-main flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ${
+        isSidebarCollapsed ? 'lg:pl-[78px]' : 'lg:pl-[272px]'
       }`}>
         
         {/* Streamlined Top Header */}
@@ -476,7 +476,7 @@ export default function App() {
         />
 
         {/* Content View Container — lega ala Apple */}
-        <main className="flex-1 px-4 sm:px-8 lg:px-12 py-6 sm:py-10 max-w-[1400px] w-full mx-auto">
+        <main className="app-page flex-1">
           
           {/* VIEW 1: DEDICATED GENERATOR WORKSPACE (FOR EACH PERANGKAT AJAR) */}
           {isDocTypeTarget && (
@@ -495,7 +495,7 @@ export default function App() {
                 }}
               />
             ) : (
-              <div className="mx-auto w-full max-w-6xl">
+              <div className="mx-auto w-full max-w-[1180px]">
                 <GeneratorForm
                   currentUser={currentUser}
                   onGenerate={handleGenerate}
@@ -627,7 +627,7 @@ export default function App() {
                 </div>
 
                 <div className="prose-educational space-y-4">
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                  <div className="soft-section">
                     <h3 className="text-[14.5px] font-semibold mb-1">
                       Landasan hukum kurikulum nasional
                     </h3>
@@ -637,7 +637,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="soft-section">
                       <h4 className="font-semibold text-[14px] mb-2">
                         Fase pembelajaran
                       </h4>
@@ -652,7 +652,7 @@ export default function App() {
                       </ul>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="soft-section">
                       <h4 className="font-semibold text-[14px] mb-2">
                         3 komponen esensial Modul Ajar
                       </h4>
@@ -680,8 +680,8 @@ export default function App() {
         </main>
 
         {/* Global Footer — minimal */}
-        <footer className="py-6 px-6 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d] no-print mt-auto">
-          <p><span className="font-semibold dark:text-[#f5f5f7]">Ruang Guru Merdeka</span> · Permendikbudristek No. 12 Tahun 2024 & PPA 2024</p>
+        <footer className="mt-auto px-6 py-6 text-center text-[12px] text-[var(--app-text-tertiary)] no-print">
+          <p><span className="font-semibold text-[var(--app-text-secondary)]">Ruang Guru Merdeka</span><span className="mx-2 opacity-40">·</span>Perangkat ajar berbantuan AI untuk pendidik.</p>
         </footer>
 
       </div>
