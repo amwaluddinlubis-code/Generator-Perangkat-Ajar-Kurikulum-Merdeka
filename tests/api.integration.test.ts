@@ -14,6 +14,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
+  server.closeAllConnections();
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
 
@@ -21,6 +22,7 @@ async function request(path: string, init: RequestInit = {}, cookie?: string) {
   const headers = new Headers(init.headers);
   if (cookie) headers.set('Cookie', cookie);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  headers.set('Connection', 'close');
 
   const response = await fetch(baseUrl + path, { ...init, headers });
   const setCookie = response.headers.get('set-cookie');
