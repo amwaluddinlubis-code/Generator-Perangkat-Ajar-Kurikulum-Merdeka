@@ -551,25 +551,36 @@ export function revokeSession(tokenHash: string): void {
 
 export function checkRateLimitRecord(key: string, maxRequests: number, windowMs: number, now: number): { allowed: boolean; retryAfterSeconds: number } {
   const db = getDb();
-  db.prepare('DELETE FROM rate_limits WHERE window_started_at + ? <= ?').run(windowMs, now);
-  const existing = db.prepare('SELECT window_started_at, request_count FROM rate_limits WHERE rate_key = ?').get(key) as { window_started_at: number; request_count: number } | undefined;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.prepare('DELETE FROM rate_limits WHERE window_started_at + ? <= ?').run(windowMs, now);
+    const existing = db.prepare('SELECT window_started_at, request_count FROM rate_limits WHERE rate_key = ?').get(key) as { window_started_at: number; request_count: number } | undefined;
 
-  if (!existing || existing.window_started_at + windowMs <= now) {
-    db.prepare(`
-      INSERT OR REPLACE INTO rate_limits (rate_key,window_started_at,request_count)
-      VALUES (?,?,?)
-    `).run(key, now, 1);
-    return { allowed: true, retryAfterSeconds: 0 };
+    if (!existing || existing.window_started_at + windowMs <= now) {
+      db.prepare(`
+        INSERT OR REPLACE INTO rate_limits (rate_key,window_started_at,request_count)
+        VALUES (?,?,?)
+      `).run(key, now, 1);
+      db.exec('COMMIT');
+      return { allowed: true, retryAfterSeconds: 0 };
+    }
+
+    const nextCount = existing.request_count + 1;
+    db.prepare('UPDATE rate_limits SET request_count = ? WHERE rate_key = ?').run(nextCount, key);
+
+    const result = nextCount <= maxRequests
+      ? { allowed: true, retryAfterSeconds: 0 }
+      : {
+          allowed: false,
+          retryAfterSeconds: Math.max(1, Math.ceil((existing.window_started_at + windowMs - now) / 1000))
+        };
+
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
   }
-
-  const nextCount = existing.request_count + 1;
-  db.prepare('UPDATE rate_limits SET request_count = ? WHERE rate_key = ?').run(nextCount, key);
-  if (nextCount <= maxRequests) return { allowed: true, retryAfterSeconds: 0 };
-
-  return {
-    allowed: false,
-    retryAfterSeconds: Math.max(1, Math.ceil((existing.window_started_at + windowMs - now) / 1000))
-  };
 }
 
 export function resetRateLimitRecord(key: string): void {
