@@ -59,7 +59,7 @@ export interface DatabaseState {
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DB_PATH = process.env.RGM_DB_PATH || path.join(DATA_DIR, 'app.sqlite');
+const DB_PATH = process.env.RGM_DB_PATH || (process.argv.includes('--test') ? ':memory:' : path.join(DATA_DIR, 'app.sqlite'));
 const LEGACY_JSON_PATH = path.join(DATA_DIR, 'db.json');
 
 let database: DatabaseSync | null = null;
