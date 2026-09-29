@@ -23,10 +23,10 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 ## 2. Teknologi
 
 - **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + D3.js + `marked`
-- **Backend:** Express 5 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
-- **AI:** `@google/genai` (teks: `gemini-3.8-flash` dkk. dengan fallback; gambar: `gemini-2.5-flash-image`)
+- **Backend:** Express 4.21 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
+- **AI:** `@google/genai` (teks multi-model + fallback; gambar: `gemini-2.5-flash-image`)
 - **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), salin clipboard
-- **Data:** JSON file `data/db.json` (di-gitignore), dimuat saat start + disimpan debounce tiap mutasi
+- **Data:** SQLite file `data/app.sqlite` dengan transaksi, WAL, foreign keys, soft-delete, tenant `schoolId`, session store, rate-limit store, dan audit log. `data/db.json` hanya jalur migrasi legacy satu kali.
 
 ---
 
@@ -36,7 +36,8 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 PerangkatAjar/
 ├── server.ts              # API Express + serve frontend
 ├── serverFallback.ts      # Template cadangan 7 tipe dokumen
-├── data/db.json           # Data runtime (dibuat otomatis, jangan di-commit)
+├── data/app.sqlite        # Database runtime SQLite (dibuat otomatis, jangan di-commit)
+├── data/backups/          # Hasil backup SQLite (jangan di-commit)
 ├── .env                   # Kunci API (dibuat dari .env.example)
 ├── index.html
 ├── src/
@@ -59,6 +60,11 @@ PerangkatAjar/
 │   │   ├── UserProfileStatsDashboard.tsx # Profil + KPI + grafik D3 + riwayat
 │   │   ├── ProductivityD3Chart.tsx / DocumentTypeD3Donut.tsx
 │   │   └── BelajarIdAuthModal.tsx / CurriculumGuideModal.tsx / LogoutConfirmModal.tsx
+│   ├── server/
+│   │   ├── database.ts       # SQLite schema, migration, persistence, backup
+│   │   ├── security.ts       # session cookie, rate limit, security limits
+│   │   ├── authorization.ts  # role + tenant authorization policy
+│   │   └── validation.ts     # API + AI input/output validation
 │   └── utils/exportUtils.ts  # Markdown→HTML, docx, pdf, .doc legacy, clipboard
 └── dist/                  # Hasil build produksi
 ```
@@ -90,25 +96,26 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 
 | Method & Path | Fungsi | Catatan |
 |---|---|---|
-| `GET /api/users/current` | Profil aktif (header `x-user-id`, default Super Admin) | — |
-| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Validasi domain Belajar.id |
-| `POST /api/auth/logout` | Keluar (stateless) | — |
-| `GET /api/users` | Daftar guru (panel admin) | — |
-| `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | + `verifiedBy` |
-| `PUT /api/users/:id` | Ubah profil (butuh `requesterId`) | Admin: profil siapa pun + role GURU/ADMIN (kecuali SUPER_ADMIN & diri sendiri); Guru: hanya profil sendiri tanpa jenjang/role/status |
-| `DELETE /api/users/:id` | Hapus guru | — |
-| `GET /api/documents` | Daftar dokumen (`?authorId&jenjang&docType`) | — |
-| `POST /api/documents` | Simpan dokumen | — |
-| `DELETE /api/documents/:id` | Hapus dokumen | — |
-| `POST /api/generate` | Susun dokumen via AI/fallback | Balikan: `title, content, durationMinutes, modelUsed` |
-| `POST /api/generate-image` | Buat ilustrasi (`prompt, aspectRatio`) | Balikan: `imageUrl` (data-URL) |
+| `GET /api/users/current` | Profil aktif dari session cookie | Server menentukan identitas |
+| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Cookie HttpOnly; rate limit; validasi payload |
+| `POST /api/auth/logout` | Keluar + revoke session | Cookie dihapus server |
+| `GET /api/users` | Daftar user sesuai role + `schoolId` | Super Admin lintas tenant; Admin sekolah sendiri |
+| `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | Authorization policy + audit |
+| `PUT /api/users/:id` | Ubah profil | Ownership/role/tenant diverifikasi server; tenant hanya dapat dipindah Super Admin |
+| `DELETE /api/users/:id` | Soft-delete user | Session/membership direvoke; histori tetap ada |
+| `GET /api/audit-logs` | Audit log | Super Admin global; Admin tenant sendiri |
+| `GET /api/documents` | Daftar dokumen | Server filter berdasarkan role/ownership/`schoolId` |
+| `POST /api/documents` | Simpan dokumen | author + tenant berasal dari session; private default |
+| `DELETE /api/documents/:id` | Soft-delete dokumen | Ownership/tenant policy server-side |
+| `POST /api/generate` | Susun dokumen via AI/fallback | Session wajib; input + output divalidasi |
+| `POST /api/generate-image` | Buat ilustrasi | Session wajib; rate limit + input validation |
 
 ---
 
 ## 5. Menjalankan Lokal
 
 ### Prasyarat
-Node.js 20+ · npm · port 3000 bebas.
+Node.js 24.15+ · npm · port 3000 bebas. Versi pengembangan dipin ke Node 24.21.0 melalui `.nvmrc`.
 
 ### Langkah
 ```bash
@@ -135,7 +142,10 @@ npm run dev
 | `npm run build` | Build produksi Vite → `dist/` |
 | `npm run preview` | Pratinjau hasil build (frontend saja) |
 | `npm run lint` | `tsc --noEmit` |
-| `npm run clean` | Hapus `dist` & `server.js` |
+| `npm run clean` | Hapus `dist` & `server.js` secara cross-platform |
+| `npm test` | Unit + security + authorization + validation + API integration tests |
+| `npm run backup` | Backup SQLite ke `data/backups/` atau path yang diberikan |
+| `npm run restore -- <backup.sqlite>` | Restore aman; wajib server dihentikan dan `RGM_RESTORE_CONFIRM=YES` |
 
 ---
 
@@ -150,9 +160,10 @@ npm run dev
 
 ## 7. Data & Akun Demo
 
-- Seed: 1 Super Admin (`amwaluddin.lubis@gmail.com`), 1 admin, 3 guru terverifikasi, 3 pendaftar PENDING, 5 dokumen contoh.
-- Data tersimpan di `data/db.json`; hapus file untuk kembali ke data awal.
-- Login cepat 1-ketuk tersedia di halaman masuk dan modal ganti akun.
+- Seed: 1 Super Admin, 1 Admin, guru terverifikasi/pending, dan 5 dokumen contoh.
+- Pada startup pertama, SQLite diisi dari `data/db.json` bila file legacy tersedia; jika tidak, seed kode digunakan.
+- Setelah migrasi, SQLite menjadi source of truth. Jangan menghapus `data/app.sqlite` pada instalasi yang sudah berisi data kecuali memang ingin memulai ulang.
+- Login cepat tetap tersedia untuk akun seed di UI pilot.
 
 ## 8. Troubleshooting
 
@@ -162,17 +173,20 @@ npm run dev
 | `EADDRINUSE` port 3000 | Matikan proses lama yang menjalankan `tsx server.ts` |
 | Selalu "Template cadangan" | Isi `GEMINI_API_KEY` lalu restart |
 | "API key not valid" (ilustrasi) | Key salah/kedaluwarsa — buat baru di AI Studio |
-| Data kembali ke awal | `data/db.json` terhapus — normal, akan dibuat ulang |
-| Fase kosong untuk SMP/SMA | Sudah diperbaiki — default mengikuti jenjang akun |
+| Data tidak muncul | Pastikan `data/app.sqlite` dapat dibuat/ditulis oleh proses Node |
+| Migrasi legacy | Letakkan `data/db.json` legacy sebelum startup pertama; migrasi hanya dilakukan bila SQLite belum berisi user |
+| Restore | Hentikan server, jalankan `RGM_RESTORE_CONFIRM=YES npm run restore -- <backup.sqlite>`, lalu start kembali |
+| Fase kosong untuk SMP/SMA | Default generator mengikuti jenjang akun |
 
 ---
 
 ## 9. Batasan yang Diketahui
 
 - Statistik bulanan memakai tren contoh (bukan murni data nyata).
-- Arsip tersimpan per-server (file lokal), bukan cloud multi-perangkat.
-- Ilustrasi AI memakai kuota Gemini; saat habis, hanya teks yang memakai fallback.
-- Gambar tersisip tersimpan sebagai data-URL (memperbesar `db.json`); di `.docx` menjadi keterangan teks.
+- SQLite saat ini ditujukan untuk deployment single-node. Untuk multi-instance/cloud, storage tenant/session perlu dipindahkan ke PostgreSQL atau database terkelola bersama.
+- Belajar.id pada branch ini masih merupakan simulasi domain + approval internal; OAuth/OIDC resmi belum terintegrasi.
+- Ilustrasi AI memakai kuota Gemini; tanpa `GEMINI_API_KEY`, generator teks tetap dapat memakai fallback dan generator gambar mengembalikan status konfigurasi.
+- Gambar tersisip tetap berupa data-URL sehingga dokumen besar dapat meningkatkan ukuran payload.
 
 ---
 
