@@ -26,7 +26,7 @@ export function createSession(userId: string, now = Date.now()): string {
 
 export function getSessionUserIdFromToken(token: string | undefined, now = Date.now()): string | null {
   if (!token) return null;
-  return getPersistedSessionUserId(hashSessionToken(token), now);
+  return getPersistedSessionUserId(hashSessionToken(token), now, SESSION_IDLE_TTL_MS);
 }
 
 export function revokeSessionToken(token: string | undefined): void {
