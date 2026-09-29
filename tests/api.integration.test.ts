@@ -5,7 +5,7 @@ import { app } from '../server.ts';
 let server: ReturnType<typeof app.listen>;
 let baseUrl = '';
 
-test.before({ timeout: 5000 }, async () => {
+test.before(async () => {
   server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', () => resolve()));
   const address = server.address();
@@ -13,7 +13,7 @@ test.before({ timeout: 5000 }, async () => {
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
-test.after({ timeout: 5000 }, async () => {
+test.after(async () => {
   server.closeAllConnections();
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
