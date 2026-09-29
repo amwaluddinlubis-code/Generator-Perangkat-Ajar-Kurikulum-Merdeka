@@ -373,7 +373,7 @@ export function updateSchool(schoolId: string, patch: { name?: string; npsn?: st
     patch.name?.trim() || String(current.name),
     patch.npsn?.trim() || (current.npsn ? String(current.npsn) : null),
     ['SD','SMP','SMA','SMK','MULTI'].includes(String(patch.jenjang))
-      ? patch.jenjang
+      ? String(patch.jenjang)
       : String(current.jenjang),
     schoolId
   );
