@@ -1,67 +1,36 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import {
+  checkRateLimitRecord,
+  createSessionRecord,
+  getSessionUserId as getPersistedSessionUserId,
+  resetRateLimitRecord,
+  revokeSession
+} from './database.js';
 
-export const SESSION_COOKIE_NAME = 'rgm_session';
+export const SESSION_COOKIE_NAME = process.env.NODE_ENV === 'production'
+  ? '__Host-rgm_session'
+  : 'rgm_session';
+
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+export const SESSION_IDLE_TTL_MS = 2 * 60 * 60 * 1000;
 
-interface SessionRecord {
-  userId: string;
-  createdAt: number;
-  expiresAt: number;
-}
-
-interface RateLimitRecord {
-  windowStartedAt: number;
-  count: number;
-}
-
-const sessions = new Map<string, SessionRecord>();
-const rateLimits = new Map<string, RateLimitRecord>();
-
-function pruneExpiredSessions(now = Date.now()) {
-  for (const [token, session] of sessions) {
-    if (session.expiresAt <= now) {
-      sessions.delete(token);
-    }
-  }
-}
-
-function pruneExpiredRateLimits(now = Date.now()) {
-  for (const [key, record] of rateLimits) {
-    if (record.windowStartedAt + 60 * 60 * 1000 <= now) {
-      rateLimits.delete(key);
-    }
-  }
+function hashSessionToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
 }
 
 export function createSession(userId: string, now = Date.now()): string {
-  pruneExpiredSessions(now);
-
   const token = randomBytes(32).toString('hex');
-  sessions.set(token, {
-    userId,
-    createdAt: now,
-    expiresAt: now + SESSION_TTL_MS
-  });
-
+  createSessionRecord(hashSessionToken(token), userId, now, now + SESSION_TTL_MS);
   return token;
 }
 
 export function getSessionUserIdFromToken(token: string | undefined, now = Date.now()): string | null {
   if (!token) return null;
-
-  const session = sessions.get(token);
-  if (!session) return null;
-
-  if (session.expiresAt <= now) {
-    sessions.delete(token);
-    return null;
-  }
-
-  return session.userId;
+  return getPersistedSessionUserId(hashSessionToken(token), now);
 }
 
 export function revokeSessionToken(token: string | undefined): void {
-  if (token) sessions.delete(token);
+  if (token) revokeSession(hashSessionToken(token));
 }
 
 export function parseCookies(header: string | undefined): Record<string, string> {
@@ -86,7 +55,7 @@ export function parseCookies(header: string | undefined): Record<string, string>
 
 export function getSessionTokenFromCookieHeader(header: string | undefined): string | null {
   const cookies = parseCookies(header);
-  return cookies[SESSION_COOKIE_NAME] || null;
+  return cookies[SESSION_COOKIE_NAME] || cookies.rgm_session || cookies['__Host-rgm_session'] || null;
 }
 
 export function getSessionUserIdFromCookieHeader(header: string | undefined, now = Date.now()): string | null {
@@ -107,16 +76,18 @@ export function buildSessionCookie(token: string, secure = process.env.NODE_ENV 
 }
 
 export function buildExpiredSessionCookie(secure = process.env.NODE_ENV === 'production'): string {
-  const attributes = [
-    `${SESSION_COOKIE_NAME}=;`,
+  const names = process.env.NODE_ENV === 'production'
+    ? ['__Host-rgm_session', 'rgm_session']
+    : ['rgm_session', '__Host-rgm_session'];
+
+  return names.map(name => [
+    `${name}=`,
     'Path=/',
     'HttpOnly',
     'SameSite=Lax',
-    'Max-Age=0'
-  ];
-
-  if (secure) attributes.push('Secure');
-  return attributes.join(' ');
+    'Max-Age=0',
+    ...(secure ? ['Secure'] : [])
+  ].join('; ')).join(', ');
 }
 
 export function checkRateLimit(
@@ -125,27 +96,11 @@ export function checkRateLimit(
   windowMs: number,
   now = Date.now()
 ): { allowed: boolean; retryAfterSeconds: number } {
-  pruneExpiredRateLimits(now);
-
-  const existing = rateLimits.get(key);
-  if (!existing || existing.windowStartedAt + windowMs <= now) {
-    rateLimits.set(key, { windowStartedAt: now, count: 1 });
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-
-  existing.count += 1;
-  if (existing.count <= maxRequests) {
-    return { allowed: true, retryAfterSeconds: 0 };
-  }
-
-  return {
-    allowed: false,
-    retryAfterSeconds: Math.max(1, Math.ceil((existing.windowStartedAt + windowMs - now) / 1000))
-  };
+  return checkRateLimitRecord(key, maxRequests, windowMs, now);
 }
 
 export function resetRateLimit(key: string): void {
-  rateLimits.delete(key);
+  resetRateLimitRecord(key);
 }
 
 export function isNonEmptyString(value: unknown, maxLength: number): value is string {
