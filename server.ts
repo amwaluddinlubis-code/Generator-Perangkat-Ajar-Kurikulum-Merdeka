@@ -118,7 +118,7 @@ app.use('/api', (_req: Request, _res: Response, next) => {
 });
 
 // Initialize Google Gemini AI SDK
-const ai = new GoogleGenAI();
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 // In-memory / persisted storage
 interface TeacherUser {
@@ -1183,7 +1183,7 @@ PANDUAN PENULISAN:
     let modelUsed = '';
     let lastError: any = null;
 
-    for (const m of candidateModels) {
+    if (ai) for (const m of candidateModels) {
       // Try up to 2 times for transient 503/429
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
@@ -1293,6 +1293,13 @@ app.post('/api/generate-image', async (req: Request, res: Response) => {
   if (rateLimitExceeded(req, res, 'generate-image:user:' + requester.id, 10, 60_000)) return;
 
   try {
+    if (!ai) {
+      return res.status(503).json({
+        success: false,
+        error: { code: 'AI_PROVIDER_NOT_CONFIGURED', message: 'Generator gambar belum dikonfigurasi pada server.' }
+      });
+    }
+
     const imageValidation = validateImagePayload(req.body);
     if (!imageValidation.ok || !imageValidation.value) {
       recordAudit(req, 'generation.image.invalid_input', 'image', undefined, false, requester.id);
