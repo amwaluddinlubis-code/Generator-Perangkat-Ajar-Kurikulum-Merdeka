@@ -293,7 +293,7 @@ Melalui model pembelajaran **${modelPembelajaran}**, peserta didik dapat:
 
 | Aspek | Teknik | Instrumen |
 | :--- | :--- | :--- |
-| Sikap | Observasi | Lembar observasi Profil Pelajar Pancasila |
+| Sikap | Observasi | Lembar observasi dimensi Profil Lulusan |
 | Pengetahuan | Tes lisan & tulis singkat | Exit ticket 2 butir + tanya jawab |
 | Keterampilan | Unjuk kerja | Rubrik laporan kelompok |
 

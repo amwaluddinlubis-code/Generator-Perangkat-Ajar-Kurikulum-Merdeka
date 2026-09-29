@@ -91,7 +91,7 @@ test('fallback mapel agama menomori daftar pustaka secara berurutan', () => {
   const ppaIndex = content.indexOf('3. Pusat Kurikulum dan Pembelajaran');
   assert.ok(bkpdmIndex >= 0);
   assert.ok(ppaIndex > bkpdmIndex);
-  assert.equal(content.includes('\\n2. Pusat Kurikulum dan Pembelajaran'), false);
+  assert.equal(content.includes('\n2. Pusat Kurikulum dan Pembelajaran'), false);
 });
 
 test('fallback mapel non-agama tetap memakai dua nomor daftar pustaka', () => {
