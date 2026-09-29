@@ -721,6 +721,80 @@ app.get('/api/users', (req: Request, res: Response) => {
   res.json({ success: true, users: visibleUsers });
 });
 
+// 4. Admin creates a teacher without replacing the admin's own session
+app.post('/api/users', (req: Request, res: Response) => {
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
+
+  const loginValidation = validateLoginPayload(req.body);
+  const userValidation = validateUserPatch(req.body);
+  if (!loginValidation.ok || !loginValidation.value || !userValidation.ok || !userValidation.value) {
+    recordAudit(req, 'user.create.invalid_input', 'user', undefined, false, requester.id);
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_USER_INPUT', message: [...loginValidation.errors, ...userValidation.errors].join(' ') }
+    });
+  }
+
+  const { email, name, mataPelajaran } = loginValidation.value;
+  const input = userValidation.value as Record<string, any>;
+  if (!name) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_NAME', message: 'Nama guru wajib diisi.' }
+    });
+  }
+
+  if (!isBelajarIdEmail(email)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_LOGIN_DOMAIN', message: 'Gunakan email Belajar.id yang valid.' }
+    });
+  }
+
+  if (getDbUserByEmail(email)) {
+    return res.status(409).json({
+      success: false,
+      error: { code: 'USER_ALREADY_EXISTS', message: 'Akun dengan email tersebut sudah terdaftar.' }
+    });
+  }
+
+  const jenjang = ['SD', 'SMP', 'SMA', 'SMK'].includes(String(input.jenjang))
+    ? String(input.jenjang)
+    : requester.jenjang;
+  const schoolName = requester.role === 'SUPER_ADMIN'
+    ? (loginValidation.value.schoolName || requester.schoolName)
+    : requester.schoolName;
+  const schoolId = requester.role === 'SUPER_ADMIN'
+    ? getOrCreateSchool(schoolName, typeof input.npsn === 'string' ? input.npsn.trim() : undefined, jenjang)
+    : requester.schoolId;
+
+  const newUser: TeacherUser = {
+    id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    name,
+    email,
+    schoolName,
+    schoolId,
+    npsn: typeof input.npsn === 'string' ? input.npsn.trim() || undefined : undefined,
+    nip: typeof input.nip === 'string' ? input.nip.trim() || undefined : undefined,
+    jenjang: jenjang as TeacherUser['jenjang'],
+    mataPelajaran: mataPelajaran || requester.mataPelajaran,
+    role: 'GURU',
+    status: 'VERIFIED',
+    registeredAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: requester.name
+  };
+
+  const persistedUser = createDbUser(newUser);
+  recordAudit(req, 'user.create', 'user', persistedUser.id, true, requester.id);
+  res.status(201).json({
+    success: true,
+    message: 'Guru berhasil ditambahkan dan diverifikasi.',
+    user: persistedUser
+  });
+});
+
 // 4. Admin verify / reject / update teacher status
 app.post('/api/users/verify', (req: Request, res: Response) => {
   const requester = requireAdmin(req, res);
