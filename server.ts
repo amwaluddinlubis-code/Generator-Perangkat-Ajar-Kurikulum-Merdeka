@@ -713,7 +713,52 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
     if (role !== undefined && ['GURU', 'ADMIN'].includes(String(role)) && !isSelf && target.role !== 'SUPER_ADMIN') target.role = role;
   } else {
-    if (clean(nameapp.get('/api/audit-logs', (req: Request, res: Response) => {
+    if (clean(name)) target.name = clean(name);
+    if (clean(schoolName)) target.schoolName = clean(schoolName);
+    if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
+    if (nip !== undefined) target.nip = clean(nip) || undefined;
+    if (npsn !== undefined) target.npsn = clean(npsn) || undefined;
+  }
+
+  saveDB();
+  recordAudit(req, 'user.update', 'user', target.id, true, requester.id);
+  res.json({ success: true, message: 'Profil ' + target.name + ' berhasil diperbarui', user: target });
+});
+
+// 5. Delete teacher
+app.delete('/api/users/:id', (req: Request, res: Response) => {
+  const requester = requireAdmin(req, res);
+  if (!requester) return;
+
+  const { id } = req.params;
+  if (id === requester.id) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'SELF_DELETE_FORBIDDEN', message: 'Akun yang sedang digunakan tidak dapat dihapus.' }
+    });
+  }
+
+  const target = users.find(u => u.id === id);
+  if (!target) {
+    return res.status(404).json({
+      success: false,
+      error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' }
+    });
+  }
+  if (target.role === 'SUPER_ADMIN') {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat dihapus.' }
+    });
+  }
+
+  users = users.filter(u => u.id !== id);
+  saveDB();
+  recordAudit(req, 'user.delete', 'user', id, true, requester.id);
+  res.json({ success: true, message: 'Data guru berhasil dihapus' });
+});
+
+app.get('/api/audit-logs', (req: Request, res: Response) => {
   const requester = requireAdmin(req, res);
   if (!requester) return;
 
