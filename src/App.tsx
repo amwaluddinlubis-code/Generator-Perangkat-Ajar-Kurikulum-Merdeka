@@ -220,12 +220,11 @@ export default function App() {
         durationMinutes: data.durationMinutes || 3.2
       };
 
-      setCurrentDoc(newDoc);
+      const persistedDoc = await handleSaveDocument(newDoc);
+      setCurrentDoc(persistedDoc || newDoc);
       setShowDocumentResult(true);
       const used = data.modelUsed || '';
       setLastModelUsed(used);
-      // Auto-save to documents list
-      await handleSaveDocument(newDoc);
       if (/gemini/i.test(used)) {
         showToast('Perangkat ajar berhasil disusun AI dan siap diekspor .docx / .pdf!', 'success');
       } else {
@@ -312,7 +311,7 @@ export default function App() {
   };
 
   // Handle Save Document to Repository
-  const handleSaveDocument = async (doc: EducationalDocument) => {
+  const handleSaveDocument = async (doc: EducationalDocument): Promise<EducationalDocument | null> => {
     try {
       const res = await fetch('/api/documents', {
         method: 'POST',
@@ -320,12 +319,15 @@ export default function App() {
         body: JSON.stringify(doc)
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setDocuments(prev => [data.document, ...prev.filter(d => d.id !== doc.id)]);
+      if (res.ok && data.success && data.document) {
+        const persisted = data.document as EducationalDocument;
+        setDocuments(prev => [persisted, ...prev.filter(d => d.id !== persisted.id)]);
+        return persisted;
       }
     } catch (err) {
       console.error('Save doc error', err);
     }
+    return null;
   };
 
   // Handle Delete Document
