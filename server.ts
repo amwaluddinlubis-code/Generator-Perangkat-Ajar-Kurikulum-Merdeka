@@ -1405,7 +1405,9 @@ async function setupVite() {
 
 export { app };
 
-if (!process.argv.includes('--test')) {
+const isTestRuntime = process.env.NODE_ENV === 'test' || process.env.npm_lifecycle_event === 'test' || process.argv.includes('--test');
+
+if (!isTestRuntime) {
   setupVite().catch(err => {
     console.error('Failed to start server:', err);
   });
