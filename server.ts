@@ -6,6 +6,21 @@ import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { generateFallbackDocument } from './serverFallback.js';
 import {
+  appendAuditLog,
+  backupDatabase,
+  createDocument as createDbDocument,
+  createUser as createDbUser,
+  deleteDocument as deleteDbDocument,
+  deleteUser as deleteDbUser,
+  getAuditLogs,
+  getDocumentById as getDbDocumentById,
+  getUserByEmail as getDbUserByEmail,
+  getUserById as getDbUserById,
+  initializeDatabase,
+  loadState,
+  updateUser as updateDbUser
+} from './src/server/database.js';
+import {
   buildExpiredSessionCookie,
   buildSessionCookie,
   checkRateLimit,
@@ -55,6 +70,11 @@ app.use((req: Request, res: Response, next) => {
   next();
 });
 
+app.use('/api', (_req: Request, _res: Response, next) => {
+  refreshStateFromDatabase();
+  next();
+});
+
 // Initialize Google Gemini AI SDK
 const ai = new GoogleGenAI();
 
@@ -64,6 +84,7 @@ interface TeacherUser {
   name: string;
   email: string;
   schoolName: string;
+  schoolId: string;
   npsn?: string;
   nip?: string;
   jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK';
@@ -101,6 +122,7 @@ interface EducationalDocument {
   authorId: string;
   authorName: string;
   schoolName: string;
+  schoolId: string;
   isPublic?: boolean;
   durationMinutes?: number;
 }
@@ -432,45 +454,26 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
   }
 ];
 
-// ---- Persistensi file JSON (data/db.json) ----
-const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
-
-function saveDBNow() {
-  try {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, auditLogs }, null, 2));
-  } catch (err) {
-    console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
-  }
+// ---- Persistent transactional storage ----
+initializeDatabase(users, documents, auditLogs);
+{
+  const state = loadState();
+  users = state.users as TeacherUser[];
+  documents = state.documents as EducationalDocument[];
+  auditLogs = state.auditLogs as AuditLog[];
 }
 
-let saveTimer: NodeJS.Timeout | null = null;
-function saveDB() {
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveDBNow, 200);
+function refreshStateFromDatabase() {
+  const state = loadState();
+  users = state.users as TeacherUser[];
+  documents = state.documents as EducationalDocument[];
+  auditLogs = state.auditLogs as AuditLog[];
 }
-
-function loadDB() {
-  try {
-    if (!fs.existsSync(DB_PATH)) {
-      saveDBNow(); // simpan data awal sebagai basis
-      return;
-    }
-    const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
-    if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
-    if (Array.isArray(raw.documents)) documents = raw.documents;
-    if (Array.isArray(raw.auditLogs)) auditLogs = raw.auditLogs;
-    console.log('[DB] Loaded ' + users.length + ' users, ' + documents.length + ' documents and ' + auditLogs.length + ' audit logs from db.json');
-  } catch (err) {
-    console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
-  }
-}
-loadDB();
 
 function getAuthenticatedUser(req: Request): TeacherUser | null {
   const sessionUserId = getSessionUserIdFromCookieHeader(req.headers.cookie);
   if (!sessionUserId) return null;
-  return users.find(u => u.id === sessionUserId) || null;
+  return (getDbUserById(sessionUserId) as TeacherUser | null);
 }
 
 function requireAuth(req: Request, res: Response): TeacherUser | null {
