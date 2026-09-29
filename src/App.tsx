@@ -371,6 +371,7 @@ export default function App() {
               name: 'Amwaluddin Lubis, M.Pd.',
               email: 'amwaluddin.lubis@gmail.com',
               schoolName: 'Balai Penjaminan Mutu Pendidikan (BPMP)',
+              schoolId: 'school-demo-bpmp',
               nip: '19820514 200801 1 008',
               jenjang: 'SMA',
               mataPelajaran: 'Pengawas Kurikulum & Bahasa',
