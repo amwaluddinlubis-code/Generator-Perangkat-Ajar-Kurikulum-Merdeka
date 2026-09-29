@@ -75,7 +75,7 @@ export function buildSessionCookie(token: string, secure = process.env.NODE_ENV 
   return attributes.join('; ');
 }
 
-export function buildExpiredSessionCookie(secure = process.env.NODE_ENV === 'production'): string {
+export function buildExpiredSessionCookie(secure = process.env.NODE_ENV === 'production'): string[] {
   const names = process.env.NODE_ENV === 'production'
     ? ['__Host-rgm_session', 'rgm_session']
     : ['rgm_session', '__Host-rgm_session'];
@@ -87,7 +87,7 @@ export function buildExpiredSessionCookie(secure = process.env.NODE_ENV === 'pro
     'SameSite=Lax',
     'Max-Age=0',
     ...(secure ? ['Secure'] : [])
-  ].join('; ')).join(', ');
+  ].join('; '));
 }
 
 export function checkRateLimit(
