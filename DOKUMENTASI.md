@@ -562,6 +562,13 @@ Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim 
 - Validator kualitas menandai keluaran `needs_review` bila cerita, niat, atau konteks kelas terlalu tipis.
 - Versi prompt dinaikkan ke `2026-09-30`; cakupan diuji melalui prompt dan quality tests.
 
+### P1 — Review manusia sebelum ekspor (selesai 30 September 2026)
+
+- Dokumen dengan status kualitas `needs_review` atau memiliki catatan kualitas menampilkan review gate di viewer.
+- Guru wajib membaca dan menyatakan telah menyesuaikan dokumen sebelum tombol `.docx` dan `.pdf` dibuka.
+- Catatan kualitas tetap terlihat agar guru dapat memperbaiki isi, lalu menyimpan versi yang telah direvisi.
+- Dokumen yang lolos tanpa catatan tetap dapat diekspor tanpa langkah tambahan.
+
 ### Selesai dan terverifikasi otomatis
 
 - Session server-side persisten di SQLite; token raw tidak disimpan, hanya hash.

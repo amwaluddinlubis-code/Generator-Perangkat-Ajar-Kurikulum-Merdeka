@@ -25,7 +25,8 @@ import {
   FileDown,
   Loader2,
   RefreshCw,
-  ImagePlus
+  ImagePlus,
+  ShieldCheck
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -59,6 +60,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [regenSection, setRegenSection] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [regenError, setRegenError] = useState<string>('');
+  const [humanReviewed, setHumanReviewed] = useState<boolean>(false);
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus>(document?.status || 'DRAFT');
   const lastAutosavedContent = React.useRef(document?.content || '');
 
@@ -69,6 +71,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     lastAutosavedContent.current = document.content;
     setActiveView('preview');
     setJustSaved(isSaved);
+    setHumanReviewed(false);
   }, [document?.id, document?.content, isSaved]);
 
   // Autosave draft setelah pengguna berhenti mengetik. Server membuat versi baru
@@ -111,6 +114,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const handleExportDocx = async () => {
+    if (!canExport) return;
     setIsExportingDocx(true);
     try {
       await exportToDocx(document.title, editableContent, exportMeta);
@@ -123,6 +127,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   const handleExportPdf = async () => {
+    if (!canExport) return;
     setIsExportingPdf(true);
     try {
       // Switch to preview if currently in edit/raw mode to capture full rendered layout
@@ -142,6 +147,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       setIsExportingPdf(false);
     }
   };
+
+  const requiresHumanReview = quality?.status === 'needs_review' || Boolean(quality?.issues.length);
+  const canExport = !requiresHumanReview || humanReviewed;
 
   const handleSave = () => {
     if (onSaveToRepository) {
@@ -400,7 +408,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Export to .DOCX Button */}
           <button
             onClick={handleExportDocx}
-            disabled={isExportingDocx}
+            disabled={isExportingDocx || !canExport}
             className="btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px]"
             title="Ekspor dokumen Microsoft Word (.docx) siap diedit di Word / Google Docs"
           >
@@ -415,7 +423,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Export to .PDF Button */}
           <button
             onClick={handleExportPdf}
-            disabled={isExportingPdf}
+            disabled={isExportingPdf || !canExport}
             className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
             title="Ekspor dokumen langsung ke format berkas PDF (.pdf) siap cetak"
           >
@@ -481,6 +489,21 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {/* Panel kualitas + regenerasi per bagian */}
       {(quality && (showQuality || quality.issues.length > 0) || contentSections.length > 0) && (
         <div className="apple-card p-4 sm:p-5 space-y-3 no-print">
+          {requiresHumanReview && (
+            <div className="rounded-2xl border border-[#ff9f0a]/35 bg-[#ff9f0a]/[0.08] p-4">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#9a6700]" />
+                <div className="flex-1">
+                  <p className="text-[13.5px] font-semibold">Tinjauan guru diperlukan sebelum ekspor</p>
+                  <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--app-text-secondary)]">Baca isi, sesuaikan dengan murid nyata, dan pastikan tidak ada asumsi yang keliru. Ekspor akan terbuka setelah Anda menyatakan sudah meninjau.</p>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-[12.5px] font-medium">
+                    <input type="checkbox" checked={humanReviewed} onChange={e => setHumanReviewed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#34c759]" />
+                    <span>Saya sudah membaca dan menyesuaikan dokumen ini sebagai guru.</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
           {quality && quality.issues.length > 0 && (
             <div>
               <button
