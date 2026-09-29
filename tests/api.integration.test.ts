@@ -70,6 +70,19 @@ test('school admin cannot see or modify users from another school', { timeout: 1
   assert.equal(update.response.status, 403);
 });
 
+test('pending teacher can authenticate but cannot access protected generator data', { timeout: 10000 }, async () => {
+  const pendingCookie = await login('rahmat.hidayat@guru.smp.belajar.id');
+  const docs = await request('/api/documents', {}, pendingCookie);
+  assert.equal(docs.response.status, 403);
+  assert.equal(docs.body?.error?.code, 'ACCOUNT_NOT_VERIFIED');
+
+  const logout = await request('/api/auth/logout', { method: 'POST' }, pendingCookie);
+  assert.equal(logout.response.ok, true);
+
+  const current = await request('/api/users/current', {}, pendingCookie);
+  assert.equal(current.response.status, 401);
+});
+
 test('school admin can create a teacher without replacing its own session', { timeout: 10000 }, async () => {
   const adminCookie = await login('admin@guru.belajar.id');
   const email = `integration-${Date.now()}@guru.smp.belajar.id`;
