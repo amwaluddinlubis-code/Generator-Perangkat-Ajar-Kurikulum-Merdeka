@@ -34,6 +34,15 @@ import {
   revokeSessionToken,
   exceedsLength
 } from './src/server/security.js';
+import {
+  validateDocumentPayload,
+  validateGeneratedDocument,
+  validateGeneratorPayload,
+  validateImagePayload,
+  validateLoginPayload,
+  validateUserPatch
+} from './src/server/validation.js';
+
 
 dotenv.config();
 
@@ -584,12 +593,17 @@ app.get('/api/users/current', (req: Request, res: Response) => {
 
 // 2. Belajar.id Login / Switcher
 app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
-  const { email, name, schoolName, jenjang, mataPelajaran } = req.body;
-  const cleanEmail = typeof email === 'string' ? email.toLowerCase().trim() : '';
-
-  if (!isNonEmptyString(cleanEmail, LIMITS.email)) {
-    return res.status(400).json({ success: false, error: { code: 'INVALID_EMAIL', message: 'Email Belajar.id wajib diisi.' } });
+  const loginValidation = validateLoginPayload(req.body);
+  if (!loginValidation.ok || !loginValidation.value) {
+    recordAudit(req, 'auth.login.invalid_input', 'user', undefined, false);
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_LOGIN_INPUT', message: loginValidation.errors.join(' ') }
+    });
   }
+
+  const { email, name, schoolName, mataPelajaran } = loginValidation.value;
+  const cleanEmail = email;
 
   if (rateLimitExceeded(req, res, 'login:ip:' + req.ip, 10, 60_000)) return;
   if (rateLimitExceeded(req, res, 'login:email:' + cleanEmail, 5, 60_000)) return;
@@ -723,7 +737,16 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   if (!requester) return;
 
   const { id } = req.params;
-  const { name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
+  const userValidation = validateUserPatch(req.body);
+  if (!userValidation.ok) {
+    recordAudit(req, 'user.update.invalid_input', 'user', id, false, requester.id);
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_USER_INPUT', message: userValidation.errors.join(' ') }
+    });
+  }
+
+  const { name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = userValidation.value as Record<string, any>;
   const target = getDbUserById(id);
   if (!target) return res.status(404).json({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User tidak ditemukan.' } });
 
@@ -852,13 +875,16 @@ app.post('/api/documents', (req: Request, res: Response) => {
   const requester = requireVerifiedUser(req, res);
   if (!requester) return;
 
-  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, durationMinutes } = req.body;
-  if (!requireText(title, 240) || !requireText(content, LIMITS.documentContent)) {
-    return res.status(400).json({ success: false, error: { code: 'INVALID_DOCUMENT', message: 'Judul dan konten dokumen wajib diisi dan ukurannya harus wajar.' } });
+  const documentValidation = validateDocumentPayload(req.body);
+  if (!documentValidation.ok || !documentValidation.value) {
+    recordAudit(req, 'document.create.invalid_input', 'document', undefined, false, requester.id);
+    return res.status(400).json({
+      success: false,
+      error: { code: 'INVALID_DOCUMENT_INPUT', message: documentValidation.errors.join(' ') }
+    });
   }
-  if (!['modul_ajar', 'rpp', 'soal_ujian', 'kktp_atp', 'lkpd', 'prota_promes', 'modul_p5'].includes(String(docType))) {
-    return res.status(400).json({ success: false, error: { code: 'INVALID_DOCUMENT_TYPE', message: 'Jenis perangkat ajar tidak valid.' } });
-  }
+
+  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, durationMinutes } = documentValidation.value as Record<string, any>;
 
   const newDoc: EducationalDocument = {
     id: 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
@@ -913,6 +939,15 @@ app.post('/api/generate', async (req: Request, res: Response) => {
   if (rateLimitExceeded(req, res, 'generate:user:' + requester.id, 6, 60_000)) return;
 
   try {
+    const generatorValidation = validateGeneratorPayload(req.body);
+    if (!generatorValidation.ok || !generatorValidation.value) {
+      recordAudit(req, 'generation.invalid_input', 'document', undefined, false, requester.id);
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_GENERATOR_INPUT', message: generatorValidation.errors.join(' ') }
+      });
+    }
+
     const {
       docType,
       tingkat,
@@ -925,7 +960,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       dimensiP5,
       soalConfig,
       catatanTambahan
-    } = req.body;
+    } = generatorValidation.value as Record<string, any>;
 
     const jenjang = requester.role === 'GURU'
       ? requester.jenjang
@@ -1209,6 +1244,15 @@ PANDUAN PENULISAN:
       modelUsed = 'kurikulum-merdeka-verified-engine';
     }
 
+    const outputValidation = validateGeneratedDocument('Generated document', generatedText);
+    if (!outputValidation.ok) {
+      recordAudit(req, 'generation.output.invalid', 'document', undefined, false, requester.id);
+      return res.status(502).json({
+        success: false,
+        error: { code: 'GENERATION_OUTPUT_INVALID', message: outputValidation.errors.join(' ') }
+      });
+    }
+
     // Generate clean title
     const generatedTitle = `${
       docType === 'modul_ajar' ? 'Modul Ajar' :
@@ -1259,14 +1303,16 @@ app.post('/api/generate-image', async (req: Request, res: Response) => {
   if (rateLimitExceeded(req, res, 'generate-image:user:' + requester.id, 10, 60_000)) return;
 
   try {
-    const { prompt, aspectRatio } = req.body as { prompt?: string; aspectRatio?: string };
-
-    if (!isNonEmptyString(prompt, LIMITS.imagePrompt)) {
+    const imageValidation = validateImagePayload(req.body);
+    if (!imageValidation.ok || !imageValidation.value) {
+      recordAudit(req, 'generation.image.invalid_input', 'image', undefined, false, requester.id);
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_IMAGE_PROMPT', message: 'Deskripsi gambar wajib diisi dan dibatasi panjangnya.' }
+        error: { code: 'INVALID_IMAGE_PROMPT', message: imageValidation.errors.join(' ') }
       });
     }
+
+    const { prompt, aspectRatio } = imageValidation.value;
     if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return res.status(400).json({
         success: false,
