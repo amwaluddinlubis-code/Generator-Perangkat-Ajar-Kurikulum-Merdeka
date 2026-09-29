@@ -78,5 +78,5 @@ test('sessions expire after the server-side idle timeout', () => {
   const user = createTestUser();
   const token = createSession(user.id, 1_000);
   assert.equal(getSessionUserIdFromToken(token, 1_000 + 60_000), user.id);
-  assert.equal(getSessionUserIdFromToken(token, 1_000 + (2 * 60 * 60 * 1000) + 1), null);
+  assert.equal(getSessionUserIdFromToken(token, 1_000 + 60_000 + (2 * 60 * 60 * 1000) + 1), null);
 });
