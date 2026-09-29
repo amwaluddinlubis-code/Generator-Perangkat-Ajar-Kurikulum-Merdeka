@@ -49,6 +49,8 @@ export function generateFallbackDocument(params: FallbackParams): string {
     ? ' Pembelajaran diarahkan pada pengamalan nilai ajaran agama dalam sikap, pengetahuan, dan keterampilan sehari-hari sesuai CP revisi BKPDM 020 Tahun 2026.'
     : '';
 
+  const ppaBibliographyNumber = isAgamaMapel(mataPelajaran) ? 3 : 2;
+
   if (docType === 'modul_ajar') {
     return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA 2024)
 ## Satuan Pendidikan: ${schoolName}
@@ -66,7 +68,7 @@ export function generateFallbackDocument(params: FallbackParams): string {
 * **Alokasi Waktu**: ${alokasiWaktu}
 * **Model Pembelajaran**: ${modelPembelajaran}
 * **Target Peserta Didik**: ${targetPeserta}
-* **Profil Pelajar Pancasila**: ${dimensiList}
+* **Profil Lulusan**: ${dimensiList}
 * **Sarana & Prasarana**: Modul pegangan guru, LKPD terstruktur, media visual/video pembelajaran kontekstual, perangkat proyektor/papan tulis, dan benda konkret di lingkungan sekitar.
 
 ---
@@ -125,7 +127,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 
 #### 1. Jenis Asesmen
 * **Asesmen Awal (Diagnostik)**: Tanya jawab lisan di awal pembelajaran untuk memetakan kesiapan belajar.
-* **Asesmen Formatif**: Observasi keaktifan diskusi kelompok, lembar observasi Profil Pelajar Pancasila, dan penilaian kinerja LKPD.
+* **Asesmen Formatif**: Observasi keaktifan diskusi kelompok, lembar observasi dimensi Profil Lulusan, dan penilaian kinerja LKPD.
 * **Asesmen Sumatif**: Tes tertulis lingkup materi **${topik}** pada akhir bab/unit.
 
 #### 2. Tabel Rubrik Penilaian KKTP (4 Kategori Pencapaian)
@@ -156,7 +158,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 
 #### 3. Sumber & Daftar Pustaka
 1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2025). *Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran*. Kemendikdasmen RI.${isAgamaMapel(mataPelajaran) ? '\n2. Badan Kebijakan Pendidikan Dasar dan Menengah (BKPDM). (2026). *Keputusan Kepala BKPDM No. 020 Tahun 2026 tentang Perubahan CP Pendidikan Agama dan Budi Pekerti*. Kemendikdasmen RI.' : ''}
-2. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pembelajaran dan Asesmen Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah*. BSKAP Kemendikbudristek RI.`;
+${ppaBibliographyNumber}. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pembelajaran dan Asesmen Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah*. BSKAP Kemendikbudristek RI.`;
   }
 
   if (docType === 'soal_ujian') {
@@ -383,7 +385,7 @@ Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik 
 
 ### II. MATRIKS ALUR TUJUAN PEMBELAJARAN (ATP)
 
-| No | Elemen / Materi | Capaian Pembelajaran | Tujuan Pembelajaran (TP) | Alur & Alokasi (JP) | Profil Pelajar Pancasila |
+| No | Elemen / Materi | Capaian Pembelajaran | Tujuan Pembelajaran (TP) | Alur & Alokasi (JP) | Profil Lulusan |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | Pengenalan **${topik}** | Peserta didik memahami konsep dasar dan karakteristik utama materi. | Melalui pengamatan dan diskusi, siswa mampu mengidentifikasi konsep dasar **${topik}** dengan tepat. | Pertemuan 1–2 (4 JP) | ${dimensiList} |
 | 2 | Pendalaman **${topik}** | Peserta didik menganalisis keterkaitan konsep dengan fenomena nyata. | Melalui penyelidikan kelompok (**${modelPembelajaran}**), siswa mampu menganalisis persoalan kontekstual **${topik}**. | Pertemuan 3–5 (6 JP) | ${dimensiList} |
@@ -532,7 +534,7 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 * **Fase / Kelas**: ${fase} / ${tingkat}
 * **Alokasi Waktu**: ${alokasiWaktu}
 * **Model Pembelajaran**: ${modelPembelajaran}
-* **Profil Pelajar Pancasila**: ${dimensiList}
+* **Profil Lulusan**: ${dimensiList}
 
 ---
 

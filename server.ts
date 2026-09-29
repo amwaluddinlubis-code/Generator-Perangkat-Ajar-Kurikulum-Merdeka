@@ -1264,7 +1264,7 @@ STRUKTUR RESMI YANG WAJIB ADA:
 1. **INFORMASI UMUM**:
    - Identitas: Nama Guru (${authorName || 'Guru Mata Pelajaran'}), Satuan Pendidikan (${schoolName || 'Satuan Pendidikan'}), Jenjang (${jenjang}), Tingkat/Kelas (${tingkat}), ${calculatedFase}, Semester, Alokasi Waktu (${alokasiWaktu || '2 x 40 menit / 1 Pertemuan'}).
    - Kompetensi Awal / Prasyarat Belajar.
-   - Profil Pelajar Pancasila (fokuskan pada dimensi: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}).
+   - Profil Lulusan (fokuskan pada dimensi: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}).
    - Sarana dan Prasarana (alat, media, teknologi kontekstual).
    - Target Peserta Didik (${targetPeserta || 'Reguler/tipikal, dengan diferensiasi kebutuhan belajar'}).
    - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda Tatap Muka.
@@ -1303,14 +1303,14 @@ Fokus pada efisiensi, kemudahan dibaca kepala sekolah/pengawas saat supervisi, d
 
 FORMAT WAJIB:
 1. **IDENTITAS & KOMPONEN RPP**: Sekolah (${schoolName || 'Satuan Pendidikan'}), Mata Pelajaran (${mataPelajaran}), Kelas/Fase (${tingkat} / ${calculatedFase}), Topik (${topik}), Alokasi Waktu (${alokasiWaktu || '2 JP'}).
-2. **TUJUAN PEMBELAJARAN**: Rumusan TP operasional berorientasi HOTS & Profil Pelajar Pancasila.
+2. **TUJUAN PEMBELAJARAN**: Rumusan TP operasional berorientasi HOTS & Profil Lulusan.
 3. **MEDIA, ALAT & SUMBER BELAJAR**: Alat praktis dan bahan ajar relevan.
 4. **LANGKAH-LANGKAH PEMBELAJARAN**:
    - Pendahuluan (10 menit): Doa, Apersepsi, Ice Breaking, Pertanyaan Pemantik.
    - Kegiatan Inti (60 menit): Penerapan sintaks ${modelPembelajaran || 'Problem Based Learning'} dengan sentuhan diferensiasi.
    - Penutup (10 menit): Refleksi, asesmen cepat (Exit Ticket), pesan moral dan doa.
 5. **ASESMEN**:
-   - Asesmen Sikap (Observasi Profil Pelajar Pancasila).
+   - Asesmen Sikap (Observasi dimensi Profil Lulusan).
    - Asesmen Pengetahuan (Tes tulis/lisan).
    - Asesmen Keterampilan (Kinerja/Produk diskusi).
 6. **TANDA TANGAN PENGESAHAN**: Tempat & Tanggal, Mengetahui Kepala Sekolah & Guru Mata Pelajaran.
@@ -1346,7 +1346,7 @@ TUGAS: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUA
 
 KOMPONEN WAJIB:
 1. Rasional dan Capaian Pembelajaran Elemen & Fase.
-2. Matriks Alur Tujuan Pembelajaran (ATP) dalam tabel (Elemen, Capaian Pembelajaran, Tujuan Pembelajaran, Alur Pembelajaran, Alokasi Waktu JP, Profil Pelajar Pancasila, Penilaian).
+2. Matriks Alur Tujuan Pembelajaran (ATP) dalam tabel (Elemen, Capaian Pembelajaran, Tujuan Pembelajaran, Alur Pembelajaran, Alokasi Waktu JP, Profil Lulusan, Penilaian).
 3. Penetapan KKTP dengan 3 Pendekatan Resmi Kemendikbud:
    a. Pendekatan Deskripsi Kriteria.
    b. Pendekatan Rubrik Skala Berkembang.
@@ -1419,7 +1419,7 @@ INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Alokasi Waktu: ${alokasiWaktu || '2 JP (Pertemuan 1)'}
 - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'}
 - Target Peserta Didik: ${targetPeserta || 'Reguler/Tipikal dengan keberagaman gaya belajar'}
-- Dimensi Profil Pelajar Pancasila: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}
+- Dimensi Profil Lulusan: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}
 - Nama Penyusun: ${authorName || 'Bapak/Ibu Guru'}
 - Nama Sekolah: ${schoolName || 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'}
 ${catatanTambahan ? `- Catatan Khusus Guru: ${JSON.stringify(catatanTambahan)}` : ''}

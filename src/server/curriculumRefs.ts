@@ -71,7 +71,7 @@ Mata pelajaran "${mapel}" tunduk pada CP revisi ${cpReference(mapel)}.
   pengetahuan (pemahaman ajaran), dan keterampilan (pengamalan nilai sehari-hari).
 - Tekankan PENGAMALAN, bukan hafalan: setiap tujuan harus bermuara pada perilaku
   nyata di sekolah, keluarga, dan masyarakat sesuai ${fase}.
-- Selaraskan dengan Profil Pelajar Pancasila dimensi Beriman-Bertakwa dan Berakhlak Mulia.
+- Selaraskan dengan dimensi Profil Lulusan yang relevan, terutama keimanan dan ketakwaan kepada Tuhan Yang Maha Esa serta akhlak mulia.
 - Cantumkan dasar rujukan pada bagian Capaian Pembelajaran: tulis persis
   "Keputusan Kepala BSKAP No. 046/H/KR/2025 sebagaimana diubah dengan
   Keputusan Kepala BKPDM No. 020 Tahun 2026".
