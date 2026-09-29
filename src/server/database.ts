@@ -530,14 +530,25 @@ export function appendAuditLog(entry: Record<string, any>): void {
   );
 }
 
-export function getAuditLogs(limit = 100): DbAuditLog[] {
+export function getAuditLogs(limit = 100, tenantId?: string): DbAuditLog[] {
   const db = getDb();
-  return (db.prepare(`
-    SELECT *
-    FROM audit_logs
-    ORDER BY created_at DESC
-    LIMIT ?
-  `).all(Math.min(Math.max(limit, 1), 500)) as Record<string, unknown>[]).map(mapAudit);
+  const safeLimit = Math.min(Math.max(limit, 1), 500);
+  const rows = tenantId
+    ? db.prepare(`
+        SELECT *
+        FROM audit_logs
+        WHERE tenant_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(tenantId, safeLimit)
+    : db.prepare(`
+        SELECT *
+        FROM audit_logs
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).all(safeLimit);
+
+  return (rows as Record<string, unknown>[]).map(mapAudit);
 }
 
 export function createSessionRecord(tokenHash: string, userId: string, createdAt: number, expiresAt: number): void {
