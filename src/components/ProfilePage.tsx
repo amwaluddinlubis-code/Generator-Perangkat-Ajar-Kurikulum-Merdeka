@@ -28,6 +28,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { theme, toggle } = useTheme();
   const isVerified = currentUser.status === 'VERIFIED';
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
+  const canChangeSchool = currentUser.role === 'SUPER_ADMIN';
 
   const [name, setName] = useState(currentUser.name);
   const [school, setSchool] = useState(currentUser.schoolName);
@@ -94,7 +95,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
         <div>
           <label className="block text-[13px] font-semibold mb-1.5">Sekolah</label>
-          <input value={school} onChange={(e) => setSchool(e.target.value)} required className="apple-input" />
+          <input value={school} onChange={(e) => setSchool(e.target.value)} required disabled={!canChangeSchool} className="apple-input disabled:opacity-60" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -121,7 +122,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           {saving ? 'Menyimpan...' : 'Simpan perubahan'}
         </button>
         <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] text-center">
-          Jenjang, peran, dan status hanya bisa diubah oleh admin.
+          Jenjang, peran, dan status hanya bisa diubah oleh admin. Sekolah hanya dapat dipindahkan oleh Super Admin.
         </p>
       </form>
 
