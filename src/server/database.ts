@@ -59,7 +59,7 @@ export interface DatabaseState {
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DB_PATH = path.join(DATA_DIR, 'app.sqlite');
+const DB_PATH = process.env.RGM_DB_PATH || path.join(DATA_DIR, 'app.sqlite');
 const LEGACY_JSON_PATH = path.join(DATA_DIR, 'db.json');
 
 let database: DatabaseSync | null = null;
@@ -350,6 +350,29 @@ function migrateLegacyJson(seedUsers: Record<string, any>[], seedDocuments: Reco
   }
 }
 
+export function getOrCreateSchool(name: string, npsn?: string, jenjang: string = 'MULTI'): string {
+  return ensureSchool(name, npsn, jenjang);
+}
+
+export function updateSchool(schoolId: string, patch: { name?: string; npsn?: string; jenjang?: string }): void {
+  const db = getDb();
+  const current = db.prepare('SELECT name, npsn, jenjang FROM schools WHERE id = ?').get(schoolId) as Record<string, unknown> | undefined;
+  if (!current) throw new Error('School not found');
+
+  db.prepare(`
+    UPDATE schools
+    SET name = ?, npsn = ?, jenjang = ?
+    WHERE id = ?
+  `).run(
+    patch.name?.trim() || String(current.name),
+    patch.npsn?.trim() || (current.npsn ? String(current.npsn) : null),
+    ['SD','SMP','SMA','SMK','MULTI'].includes(String(patch.jenjang))
+      ? patch.jenjang
+      : String(current.jenjang),
+    schoolId
+  );
+}
+
 export function initializeDatabase(seedUsers: Record<string, any>[], seedDocuments: Record<string, any>[], seedAuditLogs: Record<string, any>[]): void {
   getDb();
   migrateLegacyJson(seedUsers, seedDocuments, seedAuditLogs);
@@ -513,10 +536,10 @@ export function createSessionRecord(tokenHash: string, userId: string, createdAt
   `).run(tokenHash, userId, createdAt, expiresAt, createdAt);
 }
 
-export function getSessionUserId(tokenHash: string, now: number): string | null {
+export function getSessionUserId(tokenHash: string, now: number, idleTtlMs = 2 * 60 * 60 * 1000): string | null {
   const db = getDb();
-  db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now);
-  const row = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?').get(tokenHash, now) as { user_id: string } | undefined;
+  db.prepare('DELETE FROM sessions WHERE expires_at <= ? OR last_seen_at + ? <= ?').run(now, idleTtlMs, now);
+  const row = db.prepare('SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ? AND last_seen_at + ? > ?').get(tokenHash, now, idleTtlMs, now) as { user_id: string } | undefined;
   if (!row) return null;
   db.prepare('UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?').run(now, tokenHash);
   return row.user_id;
