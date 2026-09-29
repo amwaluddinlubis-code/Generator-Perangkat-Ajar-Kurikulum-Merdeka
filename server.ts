@@ -791,7 +791,7 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   if (schoolName !== undefined && exceedsLength(schoolName, LIMITS.schoolName)) return res.status(400).json({ success: false, error: { code: 'INVALID_SCHOOL_NAME', message: 'Nama sekolah terlalu panjang.' } });
   if (mataPelajaran !== undefined && exceedsLength(mataPelajaran, LIMITS.subject)) return res.status(400).json({ success: false, error: { code: 'INVALID_SUBJECT', message: 'Mata pelajaran terlalu panjang.' } });
 
-  if (isAdmin) {
+  if (requester.role === 'SUPER_ADMIN' || requester.role === 'ADMIN') {
     if (clean(name)) target.name = clean(name);
     if (['SD', 'SMP', 'SMA', 'SMK'].includes(String(jenjang))) target.jenjang = jenjang;
     if (clean(mataPelajaran)) target.mataPelajaran = clean(mataPelajaran);
