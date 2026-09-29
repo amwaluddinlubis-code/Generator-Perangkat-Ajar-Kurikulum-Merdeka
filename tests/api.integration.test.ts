@@ -70,6 +70,29 @@ test('school admin cannot see or modify users from another school', { timeout: 1
   assert.equal(update.response.status, 403);
 });
 
+test('school admin can create a teacher without replacing its own session', { timeout: 10000 }, async () => {
+  const adminCookie = await login('admin@guru.belajar.id');
+  const email = `integration-${Date.now()}@guru.smp.belajar.id`;
+
+  const created = await request('/api/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      email,
+      name: 'Integration Added Teacher',
+      jenjang: 'SMP',
+      mataPelajaran: 'Bahasa Indonesia'
+    })
+  }, adminCookie);
+
+  assert.equal(created.response.status, 201, JSON.stringify(created.body));
+  assert.equal(created.body.user.role, 'GURU');
+  assert.equal(created.body.user.status, 'VERIFIED');
+
+  const current = await request('/api/users/current', {}, adminCookie);
+  assert.equal(current.response.ok, true);
+  assert.equal(current.body.user.email, 'admin@guru.belajar.id');
+});
+
 test('Super Admin can inspect users across tenants', { timeout: 10000 }, async () => {
   const cookie = await login('amwaluddin.lubis@gmail.com');
   const result = await request('/api/users', {}, cookie);
