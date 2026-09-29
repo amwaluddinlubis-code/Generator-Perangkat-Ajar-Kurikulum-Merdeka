@@ -53,6 +53,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
+app.set('trust proxy', process.env.TRUST_PROXY === '1');
+
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
@@ -63,9 +65,29 @@ app.use((req: Request, res: Response, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "object-src 'none'
+  ].join('; '));
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store');
 
   if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const fetchSite = req.get('sec-fetch-site');
+    if (fetchSite === 'cross-site') {
+      return res.status(403).json({ success: false, error: { code: 'CROSS_SITE_BLOCKED', message: 'Permintaan lintas-situs ditolak.' } });
+    }
+
     const origin = req.get('origin');
     if (origin) {
       try {
