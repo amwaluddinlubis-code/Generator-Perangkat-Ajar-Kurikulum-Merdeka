@@ -21,13 +21,74 @@ import html2canvas from 'html2canvas';
 const DOC_FONT = 'Times New Roman';
 const BODY_SIZE = 24; // 12pt dalam half-point
 
+const ALLOWED_HTML_TAGS = new Set([
+  'A', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DEL', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'HR', 'I', 'IMG', 'LI', 'OL', 'P', 'PRE', 'S', 'STRONG', 'TABLE', 'TBODY', 'TD', 'TFOOT',
+  'TH', 'THEAD', 'TR', 'UL'
+]);
+
+const ALLOWED_HTML_ATTRIBUTES = new Set([
+  'alt', 'colspan', 'height', 'href', 'rowspan', 'src', 'title', 'width'
+]);
+
+function isSafeUrl(value: string, kind: 'href' | 'src'): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (kind === 'href') {
+    return normalized.startsWith('https://') || normalized.startsWith('http://') || normalized.startsWith('mailto:');
+  }
+  return (
+    normalized.startsWith('https://') ||
+    normalized.startsWith('http://') ||
+    /^data:image\/(png|jpeg|gif|webp);base64,/i.test(normalized)
+  );
+}
+
+/**
+ * Marked explicitly does not sanitize HTML. The viewer injects the rendered
+ * result into the DOM, so sanitize the HTML tree before it reaches innerHTML.
+ */
+export function sanitizeRenderedHtml(html: string): string {
+  if (!html || typeof DOMParser === 'undefined') return html;
+
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const elements = Array.from(parsed.body.querySelectorAll('*'));
+
+  for (const element of elements) {
+    if (!ALLOWED_HTML_TAGS.has(element.tagName)) {
+      element.remove();
+      continue;
+    }
+
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value;
+
+      if (name.startsWith('on') || name === 'style' || name === 'srcdoc' || !ALLOWED_HTML_ATTRIBUTES.has(name)) {
+        element.removeAttribute(attribute.name);
+        continue;
+      }
+
+      if ((name === 'href' || name === 'src') && !isSafeUrl(value, name as 'href' | 'src')) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+
+    if (element.tagName === 'A') {
+      element.setAttribute('rel', 'noreferrer noopener');
+    }
+  }
+
+  return parsed.body.innerHTML;
+}
+
 export function renderMarkdownToHtml(markdownText: string): string {
   if (!markdownText) return '';
   try {
-    return marked.parse(markdownText, { gfm: true, breaks: true }) as string;
+    const rendered = marked.parse(markdownText, { gfm: true, breaks: true }) as string;
+    return sanitizeRenderedHtml(rendered);
   } catch (err) {
     console.error('Error parsing markdown:', err);
-    return markdownText;
+    return sanitizeRenderedHtml(String(markdownText));
   }
 }
 
