@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom Markdown Rendering Styles for Educational Documents */
+.prose-educational {
+  color: #1e293b;
+  line-height: 1.7;
+}
+
+.prose-educational h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.prose-educational h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  border-left: 4px solid #3b82f6;
+  padding-left: 0.75rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-educational h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.prose-educational h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #475569;
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose-educational p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  text-align: justify;
+}
+
+.prose-educational ul {
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-educational ol {
+  list-style-type: decimal;
+  margin-left: 1.5rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-educational li {
+  margin-bottom: 0.25rem;
+}
+
+.prose-educational strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.prose-educational hr {
+  border: 0;
+  border-top: 1px dashed #cbd5e1;
+  margin: 1.5rem 0;
+}
+
+.prose-educational blockquote {
+  border-left: 4px solid #6366f1;
+  padding-left: 1rem;
+  font-style: italic;
+  background-color: #f8fafc;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  margin: 1rem 0;
+}
+
+.prose-educational table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.925rem;
+}
+
+.prose-educational th,
+.prose-educational td {
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose-educational th {
+  background-color: #f1f5f9;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.prose-educational tr:nth-child(even) td {
+  background-color: #f8fafc;
+}
+
+/* Print Styles for Indonesia Official School Documents */
+@media print {
+  /* Hide UI elements during print */
+  nav, header, aside, .no-print, button, .tab-nav, .alert-box {
+    display: none !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    line-height: 1.35 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1.5cm !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .print-kop {
+    display: block !important;
+  }
+
+  .prose-educational th,
+  .prose-educational td {
+    border: 1px solid #000000 !important;
+  }
+
+  .prose-educational th {
+    background-color: #f0f0f0 !important;
+  }
+
+  .page-break-after {
+    page-break-after: always !important;
+  }
+
+  .avoid-break-inside {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

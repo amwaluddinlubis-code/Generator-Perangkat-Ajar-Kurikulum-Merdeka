@@ -1,0 +1,8 @@
+{
+  "name": "Ruang Guru Merdeka - Generator Perangkat Ajar & Belajar.id",
+  "description": "Aplikasi penyusun Modul Ajar, RPP, Soal Ujian, ATP, KKTP, dan Perangkat Kelas sesuai Permendikbudristek No 12 Tahun 2024 terintegrasi Akun Belajar.id dengan sistem verifikasi guru.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
