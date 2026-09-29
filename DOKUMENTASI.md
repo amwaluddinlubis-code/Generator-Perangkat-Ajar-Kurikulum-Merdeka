@@ -288,35 +288,39 @@ Gambar dan lampiran jangan disimpan sebagai data-URL di dokumen. Simpan file pad
 
 ## 13. Roadmap Implementasi
 
-### Fase 0 — Baseline dan keamanan P0
+### Fase 0 — Baseline dan keamanan P0 — SELESAI
 
-Tujuan: menutup celah yang menghalangi produksi.
+Implemented dan diuji otomatis:
 
-- Tambahkan session/token server-side.
-- Terapkan middleware `requireAuth`, `requireRole`, dan `requireSchoolAccess`.
-- Lindungi seluruh endpoint admin, dokumen, dan AI.
-- Hilangkan kepercayaan terhadap `requesterId`, `authorId`, `authorName`, dan `isPublic` dari body request.
-- Validasi input dengan schema terpusat.
-- Tambahkan rate limit, ukuran prompt maksimum, timeout, dan idempotency untuk generate.
-- Sanitasi Markdown sebelum `dangerouslySetInnerHTML`.
-- Sembunyikan endpoint daftar pengguna dari akses publik.
-- Tambahkan audit log untuk verifikasi, perubahan role, penghapusan, sharing, dan ekspor.
+- session/token server-side;
+- authorization terpusat berbasis role + `schoolId` + ownership;
+- penghapusan kepercayaan terhadap `requesterId`, `authorId`, `authorName`, `schoolId`, dan `isPublic` dari request sebagai sumber otorisasi;
+- validation terpusat;
+- rate limit persistent + atomic;
+- sanitasi Markdown;
+- audit log tenant-aware;
+- security headers + CSRF baseline;
+- negative tests lintas role/tenant;
+- API integration tests.
 
-**Kriteria selesai:** pengguna tidak dapat membaca atau mengubah data tenant lain meskipun memanggil API secara langsung.
+**Kriteria selesai:** PASS. Pemanggilan API lintas tenant diuji dan ditolak server.
 
-### Fase 1 — Database dan tenancy
+### Fase 1 — Database dan tenancy — BASELINE SINGLE-NODE SELESAI
 
-Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
+Implemented dan diuji otomatis:
 
-- Buat schema database dan migration.
-- Tambahkan `schoolId`/`tenantId` pada semua data bisnis.
-- Implementasikan unique constraint email dan membership.
-- Gunakan transaksi untuk pembuatan dokumen dan versi.
-- Tambahkan soft delete untuk pengguna dan dokumen penting.
-- Tambahkan backup terjadwal dan prosedur restore yang diuji.
-- Pisahkan konfigurasi dev, staging, dan production.
+- SQLite schema + migration dari `data/db.json`;
+- `users`, `schools`, `school_memberships`, `documents`, `audit_logs`, `sessions`, dan `rate_limits`;
+- unique email + foreign keys;
+- tenant `schoolId` server-owned;
+- soft delete user dan dokumen;
+- transaksi untuk operasi persistence penting;
+- backup dan restore command yang diuji;
+- runtime/integration test lintas tenant.
 
-**Kriteria selesai:** dua sekolah dapat menggunakan sistem bersamaan tanpa kebocoran data dan tanpa overwrite dokumen.
+**Sisa Fase 1 untuk deployment multi-instance:** pindahkan state ke PostgreSQL/managed database bersama, object storage untuk file besar, dan lakukan load/concurrency testing.
+
+**Kriteria selesai single-node:** PASS. Data tenant tidak saling bocor pada API integration test dan persistence tidak lagi bergantung pada JSON runtime.
 
 ### Fase 2 — Identitas dan administrasi sekolah
 
@@ -443,50 +447,44 @@ Keputusan tersebut memengaruhi schema database, authorization policy, biaya oper
 
 ---
 
-## 18. Update Implementasi — Fase 0 Security Baseline
+## 18. Update Implementasi — Security + Tenant Baseline
 
-Perubahan pada branch pengembangan ini mulai menerapkan Fase 0 tanpa mengklaim aplikasi sudah siap produksi.
+Branch `feat/security-baseline` telah melampaui baseline Fase 0 dan baseline tenancy single-node Fase 1.
 
-### Sudah diterapkan
+### Source of truth saat ini
 
-- **Server-side session:** login membuat session identifier acak di server dengan masa berlaku 8 jam. Browser hanya menerima cookie HttpOnly + SameSite=Lax; identitas tidak lagi diambil dari localStorage atau header x-user-id.
-- **Server-side authorization:** endpoint profil, admin, dokumen, generator AI, dan generator gambar memeriksa session pada server. Role dan ownership tidak dipercaya dari request body.
-- **Ownership dokumen:** guru hanya dapat membaca/menghapus dokumennya sendiri; admin dibatasi pada sekolah yang tercatat pada profil pilot; SUPER_ADMIN dapat melakukan inspeksi penuh. Dokumen baru PRIVATE secara default.
-- **Validasi dan batas input:** batas panjang email, profil, topik, prompt generator, konten dokumen, dan prompt gambar diterapkan di API.
-- **Rate limit baseline:** login, generator dokumen, dan generator gambar memiliki pembatasan per IP/email atau per user session. Implementasi saat ini masih in-memory dan ditujukan untuk baseline/pilot.
-- **Audit log:** login, logout, verifikasi, perubahan profil, penghapusan user, pembuatan/penghapusan dokumen, dan pemanggilan generator dicatat. Log disimpan di db.json untuk pilot; belum merupakan audit store transaksional produksi.
-- **HTTP hardening:** security headers dasar, Cache-Control no-store untuk API, dan pemeriksaan Origin untuk request yang mengubah state.
-- **Sanitasi Markdown:** hasil marked disanitasi dengan allowlist HTML dan validasi URL sebelum dipasang melalui dangerouslySetInnerHTML. Marked sendiri tidak melakukan sanitasi output secara otomatis.
-- **Automated checks:** tersedia npm test, test session/cookie/rate-limit, serta GitHub Actions untuk lint, test, dan production build.
+- SQLite `data/app.sqlite` adalah source of truth.
+- `data/db.json` hanya dipakai sebagai sumber migrasi legacy ketika SQLite belum memiliki user.
+- Session, rate limit, audit, user, school, membership, dan dokumen disimpan di SQLite.
+- Browser tidak menjadi sumber identitas atau authorization.
 
-### Yang masih sengaja belum dianggap selesai
+### Security contract
 
-1. Belajar.id OAuth/OIDC resmi dan identity proofing.
-2. Session store persisten/terdistribusi untuk multi-instance production.
-3. Database transaksional dan model schoolId/tenantId yang immutable.
-4. Schema validation terpusat untuk seluruh API.
-5. Audit store terpisah, retention policy, dan UI audit trail.
-6. Rate limit terdistribusi/WAF dan observability produksi.
-7. Sanitasi/validasi konten pada pipeline server-side sebelum penyimpanan bila format rich-text diperluas.
-8. Backup/restore database, object storage, dan runbook operasional.
-9. Pengujian integration/E2E lintas role dan lintas sekolah.
-10. Integrasi approval/sharing dokumen yang eksplisit.
+- Identitas requester berasal dari session cookie.
+- `schoolId` berasal dari user yang dibaca server.
+- Role berasal dari database server.
+- Ownership dokumen diverifikasi server.
+- `isPublic` tidak dapat dinaikkan melalui request body.
+- Tenant change hanya dapat dilakukan oleh Super Admin.
+- User deletion bersifat soft-delete.
+- Audit log tidak dapat dibaca lintas tenant oleh Admin sekolah.
 
-**Catatan penting:** session store dan rate limiter pada baseline ini menggunakan memory process. Ini memperbaiki sumber identitas dari sisi klien dan menutup bypass API yang paling jelas, tetapi belum cocok untuk deployment multi-instance atau restart-safe production. Fase 1 tetap wajib memindahkan state bisnis dan session ke storage transaksional/persisten.
+### Verification gate
 
-### Kontrak keamanan yang mulai berlaku
+CI terakhir yang berhasil menjalankan branch ini:
 
-Klien boleh mengirim data formulir, tetapi tidak lagi berwenang menentukan:
+- Type check: PASS
+- Security/unit tests: PASS
+- Authorization tests: PASS
+- Validation tests: PASS
+- SQLite persistence/backup tests: PASS
+- API integration tests: PASS
+- Production build: PASS
+- Browser QA: DEFERRED
 
-- siapa requester sebenarnya;
-- siapa authorId dokumen;
-- authorName/schoolName pemilik dokumen;
-- role atau status akun;
-- apakah dokumen otomatis publik.
+### Catatan deployment
 
-Keputusan tersebut berasal dari session dan data user yang dibaca server. Pola ini menjadi baseline sebelum implementasi tenancy Fase 1.
-
----
+Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim sebagai deployment multi-instance/public production karena OAuth/OIDC resmi, PostgreSQL/managed database, object storage, observability, dan load testing belum selesai.
 
 ## 19. Status Implementasi Terkini — Security + Tenant Baseline
 
