@@ -173,3 +173,263 @@ npm run dev
 - Arsip tersimpan per-server (file lokal), bukan cloud multi-perangkat.
 - Ilustrasi AI memakai kuota Gemini; saat habis, hanya teks yang memakai fallback.
 - Gambar tersisip tersimpan sebagai data-URL (memperbesar `db.json`); di `.docx` menjadi keterangan teks.
+
+---
+
+## 10. Status Kesiapan Produk
+
+Versi pada branch `main` saat ini adalah **prototype fungsional / pilot internal**, bukan aplikasi produksi multi-guru.
+
+Fitur antarmuka dan alur utama sudah tersedia, tetapi produksi publik belum boleh dilakukan sebelum kontrol berikut selesai:
+
+- autentikasi dan sesi server yang nyata;
+- otorisasi terpusat pada seluruh endpoint;
+- database transaksional untuk multi-user;
+- perlindungan data pribadi guru dan sekolah;
+- sanitasi konten Markdown/HTML;
+- rate limit untuk generator AI;
+- audit log tindakan admin;
+- backup dan pemulihan data;
+- pengujian unit, integrasi, dan end-to-end;
+- validasi kualitas hasil dokumen AI dan template fallback.
+
+Status penilaian saat ini:
+
+| Area | Status |
+|---|---|
+| UI dan alur generator | Berfungsi sebagai prototype |
+| 7 jenis perangkat ajar | Tersedia |
+| AI dan fallback | Tersedia, belum memiliki validator output |
+| Ekspor Word/PDF | Tersedia, perlu pengujian dokumen panjang |
+| Autentikasi Belajar.id | Simulasi validasi domain, belum OAuth/OIDC |
+| Otorisasi API | Belum aman untuk produksi |
+| Penyimpanan | File JSON lokal, hanya untuk pilot tunggal |
+| Testing | Belum tersedia secara memadai |
+| Observability | Belum tersedia |
+| Kesiapan produksi | Belum siap |
+
+## 11. Sasaran Produk Produksi Multi-Guru
+
+Target produk adalah aplikasi SaaS/internal platform yang memungkinkan banyak guru dari banyak sekolah menggunakan generator secara aman, dengan batas kepemilikan data yang jelas.
+
+### Peran pengguna
+
+| Peran | Kewenangan |
+|---|---|
+| `SUPER_ADMIN` | Konfigurasi sistem, seluruh tenant, audit dan pemulihan |
+| `ADMIN` | Mengelola pengguna dan dokumen dalam tenant/sekolahnya |
+| `GURU` | Membuat, mengedit, menyimpan, dan mengekspor dokumen sendiri |
+| `KEPALA_SEKOLAH` | Meninjau, memberi komentar, dan menyetujui dokumen sekolah |
+
+Model akses harus berbasis `tenantId`/`schoolId`. Filter di frontend tidak boleh menjadi pengaman; setiap pembatasan harus diverifikasi ulang di backend.
+
+### Batas kepemilikan data
+
+- Data profil guru hanya dapat dibaca oleh pemilik, admin sekolah yang berwenang, dan super admin.
+- Dokumen baru harus `PRIVATE` secara default.
+- Dokumen dapat dibagikan ke sekolah atau dibuat publik melalui tindakan eksplisit.
+- Guru hanya dapat mengubah/menghapus dokumennya sendiri, kecuali role yang berwenang.
+- Dokumen soal, identitas siswa, dan data sekolah tidak boleh otomatis tampil di katalog publik.
+
+## 12. Arah Arsitektur Target
+
+```text
+React + TypeScript
+        |
+        v
+Express API + middleware autentikasi/otorisasi
+        |
+        +-- PostgreSQL atau SQLite untuk pengembangan lokal
+        +-- Object storage untuk gambar dan lampiran
+        +-- AI provider adapter Gemini + fallback engine
+        +-- Queue/worker untuk pekerjaan AI yang lama
+        +-- Audit log dan observability
+```
+
+### Backend
+
+Backend perlu dipisah secara logis menjadi modul berikut:
+
+```text
+src/server/
+  auth/             # OIDC/OAuth, session, refresh, logout
+  users/            # profil, role, membership sekolah
+  schools/          # tenant dan konfigurasi kop dokumen
+  documents/        # CRUD, ownership, versioning, sharing
+  generation/       # prompt, AI adapter, fallback, validator
+  exports/           # Word, PDF, print metadata
+  audit/             # jejak tindakan sensitif
+```
+
+Route HTTP tidak boleh mengambil keputusan authorization dari `requesterId` yang dikirim klien. Identitas pengguna harus berasal dari session/token yang sudah diverifikasi middleware.
+
+### Data dan penyimpanan
+
+Migrasikan `data/db.json` ke database transaksional. Minimal entitas target:
+
+- `users`
+- `schools`
+- `school_memberships`
+- `documents`
+- `document_versions`
+- `document_shares`
+- `generation_jobs`
+- `audit_logs`
+- `ai_usage_records`
+
+Gambar dan lampiran jangan disimpan sebagai data-URL di dokumen. Simpan file pada object storage dan hanya simpan metadata serta URL internal yang memiliki masa berlaku.
+
+## 13. Roadmap Implementasi
+
+### Fase 0 — Baseline dan keamanan P0
+
+Tujuan: menutup celah yang menghalangi produksi.
+
+- Tambahkan session/token server-side.
+- Terapkan middleware `requireAuth`, `requireRole`, dan `requireSchoolAccess`.
+- Lindungi seluruh endpoint admin, dokumen, dan AI.
+- Hilangkan kepercayaan terhadap `requesterId`, `authorId`, `authorName`, dan `isPublic` dari body request.
+- Validasi input dengan schema terpusat.
+- Tambahkan rate limit, ukuran prompt maksimum, timeout, dan idempotency untuk generate.
+- Sanitasi Markdown sebelum `dangerouslySetInnerHTML`.
+- Sembunyikan endpoint daftar pengguna dari akses publik.
+- Tambahkan audit log untuk verifikasi, perubahan role, penghapusan, sharing, dan ekspor.
+
+**Kriteria selesai:** pengguna tidak dapat membaca atau mengubah data tenant lain meskipun memanggil API secara langsung.
+
+### Fase 1 — Database dan tenancy
+
+Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
+
+- Buat schema database dan migration.
+- Tambahkan `schoolId`/`tenantId` pada semua data bisnis.
+- Implementasikan unique constraint email dan membership.
+- Gunakan transaksi untuk pembuatan dokumen dan versi.
+- Tambahkan soft delete untuk pengguna dan dokumen penting.
+- Tambahkan backup terjadwal dan prosedur restore yang diuji.
+- Pisahkan konfigurasi dev, staging, dan production.
+
+**Kriteria selesai:** dua sekolah dapat menggunakan sistem bersamaan tanpa kebocoran data dan tanpa overwrite dokumen.
+
+### Fase 2 — Identitas dan administrasi sekolah
+
+- Integrasikan Belajar.id melalui OAuth/OIDC resmi jika tersedia.
+- Sediakan alur undangan guru ke sekolah.
+- Sediakan verifikasi email atau mekanisme recovery yang sah sebagai fallback.
+- Tambahkan konfigurasi kepala sekolah, kop, NPSN, alamat, tanda tangan, dan tahun ajaran.
+- Hapus nama kepala sekolah, NIP, Jakarta, NPSN, dan akreditasi hardcoded dari renderer dokumen.
+
+**Kriteria selesai:** setiap dokumen yang diekspor memakai identitas sekolah dan penandatangan yang berasal dari profil tenant.
+
+### Fase 3 — Kualitas AI dan dokumen
+
+- Buat schema output berbeda untuk setiap `docType`.
+- Validasi jumlah soal, kunci jawaban, tabel, rubrik, fase, dan alokasi waktu.
+- Simpan `promptVersion`, `model`, `generationStatus`, dan `validationErrors`.
+- Tampilkan status `AI`, `fallback`, atau `needs_review` secara jujur.
+- Tambahkan tombol regenerasi bagian tertentu, bukan hanya seluruh dokumen.
+- Tambahkan versioning dan autosave draft.
+- Uji ekspor dengan tabel panjang, gambar, halaman lebih dari satu, dan dokumen berbahasa Indonesia.
+
+**Kriteria selesai:** hasil yang tidak memenuhi struktur minimum tidak dapat diberi status siap ekspor tanpa peringatan.
+
+### Fase 4 — Operasional produksi
+
+- Gunakan HTTPS dan secure cookie.
+- Kelola secret melalui secret manager, bukan file `.env` di server produksi.
+- Tambahkan structured logging tanpa membocorkan prompt atau data pribadi.
+- Tambahkan health check dan readiness check.
+- Tambahkan metrik latency, error rate, penggunaan AI, fallback rate, dan ukuran penyimpanan.
+- Tambahkan alert untuk kegagalan AI, database, disk, dan backup.
+- Gunakan CI untuk lint, build, unit test, integration test, dan dependency audit.
+- Sediakan staging environment sebelum deployment produksi.
+
+**Kriteria selesai:** tim dapat mendeteksi kegagalan, memulihkan data, dan melakukan rollback tanpa mengedit data produksi secara manual.
+
+## 14. Kontrak API Produksi
+
+Semua endpoint bisnis harus:
+
+- menerima identitas pengguna dari session/token;
+- mengembalikan error JSON dengan format konsisten;
+- melakukan validasi schema sebelum masuk service;
+- menerapkan ownership/tenant check;
+- mencatat tindakan sensitif ke audit log;
+- memiliki timeout dan batas payload;
+- tidak mengembalikan data pribadi yang tidak diperlukan.
+
+Format error yang disarankan:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "DOCUMENT_ACCESS_DENIED",
+    "message": "Anda tidak memiliki akses ke dokumen ini.",
+    "requestId": "..."
+  }
+}
+```
+
+## 15. Pengujian Minimum Sebelum Go-Live
+
+### Unit test
+
+- validasi domain dan identitas;
+- perhitungan fase/jenjang;
+- generator fallback;
+- parser Markdown dan sanitasi;
+- authorization policy;
+- validasi schema setiap jenis dokumen.
+
+### Integration test
+
+- login dan logout;
+- pembuatan tenant/sekolah;
+- undangan dan verifikasi guru;
+- CRUD dokumen dengan ownership;
+- akses silang antar sekolah harus ditolak;
+- generator AI dan fallback;
+- audit log;
+- backup dan restore.
+
+### End-to-end test
+
+Minimal satu alur lengkap untuk setiap role:
+
+1. Guru masuk.
+2. Guru membuat draft.
+3. Guru mengedit dan menyimpan versi.
+4. Kepala sekolah meninjau.
+5. Dokumen diekspor ke Word/PDF.
+6. Admin melihat audit trail.
+
+## 16. Definition of Done Produksi
+
+Aplikasi dapat disebut siap produksi apabila seluruh kondisi berikut terpenuhi:
+
+- tidak ada endpoint bisnis kritis tanpa authorization;
+- tidak ada data antar sekolah yang dapat dibaca silang;
+- autentikasi tidak bergantung pada localStorage sebagai sumber kebenaran;
+- database dan backup telah diuji restore;
+- raw HTML dari pengguna/AI telah disanitasi;
+- semua route penting memiliki test otomatis;
+- hasil AI memiliki validasi dan label status yang jelas;
+- ekspor Word/PDF lulus pengujian dokumen nyata;
+- secret, log, dan data pribadi memiliki perlindungan yang memadai;
+- staging telah digunakan untuk uji pilot minimal beberapa sekolah;
+- tersedia runbook untuk deployment, rollback, backup, restore, dan insiden keamanan.
+
+## 17. Keputusan Produk yang Harus Ditentukan
+
+Sebelum implementasi Fase 1, pemilik produk perlu menetapkan:
+
+1. Apakah aplikasi bersifat SaaS multi-sekolah atau instalasi terpisah per sekolah?
+2. Apakah Belajar.id akan menggunakan integrasi OAuth/OIDC resmi atau undangan admin?
+3. Apakah dokumen dapat dibagikan lintas sekolah?
+4. Siapa yang berwenang menyetujui dokumen: admin, kepala sekolah, atau keduanya?
+5. Berapa lama dokumen, log, dan file gambar disimpan?
+6. Apakah penggunaan AI dibatasi per guru, per sekolah, atau per bulan?
+7. Di mana wilayah penyimpanan data dan backup akan ditempatkan?
+
+Keputusan tersebut memengaruhi schema database, authorization policy, biaya operasional, dan desain onboarding.
