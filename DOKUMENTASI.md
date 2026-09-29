@@ -192,35 +192,28 @@ npm run dev
 
 ## 10. Status Kesiapan Produk
 
-Versi pada branch `main` saat ini adalah **prototype fungsional / pilot internal**, bukan aplikasi produksi multi-guru.
-
-Fitur antarmuka dan alur utama sudah tersedia, tetapi produksi publik belum boleh dilakukan sebelum kontrol berikut selesai:
-
-- autentikasi dan sesi server yang nyata;
-- otorisasi terpusat pada seluruh endpoint;
-- database transaksional untuk multi-user;
-- perlindungan data pribadi guru dan sekolah;
-- sanitasi konten Markdown/HTML;
-- rate limit untuk generator AI;
-- audit log tindakan admin;
-- backup dan pemulihan data;
-- pengujian unit, integrasi, dan end-to-end;
-- validasi kualitas hasil dokumen AI dan template fallback.
-
-Status penilaian saat ini:
+Branch `main` tetap menjadi baseline prototype lama. Branch `feat/security-baseline` sekarang menjadi kandidat **pilot internal single-node** setelah automated gate PASS dan sebelum Browser QA.
 
 | Area | Status |
 |---|---|
-| UI dan alur generator | Berfungsi sebagai prototype |
+| UI dan alur generator | Tersedia |
 | 7 jenis perangkat ajar | Tersedia |
-| AI dan fallback | Tersedia, belum memiliki validator output |
-| Ekspor Word/PDF | Tersedia, perlu pengujian dokumen panjang |
-| Autentikasi Belajar.id | Simulasi validasi domain, belum OAuth/OIDC |
-| Otorisasi API | Belum aman untuk produksi |
-| Penyimpanan | File JSON lokal, hanya untuk pilot tunggal |
-| Testing | Belum tersedia secara memadai |
-| Observability | Belum tersedia |
-| Kesiapan produksi | Belum siap |
+| AI + fallback | Tersedia; fallback tetap berjalan tanpa Gemini |
+| Validasi AI output | PASS melalui automated tests |
+| Autentikasi session | PASS — server-side persistent session |
+| Otorisasi API | PASS — role + schoolId + ownership |
+| Penyimpanan | PASS — SQLite transactional single-node |
+| Rate limit | PASS — persistent + atomic |
+| Audit log | PASS — tenant-scoped |
+| Backup/restore | PASS — automated test |
+| Type check | PASS |
+| Unit/security/authorization/validation tests | PASS |
+| API integration tests | PASS |
+| Production build | PASS |
+| OAuth/OIDC Belajar.id resmi | Belum |
+| Multi-instance PostgreSQL | Belum |
+| Browser QA | **DEFERRED — menunggu user memulai pengujian** |
+| Public production readiness | Belum diklaim |
 
 ## 11. Sasaran Produk Produksi Multi-Guru
 
