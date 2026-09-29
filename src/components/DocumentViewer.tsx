@@ -272,10 +272,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       
       {/* Top Action Bar — Apple frosted */}
-      <div className="apple-card p-4 flex flex-wrap items-center justify-between gap-3 no-print !rounded-[20px]">
+      <div className="glass-panel p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 no-print !rounded-[20px]">
         <div className="flex items-center gap-2">
           {onBackToGenerator && (
             <button
@@ -322,7 +322,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </span>
               ) : null}
             </div>
-            <h1 className="text-base sm:text-lg font-extrabold text-slate-900 truncate max-w-[280px] sm:max-w-md mt-0.5">
+            <h1 className="mt-1 max-w-[280px] truncate text-base font-bold tracking-[-.02em] sm:max-w-md sm:text-lg">
               {document.title}
             </h1>
           </div>
@@ -361,7 +361,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Copy Button */}
           <button
             onClick={handleCopy}
-            className="px-4 py-2 rounded-full border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            className="btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px]"
             title="Salin isi dokumen ke clipboard"
           >
             {copied ? <Check className="w-4 h-4 text-[#30b158]" /> : <Copy className="w-4 h-4" />}
@@ -371,7 +371,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Ilustrasi AI */}
           <button
             onClick={openImgModal}
-            className="px-4 py-2 rounded-full bg-black dark:bg-white dark:text-black text-white text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            className="btn-apple !min-h-[38px] !px-3.5 !text-[12.5px]"
             title="Buat ilustrasi AI untuk dokumen ini (Gemini)"
           >
             <ImagePlus className="w-4 h-4" />
@@ -382,7 +382,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           <button
             onClick={handleExportDocx}
             disabled={isExportingDocx}
-            className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
+            className="btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px]"
             title="Ekspor dokumen Microsoft Word (.docx) siap diedit di Word / Google Docs"
           >
             {isExportingDocx ? (
@@ -411,7 +411,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Print Button */}
           <button
             onClick={handlePrint}
-            className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+            className="rounded-full p-2.5 text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-surface-muted)]"
             title="Cetak langsung melalui dialog browser"
           >
             <Printer className="w-[18px] h-[18px]" />
@@ -421,7 +421,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {onSaveToRepository && (
             <button
               onClick={handleSave}
-              className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] ${
+              className={`btn-apple-secondary !min-h-[38px] !px-3.5 !text-[12.5px] ${
                 justSaved
                   ? 'bg-black dark:bg-white dark:text-black text-white'
                   : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15'
@@ -497,11 +497,11 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       )}
 
       {/* Main Document Paper Display */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden print-container">
+      <div className="apple-card-solid overflow-hidden print-container">
         
         {/* EDIT VIEW */}
         {activeView === 'edit' && (
-          <div className="p-6 space-y-4 no-print">
+          <div className="p-5 sm:p-7 space-y-4 no-print">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span className="font-semibold text-slate-700">
                 Mode Editor Teks Langsung (Perubahan otomatis mempengaruhi tampilan pratinjau cetak dan unduhan Word / PDF)
@@ -512,14 +512,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               value={editableContent}
               onChange={(e) => setEditableContent(e.target.value)}
               rows={24}
-              className="w-full p-4 rounded-xl border border-slate-300 font-mono text-xs sm:text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 bg-slate-50/50"
+              className="apple-input min-h-[520px] resize-y !rounded-[16px] font-mono text-xs leading-relaxed sm:text-sm"
             />
           </div>
         )}
 
         {/* RAW MARKDOWN VIEW */}
         {activeView === 'raw' && (
-          <div className="p-6 bg-slate-900 text-slate-100 overflow-x-auto no-print">
+          <div className="no-print overflow-x-auto rounded-b-[var(--app-radius-lg)] bg-[#111113] p-5 text-slate-100 sm:p-7">
             <div className="flex items-center justify-between text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2">
               <span className="font-mono">RAW MARKDOWN FORMAT</span>
               <button
