@@ -9,6 +9,36 @@ import {
 } from '../src/server/curriculumRefs.ts';
 import { validateDocumentStructure } from '../src/server/validation.ts';
 import { generateFallbackDocument } from '../serverFallback.ts';
+import { MODEL_PEMBELAJARAN_PER_JENJANG } from '../src/data/curriculumData.ts';
+
+test('daftar model per jenjang: 5–7 esensial, tanpa prinsip/pendekatan', () => {
+  for (const jenjang of ['SD', 'SMP', 'SMA', 'SMK'] as const) {
+    const list = MODEL_PEMBELAJARAN_PER_JENJANG[jenjang];
+    assert.ok(list.length >= 5 && list.length <= 7, `${jenjang} harus 5–7 model`);
+    const values = list.map(m => m.value.toLowerCase());
+    assert.ok(!values.some(v => v.includes('diferensiasi') || v.includes('tarl')),
+      `${jenjang} tidak boleh memuat diferensiasi/TaRL`);
+    for (const m of list) {
+      assert.ok(m.value.length > 2, 'value tidak kosong');
+      assert.match(m.label, /^.+ - .{3,60}$/, `label "${m.label}" format "Nama - penjelasan singkat"`);
+    }
+    const unique = new Set(values);
+    assert.equal(unique.size, values.length, `${jenjang} tidak boleh duplikat`);
+  }
+});
+
+test('ciri khas tiap jenjang terwakili', () => {
+  const has = (j: 'SD' | 'SMP' | 'SMA' | 'SMK', v: string) =>
+    MODEL_PEMBELAJARAN_PER_JENJANG[j].some(m => m.value === v);
+  assert.ok(has('SD', 'Inquiry Terbimbing'), 'SD memakai inkuiri terbimbing (konkret)');
+  assert.ok(has('SMA', 'Group Investigation'), 'SMA memakai group investigation (riset)');
+  assert.ok(has('SMK', 'Teaching Factory (TEFA)'), 'SMK memakai teaching factory (industri)');
+  assert.ok(!has('SD', 'Teaching Factory (TEFA)'), 'TEFA khusus SMK');
+  assert.ok(!has('SMP', 'Group Investigation'), 'Group Investigation khusus SMA');
+  for (const j of ['SD', 'SMP', 'SMA', 'SMK'] as const) {
+    assert.ok(has(j, 'Problem Based Learning (PBL)'), `${j} tetap punya PBL`);
+  }
+});
 
 test('deteksi mapel agama & budi pekerti', () => {
   assert.equal(isAgamaMapel('Pendidikan Agama Islam dan Budi Pekerti'), true);

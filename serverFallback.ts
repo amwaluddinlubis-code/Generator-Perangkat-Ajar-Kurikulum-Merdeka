@@ -49,6 +49,34 @@ export function generateFallbackDocument(params: FallbackParams): string {
     ? ' Pembelajaran diarahkan pada pengamalan nilai ajaran agama dalam sikap, pengetahuan, dan keterampilan sehari-hari sesuai CP revisi BKPDM 020 Tahun 2026.'
     : '';
 
+  /** Susun lampiran modul ajar sesuai pilihan guru (default: semua). */
+  const buildLampiranSection = (): string => {
+    const all = ['LKPD siap pakai', 'Bahan bacaan', 'Glosarium', 'Remedial–Pengayaan'];
+    const requested = Array.isArray((params.catatanTambahan as any)?.lampiran) && (params.catatanTambahan as any).lampiran.length > 0
+      ? (params.catatanTambahan as any).lampiran.filter((x: any) => all.includes(x))
+      : all;
+    const blocks: Record<string, string> = {
+      'LKPD siap pakai': `#### LEMBAR KERJA PESERTA DIDIK (LKPD)
+* **Mata Pelajaran**: ${mataPelajaran}
+* **Topik**: ${topik}
+* **Kelompok / Anggota**: ....................................................
+* **Petunjuk Pengerjaan**:
+  1. Cermati wacana kasus kontekstual yang disajikan pada lembar kerja.
+  2. Diskusikan bersama rekan sekelompok mengenai faktor penyebab dan dampak terkait **${topik}**.
+  3. Rumuskan 3 kesimpulan utama dan buatlah diagram alur solusinya.`,
+      'Bahan bacaan': `#### BAHAN BACAAN GURU DAN PESERTA DIDIK
+Ringkasan materi esensial **${topik}** (${mataPelajaran}, ${tingkat}): pahami konsep inti, keterkaitan antar-konsep, dan contoh penerapan kontekstual sebelum dan sesudah pembelajaran.`,
+      'Glosarium': `#### GLOSARIUM ISTILAH PENTING
+* **${topik}**: Materi pokok pembelajaran yang memuat konsep inti dan aplikasi terapan.
+* **Diferensiasi Pembelajaran**: Penyesuaian konten, proses, atau produk belajar demi mengakomodasi kebutuhan unik peserta didik.
+* **KKTP**: Kriteria Ketercapaian Tujuan Pembelajaran sebagai pedoman evaluasi ketuntasan belajar siswa.`,
+      'Remedial–Pengayaan': `#### PROGRAM REMEDIAL DAN PENGAYAAN
+* **Remedial**: pembelajaran ulang terfokus bagi peserta didik di bawah KKTP dengan bentuk tugas setara berbeda.
+* **Pengayaan**: proyek mini/infografis **${topik}** bagi peserta didik melampaui ketuntasan.`
+    };
+    return requested.map((item: string) => blocks[item]).join('\n\n');
+  };
+
   const ppaBibliographyNumber = isAgamaMapel(mataPelajaran) ? 3 : 2;
 
   if (docType === 'modul_ajar') {
@@ -141,20 +169,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 ---
 
 ### V. LAMPIRAN MODUL AJAR
-
-#### 1. Lembar Kerja Peserta Didik (LKPD) Interaktif
-* **Mata Pelajaran**: ${mataPelajaran}
-* **Topik**: ${topik}
-* **Kelompok / Anggota**: ....................................................
-* **Petunjuk Pengerjaan**:
-  1. Cermati wacana kasus kontekstual yang disajikan pada lembar kerja.
-  2. Diskusikan bersama rekan sekelompok mengenai faktor penyebab dan dampak terkait **${topik}**.
-  3. Rumuskan 3 kesimpulan utama dan buatlah diagram alur solusinya.
-
-#### 2. Glosarium Istilah Penting
-* **${topik}**: Materi pokok pembelajaran yang memuat konsep inti dan aplikasi terapan.
-* **Diferensiasi Pembelajaran**: Penyesuaian konten, proses, atau produk belajar demi mengakomodasi kebutuhan unik peserta didik.
-* **KKTP**: Kriteria Ketercapaian Tujuan Pembelajaran sebagai pedoman evaluasi ketuntasan belajar siswa.
+${buildLampiranSection()}
 
 #### 3. Sumber & Daftar Pustaka
 1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2025). *Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran*. Kemendikdasmen RI.${isAgamaMapel(mataPelajaran) ? '\n2. Badan Kebijakan Pendidikan Dasar dan Menengah (BKPDM). (2026). *Keputusan Kepala BKPDM No. 020 Tahun 2026 tentang Perubahan CP Pendidikan Agama dan Budi Pekerti*. Kemendikdasmen RI.' : ''}
@@ -265,7 +280,7 @@ Di suatu lingkungan satuan pendidikan, ditemukan permasalahan nyata terkait **${
 ---
 
 ### II. TIGA KOMPONEN INTI RPP
-
+${(params.catatanTambahan as any)?.fokusRpp && (params.catatanTambahan as any).fokusRpp !== 'Seimbang' ? `*Fokus penekanan dokumen ini: **${(params.catatanTambahan as any).fokusRpp}**.*\n` : ''}
 #### 1. Tujuan Pembelajaran
 Melalui model pembelajaran **${modelPembelajaran}**, peserta didik dapat:
 - Memahami konsep esensial **${topik}** secara mandiri dan bernalar kritis.
@@ -316,6 +331,36 @@ NIP. ....................................................`;
 
   const temaP5 = (params.catatanTambahan && params.catatanTambahan.temaP5) || 'Gaya Hidup Berkelanjutan';
 
+  /** Susun blok aktivitas LKPD sesuai jumlah pilihan guru + kunci opsional. */
+  const buildLkpdActivities = (): string => {
+    const all = [
+      { title: 'EKSPLORASI & PENGAMATAN (Diferensiasi Konten)', body: `Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
+
+| No | Aspek yang Diamati | Hasil Pengamatan / Data | Keterangan |
+| :--- | :--- | :--- | :--- |
+| 1 | .................................................... | .................................................... | .................................................... |
+| 2 | .................................................... | .................................................... | .................................................... |
+| 3 | .................................................... | .................................................... | .................................................... |` },
+      { title: 'ANALISIS & KOLABORASI (Diferensiasi Proses)', body: `1. Berdasarkan data pada tabel di atas, pola atau keteraturan apa yang ditemukan kelompokmu terkait **${topik}**?
+   Jawab: ...................................................................................................................................
+2. Hubungkan temuanmu dengan konsep **${mataPelajaran}** yang telah dipelajari. Jelaskan dengan bahasamu sendiri!
+   Jawab: ...................................................................................................................................
+3. Rumuskan satu pertanyaan kritis lanjutan yang ingin kalian selidiki lebih dalam:
+   Jawab: ...................................................................................................................................` },
+      { title: 'APLIKASI & KREASI PRODUK', body: `Wujudkan pemahamanmu dalam satu produk pilihan: poster/infografis, model sederhana, atau demonstrasi singkat terkait **${topik}**. Tuliskan langkah pembuatan dan bahan yang digunakan di bawah ini.
+   Rencana produk kami: ...................................................................................................................................` },
+      { title: 'KESIMPULAN & REFLEKSI MANDIRI (Diferensiasi Produk)', body: `* **Kesimpulan kelompok**: ...................................................................................................................................
+* **Refleksi individu** — *Satu hal yang kupahami hari ini*: ............................ *Satu hal yang ingin kupelajari lagi*: ............................` }
+    ];
+    const requested = Number((params.catatanTambahan as any)?.jumlahAktivitas);
+    const n = Number.isFinite(requested) ? Math.min(Math.max(Math.floor(requested), 1), 4) : 3;
+    const blocks = all.slice(0, n).map((a, i) => `### AKTIVITAS ${i + 1} — ${a.title}\n${a.body}`);
+    if ((params.catatanTambahan as any)?.kunciLkpd) {
+      blocks.push(`### KUNCI JAWABAN GURU (tidak dibagikan ke siswa)\n* Eksplorasi: pastikan tabel terisi data hasil pengamatan nyata, bukan salinan.\n* Analisis: terima jawaban yang menunjukkan pola keterkaitan **${topik}** dengan alasan logis.\n* Produk & refleksi: nilai kelengkapan, kreativitas, dan kejujuran sesuai rubrik.`);
+    }
+    return blocks.join('\n\n');
+  };
+
   if (docType === 'lkpd') {
     return `# LEMBAR KERJA PESERTA DIDIK (LKPD) KURIKULUM MERDEKA
 ## ${mataPelajaran} • ${tingkat} (${fase}) — Siap Cetak
@@ -342,28 +387,9 @@ NIP. ....................................................`;
 ### III. STIMULUS MASALAH NYATA
 > *Di lingkungan sekitar kita (sekolah, rumah, dan masyarakat) terdapat berbagai fenomena yang berkaitan erat dengan **${topik}**. Amati, kumpulkan fakta, dan diskusikan bersama kelompokmu: mengapa fenomena tersebut terjadi dan bagaimana prinsip **${mataPelajaran}** menjelaskannya?*
 
-### IV. AKTIVITAS 1 — EKSPLORASI & PENGAMATAN (Diferensiasi Konten)
-Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
+${buildLkpdActivities()}
 
-| No | Aspek yang Diamati | Hasil Pengamatan / Data | Keterangan |
-| :--- | :--- | :--- | :--- |
-| 1 | .................................................... | .................................................... | .................................................... |
-| 2 | .................................................... | .................................................... | .................................................... |
-| 3 | .................................................... | .................................................... | .................................................... |
-
-### V. AKTIVITAS 2 — ANALISIS & KOLABORASI (Diferensiasi Proses)
-1. Berdasarkan data pada tabel di atas, pola atau keteraturan apa yang ditemukan kelompokmu terkait **${topik}**?
-   Jawab: ...................................................................................................................................
-2. Hubungkan temuanmu dengan konsep **${mataPelajaran}** yang telah dipelajari. Jelaskan dengan bahasamu sendiri!
-   Jawab: ...................................................................................................................................
-3. Rumuskan satu pertanyaan kritis lanjutan yang ingin kalian selidiki lebih dalam:
-   Jawab: ...................................................................................................................................
-
-### VI. AKTIVITAS 3 — KESIMPULAN & REFLEKSI MANDIRI (Diferensiasi Produk)
-* **Kesimpulan kelompok**: ...................................................................................................................................
-* **Refleksi individu** — *Satu hal yang kupahami hari ini*: ............................ *Satu hal yang ingin kupelajari lagi*: ............................
-
-### VII. RUBRIK PENILAIAN DIRI & ANTAR-TEMAN
+### RUBRIK PENILAIAN DIRI & ANTAR-TEMAN
 | Aspek | Ya, Mandiri (3) | Dengan Bantuan (2) | Belum (1) |
 | :--- | :---: | :---: | :---: |
 | Aku aktif berkontribusi dalam kelompok | ☐ | ☐ | ☐ |
@@ -374,6 +400,28 @@ Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
   }
 
   if (docType === 'kktp_atp') {
+    const pendekatan = (params.catatanTambahan as any)?.pendekatanKktp || 'Ketiganya';
+    const showDeskripsi = pendekatan === 'Ketiganya' || pendekatan === 'Deskripsi Kriteria';
+    const showRubrik = pendekatan === 'Ketiganya' || pendekatan === 'Rubrik Skala';
+    const showInterval = pendekatan === 'Ketiganya' || pendekatan === 'Interval Nilai';
+    const pendekatanSections = [
+      showDeskripsi ? `#### Pendekatan 1: Deskripsi Kriteria
+Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${topik}** tanpa miskonsepsi berarti; (b) menerapkan konsep dalam tugas/asesmen kontekstual; (c) menunjukkan partisipasi aktif dan tanggung jawab belajar.` : '',
+      showRubrik ? `#### Pendekatan 2: Rubrik Skala Berkembang
+| Level | Deskripsi Operasional |
+| :--- | :--- |
+| Baru Berkembang (BB) | Membutuhkan bimbingan penuh untuk memahami dan menerapkan **${topik}**. |
+| Layak (L) | Memahami sebagian konsep; mampu menyelesaikan tugas rutin dengan bantuan minimal. |
+| Cakap (C) | Memahami konsep secara utuh dan menerapkannya secara mandiri dan runtut. |
+| Mahir (M) | Menganalisis, menghubungkan ke konteks baru, dan mengomunikasikan gagasan secara kreatif. |` : '',
+      showInterval ? `#### Pendekatan 3: Interval Nilai
+| Interval | Kategori | Tindak Lanjut |
+| :--- | :--- | :--- |
+| 0 – 60 | Belum mencapai ketuntasan | Remedial: pembelajaran ulang terfokus + tugas perbaikan |
+| 61 – 75 | Mencapai sebagian | Penguatan: latihan tambahan dan pendampingan kelompok |
+| 76 – 90 | Tuntas | Lanjut ke materi berikutnya |
+| 91 – 100 | Melampaui ketuntasan | Pengayaan: proyek mini / soal HOTS lanjutan |` : ''
+    ].filter(Boolean).join('\n\n');
     return `# ALUR TUJUAN PEMBELAJARAN (ATP) & KRITERIA KETERCAPAIAN (KKTP)
 ## ${mataPelajaran} • ${tingkat} (${fase}) — PPA 2024
 **Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
@@ -391,26 +439,9 @@ Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik 
 | 2 | Pendalaman **${topik}** | Peserta didik menganalisis keterkaitan konsep dengan fenomena nyata. | Melalui penyelidikan kelompok (**${modelPembelajaran}**), siswa mampu menganalisis persoalan kontekstual **${topik}**. | Pertemuan 3–5 (6 JP) | ${dimensiList} |
 | 3 | Penerapan & Kreasi | Peserta didik menyajikan solusi/karya berbasis pemahaman konsep. | Melalui proyek mini, siswa mampu menyajikan karya dan merefleksikan pemahaman **${topik}**. | Pertemuan 6–7 (4 JP) + Asesmen Sumatif (2 JP) | ${dimensiList} |
 
-### III. PENETAPAN KKTP — 3 PENDEKATAN RESMI PPA 2024
+### III. PENETAPAN KKTP — PENDEKATAN RESMI PPA 2024 (dipakai: ${pendekatan})
 
-#### Pendekatan 1: Deskripsi Kriteria
-Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${topik}** tanpa miskonsepsi berarti; (b) menerapkan konsep dalam tugas/asesmen kontekstual; (c) menunjukkan partisipasi aktif dan tanggung jawab belajar.
-
-#### Pendekatan 2: Rubrik Skala Berkembang
-| Level | Deskripsi Operasional |
-| :--- | :--- |
-| Baru Berkembang (BB) | Membutuhkan bimbingan penuh untuk memahami dan menerapkan **${topik}**. |
-| Layak (L) | Memahami sebagian konsep; mampu menyelesaikan tugas rutin dengan bantuan minimal. |
-| Cakap (C) | Memahami konsep secara utuh dan menerapkannya secara mandiri dan runtut. |
-| Mahir (M) | Menganalisis, menghubungkan ke konteks baru, dan mengomunikasikan gagasan secara kreatif. |
-
-#### Pendekatan 3: Interval Nilai
-| Interval | Kategori | Tindak Lanjut |
-| :--- | :--- | :--- |
-| 0 – 60 | Belum mencapai ketuntasan | Remedial: pembelajaran ulang terfokus + tugas perbaikan |
-| 61 – 75 | Mencapai sebagian | Penguatan: latihan tambahan dan pendampingan kelompok |
-| 76 – 90 | Tuntas | Lanjut ke materi berikutnya |
-| 91 – 100 | Melampaui ketuntasan | Pengayaan: proyek mini / soal HOTS lanjutan |
+${pendekatanSections}
 
 ### IV. INTERVENSI REMEDIAL & PENGAYAAN
 * **Remedial**: diagnosis miskonsepsi, pembelajaran ulang dengan media konkret, asesmen ulang setara dengan bentuk berbeda.
@@ -418,30 +449,22 @@ Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${t
   }
 
   if (docType === 'prota_promes') {
-    return `# PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)
-## ${mataPelajaran} • ${tingkat} (${fase}) — Kurikulum Merdeka
-**Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName} • Tahun Ajaran 2026/2027**
-
----
-
-### I. IDENTITAS & ALOKASI WAKTU
-* **Alokasi intrakurikuler**: ${alokasiWaktu} per pertemuan; total ± 32 minggu efektif per tahun.
-* **Cakupan materi tahun ini**: konsep esensial **${topik}** beserta materi prasyarat dan pengembangannya sesuai CP **${fase}**.
-
-### II. PROGRAM TAHUNAN (PROTA)
-
-| No | Capaian / Lingkup Materi | Alokasi (JP) | Semester |
-| :--- | :--- | :---: | :---: |
-| 1 | Pengenalan konsep dasar **${topik}** | 8 | Ganjil |
-| 2 | Pendalaman & penyelidikan **${topik}** (model ${modelPembelajaran}) | 12 | Ganjil |
-| 3 | Asesmen Sumatif Lingkup Materi + Tengah Semester Ganjil | 4 | Ganjil |
-| 4 | Penerapan lanjutan & proyek mini **${topik}** | 10 | Genap |
-| 5 | Penguatan, remedial–pengayaan, & persiapan sumatif akhir | 6 | Genap |
-| 6 | Asesmen Sumatif Akhir Semester Genap | 4 | Genap |
-
-### III. PROGRAM SEMESTER (PROMES)
-
-#### Semester Ganjil (16 Minggu Efektif)
+    const semester = (params.catatanTambahan as any)?.semesterProta || '';
+    const tahun = (params.catatanTambahan as any)?.tahunAjaran?.trim() || '2026/2027';
+    const onlyGanjil = semester === 'Ganjil';
+    const onlyGenap = semester === 'Genap';
+    const scopeNote = semester && semester !== 'Keduanya'
+      ? `\n* **Cakupan dokumen ini**: Semester ${semester} Tahun Ajaran ${tahun} (sesuai pilihan guru).`
+      : `\n* **Cakupan dokumen ini**: Semester Ganjil dan Genap Tahun Ajaran ${tahun}.`;
+    const protaRows = [
+      '| 1 | Pengenalan konsep dasar **${topik}** | 8 | Ganjil |',
+      '| 2 | Pendalaman & penyelidikan **${topik}** (model ${modelPembelajaran}) | 12 | Ganjil |',
+      '| 3 | Asesmen Sumatif Lingkup Materi + Tengah Semester Ganjil | 4 | Ganjil |',
+      '| 4 | Penerapan lanjutan & proyek mini **${topik}** | 10 | Genap |',
+      '| 5 | Penguatan, remedial–pengayaan, & persiapan sumatif akhir | 6 | Genap |',
+      '| 6 | Asesmen Sumatif Akhir Semester Genap | 4 | Genap |'
+    ].filter(row => !onlyGanjil || row.endsWith('| Ganjil |')).filter(row => !onlyGenap || row.endsWith('| Genap |'));
+    const promesGanjil = `#### Semester Ganjil (16 Minggu Efektif)
 | Minggu | Kegiatan | Keterangan |
 | :--- | :--- | :--- |
 | 1 – 2 | Pengenalan **${topik}** + asesmen diagnostik | 4 JP |
@@ -450,9 +473,8 @@ Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${t
 | 9 – 11 | Lanjutan pendalaman + LKPD terstruktur | 6 JP |
 | 12 | Sumatif Tengah Semester (STS) | 2 JP |
 | 13 – 15 | Penguatan & remedial–pengayaan | 6 JP |
-| 16 | Cadangan / kalender pendidikan (jeda tengah semester) | — |
-
-#### Semester Genap (16 Minggu Efektif)
+| 16 | Cadangan / kalender pendidikan (jeda tengah semester) | — |`;
+    const promesGenap = `#### Semester Genap (16 Minggu Efektif)
 | Minggu | Kegiatan | Keterangan |
 | :--- | :--- | :--- |
 | 1 – 4 | Penerapan lanjutan **${topik}** + proyek mini | 8 JP |
@@ -461,7 +483,27 @@ Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${t
 | 11 | Sumatif Tengah Semester (STS) Genap | 2 JP |
 | 12 – 14 | Remedial–pengayaan & persiapan akhir | 6 JP |
 | 15 | Sumatif Akhir Semester (SAS) | 2 JP |
-| 16 | Refleksi tahunan & pembagian rapor | — |
+| 16 | Refleksi tahunan & pembagian rapor | — |`;
+    const promesSection = `### III. PROGRAM SEMESTER (PROMES)
+
+${!onlyGenap ? promesGanjil + '\n\n' : ''}${!onlyGanjil ? promesGenap : ''}`.trim();
+    return `# PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)
+## ${mataPelajaran} • ${tingkat} (${fase}) — Kurikulum Merdeka
+**Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName} • Tahun Ajaran ${tahun}**
+
+---
+
+### I. IDENTITAS & ALOKASI WAKTU
+* **Alokasi intrakurikuler**: ${alokasiWaktu} per pertemuan; total ± 32 minggu efektif per tahun.
+* **Cakupan materi tahun ini**: konsep esensial **${topik}** beserta materi prasyarat dan pengembangannya sesuai CP **${fase}**.${scopeNote}
+
+### II. PROGRAM TAHUNAN (PROTA)
+
+| No | Capaian / Lingkup Materi | Alokasi (JP) | Semester |
+| :--- | :--- | :---: | :---: |
+${protaRows.join('\n')}
+
+${promesSection}
 
 ### IV. CATATAN KALENDER PENDIDIKAN
 Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, jeda tengah semester, libur akhir semester, dan kegiatan kokurikuler P5 agar tidak tumpang tindih dengan jam intrakurikuler **${mataPelajaran}**.`;

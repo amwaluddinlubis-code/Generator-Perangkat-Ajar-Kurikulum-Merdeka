@@ -16,7 +16,7 @@
     --app-surface-muted: #e8e8ed;
     --app-text: #1d1d1f;
     --app-text-secondary: #6e6e73;
-    --app-text-tertiary: #86868b;
+    --app-text-tertiary: #636366;
     --app-border: rgba(0,0,0,.08);
     --app-border-strong: rgba(0,0,0,.12);
     --app-accent: #0071e3;
@@ -31,6 +31,13 @@
     --app-radius-md: 18px;
     --app-radius-lg: 24px;
     --app-radius-xl: 30px;
+    --app-space-1: 4px;
+    --app-space-2: 8px;
+    --app-space-3: 12px;
+    --app-space-4: 16px;
+    --app-space-5: 20px;
+    --app-space-6: 24px;
+    --app-space-8: 32px;
     --app-shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.04);
     --app-shadow-md: 0 2px 8px rgba(0,0,0,.05), 0 18px 45px rgba(0,0,0,.07);
     --app-shadow-lg: 0 18px 70px rgba(0,0,0,.12);
@@ -202,8 +209,7 @@
   .apple-input {
     width: 100%;
     min-height: 46px;
-    padding: 11px 14px;
-    color: var(--app-text);
+    padding: 11px 14px;    color: var(--app-text);
     background: color-mix(in srgb, var(--app-surface-soft) 88%, transparent);
     border: 1px solid transparent;
     border-radius: var(--app-radius-sm);
@@ -226,6 +232,14 @@
   .apple-input:disabled {
     cursor: not-allowed;
     opacity: .58;
+  }
+
+  /* Cegah zoom otomatis iOS saat fokus input */
+  @media (max-width: 768px) {
+    .apple-input,
+    .apple-input::placeholder {
+      font-size: 16px;
+    }
   }
 
   select.apple-input {
@@ -446,6 +460,329 @@
     box-shadow: 0 14px 44px rgba(0,0,0,.24);
     backdrop-filter: saturate(180%) blur(22px);
     -webkit-backdrop-filter: saturate(180%) blur(22px);
+  }
+
+  /* Badge semantik — satu bahasa status di seluruh aplikasi */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .badge-neutral {
+    background: var(--app-surface-muted);
+    color: var(--app-text-secondary);
+    border-color: var(--app-border);
+  }
+
+  .badge-success {
+    background: color-mix(in srgb, var(--app-success) 12%, transparent);
+    color: var(--app-success);
+    border-color: color-mix(in srgb, var(--app-success) 28%, transparent);
+  }
+
+  .badge-warning {
+    background: color-mix(in srgb, var(--app-warning) 12%, transparent);
+    color: var(--app-warning);
+    border-color: color-mix(in srgb, var(--app-warning) 30%, transparent);
+  }
+
+  .badge-danger {
+    background: color-mix(in srgb, var(--app-danger) 10%, transparent);
+    color: var(--app-danger);
+    border-color: color-mix(in srgb, var(--app-danger) 28%, transparent);
+  }
+
+  .badge-info {
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+    border-color: color-mix(in srgb, var(--app-accent) 26%, transparent);
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* Tombol ukuran + destructive */
+  .btn-sm {
+    min-height: 34px;
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    border-radius: 999px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    cursor: pointer;
+    color: #fff;
+    background: var(--app-danger);
+    border: 1px solid transparent;
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--app-danger) 22%, transparent);
+    transition: transform .18s ease, background-color .18s ease, opacity .18s ease;
+  }
+
+  .btn-danger:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-danger:active { transform: translateY(0) scale(.985); }
+  .btn-danger:disabled { cursor: not-allowed; opacity: .5; transform: none; box-shadow: none; }
+
+  /* Field standar: label + required + hint + error dekat field */
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    margin-bottom: 6px;
+    color: var(--app-text);
+  }
+
+  .field-required::after {
+    content: " *";
+    color: var(--app-danger);
+    font-weight: 700;
+  }
+
+  .field-hint {
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--app-text-tertiary);
+  }
+
+  .field-error {
+    margin-top: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--app-danger);
+  }
+
+  .apple-input[aria-invalid="true"] {
+    border-color: color-mix(in srgb, var(--app-danger) 65%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--app-danger) 12%, transparent);
+  }
+
+  /* Modal shell standar: sm / md / lg */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0,0,0,.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .modal-panel {
+    width: 100%;
+    max-height: min(88vh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--app-surface-solid);
+    color: var(--app-text);
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-lg);
+  }
+
+  .modal-sm { max-width: 400px; }
+  .modal-md { max-width: 560px; }
+  .modal-lg { max-width: 800px; }
+
+  .modal-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 20px 20px 0;
+    flex-shrink: 0;
+  }
+
+  .modal-body {
+    padding: 16px 20px 20px;
+    overflow-y: auto;
+  }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface-soft) 55%, transparent);
+    flex-shrink: 0;
+  }
+
+  .modal-close {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    color: var(--app-text-secondary);
+    flex-shrink: 0;
+  }
+
+  .modal-close:hover {
+    background: color-mix(in srgb, var(--app-text) 7%, transparent);
+    color: var(--app-text);
+  }
+
+  /* Tabel data standar */
+  .data-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-surface-solid);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    min-width: 640px;
+  }
+
+  .data-table thead th {
+    text-align: left;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--app-text-tertiary);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface-soft) 60%, transparent);
+    white-space: nowrap;
+  }
+
+  .data-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--app-border);
+    vertical-align: middle;
+  }
+
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover td {
+    background: color-mix(in srgb, var(--app-text) 2.5%, transparent);
+  }
+
+  /* Kolom lengket untuk tabel di layar kecil */
+  @media (max-width: 720px) {
+    .data-table-sticky-first thead th:first-child,
+    .data-table-sticky-first tbody td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: var(--app-surface-solid);
+      box-shadow: 1px 0 0 var(--app-border);
+    }
+  }
+
+  /* Checkbox aksesibel: visual 20px, area sentuh 24px (WCAG 2.2 AA) */
+  .check-hit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 2px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .check-hit input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: var(--app-accent);
+    cursor: pointer;
+  }
+
+  .check-hit input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: .35;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--app-surface-muted);
+    min-height: 14px;
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+    animation: skeleton-shimmer 1.4s infinite;
+  }
+
+  .dark .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent);
+  }
+
+  @keyframes skeleton-shimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  /* Empty state standar */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+  }
+
+  .empty-state-icon {
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: var(--app-surface-muted);
+    color: var(--app-text-tertiary);
+  }
+}
+
+/* Hormati preferensi gerak pengguna (WCAG 2.2) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

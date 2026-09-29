@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   TeacherUser,
   EducationalDocument,
@@ -17,6 +17,7 @@ import { BelajarIdAuthModal } from './components/BelajarIdAuthModal';
 import { CurriculumGuideModal } from './components/CurriculumGuideModal';
 import { UserProfileStatsDashboard } from './components/UserProfileStatsDashboard';
 import { ProfilePage } from './components/ProfilePage';
+import { DashboardPage } from './components/DashboardPage';
 import { SchoolSettingsPage } from './components/SchoolSettingsPage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
@@ -48,11 +49,12 @@ export default function App() {
   const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
   
   // Navigation State with dedicated sidebar targets
-  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('modul_ajar');
+  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [lastGenerateError, setLastGenerateError] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string>('');
   const [lastQuality, setLastQuality] = useState<{ status: string; issues: string[] } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
@@ -60,6 +62,8 @@ export default function App() {
   const [guideModalOpen, setGuideModalOpen] = useState<boolean>(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ message, type });
@@ -74,6 +78,9 @@ export default function App() {
         setCurrentUser(null);
         setUsers([]);
         setDocuments([]);
+        if (currentRes.status !== 401) {
+          setLoadError('Tidak dapat terhubung ke server. Periksa koneksi lalu coba lagi.');
+        }
         return;
       }
 
@@ -85,6 +92,7 @@ export default function App() {
 
       const activeUser = currentData.user as TeacherUser;
       setCurrentUser(activeUser);
+      setLoadError(null);
 
       if (activeUser.role === 'ADMIN' || activeUser.role === 'SUPER_ADMIN') {
         const usersRes = await fetch('/api/users');
@@ -111,6 +119,9 @@ export default function App() {
       setCurrentUser(null);
       setUsers([]);
       setDocuments([]);
+      setLoadError('Tidak dapat terhubung ke server. Periksa koneksi lalu coba lagi.');
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -121,6 +132,17 @@ export default function App() {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
+
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Fokus ke konten utama tiap ganti halaman — predictable bagi pembaca layar
+  const activeTargetRef = useRef(activeTarget);
+  useEffect(() => {
+    if (activeTargetRef.current !== activeTarget) {
+      activeTargetRef.current = activeTarget;
+      mainRef.current?.focus({ preventScroll: true });
+    }
+  }, [activeTarget]);
 
   // Muat identitas sekolah untuk kop dokumen (semua peran boleh baca).
   useEffect(() => {
@@ -208,6 +230,7 @@ export default function App() {
     }
 
     setIsGenerating(true);
+    setLastGenerateError(null);
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -276,6 +299,7 @@ export default function App() {
         friendlyMsg = raw;
       }
       showToast(friendlyMsg, 'error');
+      setLastGenerateError(friendlyMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -476,8 +500,29 @@ export default function App() {
         />
 
         {/* Content View Container — lega ala Apple */}
-        <main className="app-page flex-1">
-          
+        <main ref={mainRef} tabIndex={-1} className="app-page flex-1 focus:outline-none">
+
+          {/* VIEW 0: BERANDA DASHBOARD */}
+          {activeTarget === 'dashboard' && (
+            <DashboardPage
+              currentUser={currentUser}
+              documents={documents}
+              pendingCount={pendingUsersCount}
+              onNavigate={(target) => {
+                setActiveTarget(target);
+                setShowDocumentResult(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onSelectDocument={(doc) => {
+                setCurrentDoc(doc);
+                setActiveTarget(doc.docType);
+                setShowDocumentResult(true);
+                setLastQuality(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          )}
+
           {/* VIEW 1: DEDICATED GENERATOR WORKSPACE (FOR EACH PERANGKAT AJAR) */}
           {isDocTypeTarget && (
             showDocumentResult && currentDoc ? (
@@ -500,6 +545,7 @@ export default function App() {
                   currentUser={currentUser}
                   onGenerate={handleGenerate}
                   isGenerating={isGenerating}
+                  submitError={lastGenerateError}
                   activeDocType={activeTarget as DocType}
                 />
               </div>
@@ -542,6 +588,9 @@ export default function App() {
             <DocumentRepository
               documents={documents}
               currentUser={currentUser}
+              loading={initialLoading}
+              error={loadError}
+              onRetry={loadInitialData}
               onSelectDocument={(doc) => {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
@@ -563,6 +612,9 @@ export default function App() {
             <TeacherVerificationPanel
               users={users}
               currentUser={currentUser}
+              loading={initialLoading}
+              error={loadError}
+              onRetry={loadInitialData}
               onUpdateStatus={handleVerifyTeacher}
               onDeleteUser={handleDeleteUser}
               onUpdateUser={handleUpdateUser}

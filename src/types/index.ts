@@ -88,7 +88,8 @@ export interface GeneratorParams {
   soalConfig?: {
     jumlahSoal: number;
     bentukSoal: string[];
-    levelKognitif: string;
+    levelKognitif?: string;
+    komposisi?: { mudah: number; sedang: number; sukar: number };
   };
   authorName: string;
   schoolName: string;
@@ -98,5 +99,12 @@ export interface GeneratorParams {
   catatanTambahan?: {
     temaP5?: string;
     instruksiKhusus?: string;
+    lampiran?: string[];
+    fokusRpp?: string;
+    jumlahAktivitas?: number;
+    kunciLkpd?: boolean;
+    pendekatanKktp?: string;
+    semesterProta?: string;
+    tahunAjaran?: string;
   };
 }

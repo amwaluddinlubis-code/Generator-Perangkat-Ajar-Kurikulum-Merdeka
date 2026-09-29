@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DocType } from '../types';
 import {
   GraduationCap,
+  LayoutDashboard,
   FileText,
   Layers,
   HelpCircle,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export type NavigationTarget =
+  | 'dashboard'
   | 'modul_ajar'
   | 'rpp'
   | 'soal_ujian'
@@ -80,6 +82,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setMobileOpen(false);
   };
 
+  // ESC menutup drawer mobile — navigasi predictable
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen, setMobileOpen]);
+
   const navButton = (target: NavigationTarget, label: string, icon: React.ReactNode, count?: number) => {
     const active = activeTarget === target;
     return (
@@ -128,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-[var(--app-border)] px-4">
           <button
             type="button"
-            onClick={() => handleNavClick('modul_ajar')}
+            onClick={() => handleNavClick('dashboard')}
             className="flex min-w-0 items-center gap-3 text-left"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--app-text)] text-[var(--app-bg)] shadow-sm">
@@ -165,6 +177,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5" aria-label="Navigasi utama">
           <section>
+            {navButton('dashboard', 'Beranda', <LayoutDashboard className="h-[18px] w-[18px]" />)}
+          </section>
+
+          <div className="my-5 h-px bg-[var(--app-border)]" />
+
+          <section>
             {!isCollapsed && <p className="section-label px-3 pb-2.5">Buat perangkat</p>}
             <div className="space-y-1">
               {docMenuItems.map((item) => navButton(item.type, item.label, item.icon))}
@@ -192,24 +210,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </section>
         </nav>
 
-        <div className="shrink-0 border-t border-[var(--app-border)] p-3">
-          <div className={isCollapsed ? 'flex justify-center' : 'rounded-[16px] bg-[var(--app-surface-muted)] px-3 py-3'}>
-            {isCollapsed ? (
-              <span className="h-2 w-2 rounded-full bg-[var(--app-accent)]" aria-hidden="true" />
-            ) : (
-              <>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold">Ruang kerja</span>
-                  <span className="status-chip !min-h-[24px] !px-2 !py-0 text-[10.5px]">
-                    {docsCount} dokumen
-                  </span>
-                </div>
-                <p className="mt-1 text-[11px] leading-4 text-[var(--app-text-tertiary)]">
-                  Pilih perangkat dari menu untuk mulai menyusun.
-                </p>
-              </>
-            )}
-          </div>
+        <div className="shrink-0 border-t border-[var(--app-border)] px-4 py-2.5">
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--app-text-tertiary)]" aria-hidden="true" />
+            </div>
+          ) : (
+            <p className="truncate text-[11px] text-[var(--app-text-tertiary)]">
+              {docsCount} dokumen di arsip
+            </p>
+          )}
         </div>
       </aside>
     </>

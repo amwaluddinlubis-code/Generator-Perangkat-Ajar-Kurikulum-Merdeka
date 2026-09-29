@@ -132,6 +132,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               Susun perangkat pembelajaran dengan struktur yang rapi, konteks kurikulum yang jelas, dan alur kerja yang terasa sederhana.
             </p>
 
+            <div className="mt-6 flex flex-wrap gap-2" aria-label="Landasan regulasi">
+              {['Permendikbudristek 12/2024', 'BSKAP 046/2025', 'BKPDM 020/2026'].map((ref) => (
+                <span key={ref} className="inline-flex items-center gap-1.5 rounded-full border border-black/10 dark:border-white/15 bg-white/60 dark:bg-white/5 px-3 py-1.5 text-[12px] font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#30b158]" />
+                  {ref}
+                </span>
+              ))}
+            </div>
+
             <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {features.map((feature) => (
                 <div key={feature.title} className="login-feature">

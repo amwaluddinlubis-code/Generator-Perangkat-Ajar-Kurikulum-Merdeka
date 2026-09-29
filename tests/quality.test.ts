@@ -48,6 +48,13 @@ test('validator menghitung soal dan membandingkan permintaan', () => {
 
   const cukup = validateDocumentStructure('soal_ujian', content, { expectedQuestions: 2, modelUsed: 'gemini-x' });
   assert.ok(!cukup.issues.some(i => i.includes('permintaan')));
+
+  const varian = validateDocumentStructure(
+    'soal_ujian',
+    '# Soal\n\nKisi-kisi\n\nNomor 1\n\nButir 2\n\n**Nomor 3**\n\nKunci dan pedoman\n\n' + 'x'.repeat(900),
+    { expectedQuestions: 3, modelUsed: 'gemini-x' }
+  );
+  assert.equal(varian.stats.questions, 3);
 });
 
 test('dokumen AI lengkap berstatus AI', () => {
@@ -66,4 +73,43 @@ test('dokumen AI lengkap berstatus AI', () => {
   const quality = validateDocumentStructure('modul_ajar', content, { modelUsed: 'gemini-3.8-flash' });
   assert.equal(quality.status, 'AI');
   assert.deepEqual(quality.issues, []);
+});
+
+test('fallback per-jenis mengikuti parameter guru', async () => {
+  const { generateFallbackDocument } = await import('../serverFallback.ts');
+
+  const base = {
+    jenjang: 'SMP', tingkat: 'Kelas 8', fase: 'Fase D', mataPelajaran: 'Matematika',
+    topik: 'Teorema Pythagoras', authorName: 'Tes', schoolName: 'SMP Tes'
+  };
+
+  const modul = generateFallbackDocument({ ...base, docType: 'modul_ajar', catatanTambahan: { lampiran: ['Glosarium'] } });
+  assert.ok(modul.includes('GLOSARIUM'), 'glosarium terpilih ada');
+  assert.ok(!modul.includes('LEMBAR KERJA PESERTA DIDIK (LKPD)'), 'LKPD tak terpilih absen');
+
+  const modulAll = generateFallbackDocument({ ...base, docType: 'modul_ajar' });
+  assert.ok(modulAll.includes('LEMBAR KERJA PESERTA DIDIK (LKPD)'), 'default memuat semua lampiran');
+
+  const rpp = generateFallbackDocument({ ...base, docType: 'rpp', catatanTambahan: { fokusRpp: 'Asesmen' } });
+  assert.ok(rpp.includes('Fokus penekanan dokumen ini: **Asesmen**'));
+
+  const lkpd = generateFallbackDocument({ ...base, docType: 'lkpd', catatanTambahan: { jumlahAktivitas: 2, kunciLkpd: true } });
+  assert.ok(lkpd.includes('AKTIVITAS 2 —'), 'aktivitas 2 ada');
+  assert.ok(!lkpd.includes('AKTIVITAS 3 —'), 'aktivitas 3 absen');
+  assert.ok(lkpd.includes('KUNCI JAWABAN GURU'), 'kunci guru ada');
+
+  const lkpdDefault = generateFallbackDocument({ ...base, docType: 'lkpd' });
+  assert.ok(lkpdDefault.includes('AKTIVITAS 3 —'), 'default 3 aktivitas');
+
+  const kktp = generateFallbackDocument({ ...base, docType: 'kktp_atp', catatanTambahan: { pendekatanKktp: 'Rubrik Skala' } });
+  assert.ok(kktp.includes('Pendekatan 2: Rubrik Skala Berkembang'));
+  assert.ok(!kktp.includes('Pendekatan 3: Interval Nilai'), 'pendekatan lain absen');
+
+  const prota = generateFallbackDocument({
+    ...base, docType: 'prota_promes',
+    catatanTambahan: { semesterProta: 'Ganjil', tahunAjaran: '2027/2028' }
+  });
+  assert.ok(prota.includes('2027/2028'), 'tahun ajaran dipakai');
+  assert.ok(prota.includes('Semester Ganjil'), 'promes ganjil ada');
+  assert.ok(!prota.includes('#### Semester Genap'), 'promes genap absen');
 });

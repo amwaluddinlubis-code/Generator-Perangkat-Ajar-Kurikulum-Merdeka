@@ -99,6 +99,7 @@ export const JENJANG_CONFIGS: Record<Jenjang, JenjangConfig> = {
       'Bahasa Indonesia',
       'Bahasa Inggris Terapan',
       'Pendidikan Pancasila',
+      'Pendidikan Agama dan Budi Pekerti',
       'Projek Kreatif & Vokasi'
     ]
   }
@@ -113,15 +114,60 @@ export const DIMENSI_P5 = [
   'Kreatif'
 ];
 
+/**
+ * Model pembelajaran per jenjang — disesuaikan psikologi perkembangan siswa.
+ * Bukan prinsip/pendekatan: diferensiasi & TaRL sengaja tidak dimasukkan.
+ * Format label: "Nama Model - Penjelasan 3-5 kata".
+ */
+export const MODEL_PEMBELAJARAN_PER_JENJANG: Record<Jenjang, { value: string; label: string }[]> = {
+  // SD Fase A–C: konkret, bermain, literasi dasar
+  SD: [
+    { value: 'Problem Based Learning (PBL)', label: 'Problem Based Learning - Pemecahan Masalah Kontekstual' },
+    { value: 'Project Based Learning (PjBL)', label: 'Project Based Learning - Berkarya Lewat Proyek Nyata' },
+    { value: 'Discovery Learning', label: 'Discovery Learning - Menemukan Konsep Terbimbing' },
+    { value: 'Contextual Teaching and Learning (CTL)', label: 'Contextual Teaching and Learning - Mengaitkan Materi Kehidupan' },
+    { value: 'Cooperative Learning', label: 'Cooperative Learning - Kerja Sama Kelompok' },
+    { value: 'Inquiry Terbimbing', label: 'Inquiry Terbimbing - Penyelidikan Sederhana Bertahap' }
+  ],
+  // SMP Fase D: transisi, eksplorasi, inkuiri
+  SMP: [
+    { value: 'Problem Based Learning (PBL)', label: 'Problem Based Learning - Pemecahan Masalah Nyata' },
+    { value: 'Project Based Learning (PjBL)', label: 'Project Based Learning - Proyek dan Produk' },
+    { value: 'Discovery Learning', label: 'Discovery Learning - Penemuan Konsep Mandiri' },
+    { value: 'Inquiry Learning', label: 'Inquiry Learning - Penyelidikan Ilmiah Terbimbing' },
+    { value: 'Contextual Teaching and Learning (CTL)', label: 'Contextual Teaching and Learning - Kontekstual Kehidupan Nyata' },
+    { value: 'Cooperative Learning (Jigsaw/STAD)', label: 'Cooperative Learning - Kolaborasi Tim Terstruktur' },
+    { value: 'Flipped Classroom', label: 'Flipped Classroom - Belajar Mandiri lalu Diskusi' }
+  ],
+  // SMA Fase E–F: analitis, riset, masalah kompleks
+  SMA: [
+    { value: 'Problem Based Learning (PBL)', label: 'Problem Based Learning - Pemecahan Masalah Kompleks' },
+    { value: 'Project Based Learning (PjBL)', label: 'Project Based Learning - Riset dan Karya Ilmiah' },
+    { value: 'Inquiry Learning', label: 'Inquiry Learning - Investigasi Ilmiah Mandiri' },
+    { value: 'Discovery Learning', label: 'Discovery Learning - Eksplorasi Konsep Mendalam' },
+    { value: 'Group Investigation', label: 'Group Investigation - Penelitian Kelompok Mendalam' },
+    { value: 'Cooperative Learning', label: 'Cooperative Learning - Diskusi Akademis Kolaboratif' },
+    { value: 'Flipped Classroom', label: 'Flipped Classroom - Kajian Mandiri dan Seminar' }
+  ],
+  // SMK Fase E–F Kejuruan: keterampilan vokasi, industri, portofolio
+  SMK: [
+    { value: 'Project Based Learning (PjBL)', label: 'Project Based Learning - Produk dan Portofolio Vokasi' },
+    { value: 'Teaching Factory (TEFA)', label: 'Teaching Factory - Produksi Standar Industri' },
+    { value: 'Problem Based Learning (PBL)', label: 'Problem Based Learning - Troubleshooting Kasus Industri' },
+    { value: 'Praktik Terbimbing', label: 'Praktik Terbimbing - Demonstrasi dan Latihan Keterampilan' },
+    { value: 'Cooperative Learning', label: 'Cooperative Learning - Kerja Tim Produksi' },
+    { value: 'Inquiry Learning', label: 'Inquiry Learning - Uji Coba dan Investigasi Mandiri' }
+  ]
+};
+
+/** Daftar gabungan (fallback kompatibilitas). */
 export const MODEL_PEMBELAJARAN = [
-  { value: 'Problem Based Learning (PBL)', label: 'Problem Based Learning (PBL) - Pemecahan Masalah Nyata' },
-  { value: 'Project Based Learning (PjBL)', label: 'Project Based Learning (PjBL) - Berbasis Projek & Produk' },
-  { value: 'Discovery Learning', label: 'Discovery Learning - Penemuan Konsep Mandiri' },
-  { value: 'Inquiry Learning', label: 'Inquiry Learning - Penyelidikan Ilmiah Terbimbing' },
-  { value: 'Contextual Teaching and Learning (CTL)', label: 'Contextual Teaching and Learning (CTL) - Kontekstual' },
-  { value: 'Differentiated Learning (Berdiferensiasi)', label: 'Pembelajaran Berdiferensiasi (Konten, Proses, Produk)' },
-  { value: 'Cooperative Learning (STAD / Jigsaw)', label: 'Cooperative Learning (Kooperatif Tim)' },
-  { value: 'Flipped Classroom & Blended', label: 'Flipped Classroom (Kelas Terbalik & Hibrida)' }
+  ...MODEL_PEMBELAJARAN_PER_JENJANG.SD,
+  ...MODEL_PEMBELAJARAN_PER_JENJANG.SMP.filter(m => !MODEL_PEMBELAJARAN_PER_JENJANG.SD.some(s => s.value === m.value)),
+  ...MODEL_PEMBELAJARAN_PER_JENJANG.SMA.filter(m =>
+    ![...MODEL_PEMBELAJARAN_PER_JENJANG.SD, ...MODEL_PEMBELAJARAN_PER_JENJANG.SMP].some(s => s.value === m.value)),
+  ...MODEL_PEMBELAJARAN_PER_JENJANG.SMK.filter(m =>
+    ![...MODEL_PEMBELAJARAN_PER_JENJANG.SD, ...MODEL_PEMBELAJARAN_PER_JENJANG.SMP, ...MODEL_PEMBELAJARAN_PER_JENJANG.SMA].some(s => s.value === m.value))
 ];
 
 export const TEMA_P5 = [
@@ -133,6 +179,15 @@ export const TEMA_P5 = [
   'Rekayasa dan Teknologi',
   'Kewirausahaan',
   'Kebekerjaan (Khusus SMK)'
+];
+
+/** Bentuk soal yang bisa dipilih guru (multi-pilih). */
+export const BENTUK_SOAL_OPTIONS = [
+  { value: 'Pilihan Ganda', desc: '4–5 opsi jawaban' },
+  { value: 'Pilihan Ganda Kompleks (AKM)', desc: 'Benar/Salah atau multi-kunci' },
+  { value: 'Menjodohkan', desc: 'Pasangan pernyataan–jawaban' },
+  { value: 'Isian Singkat', desc: 'Jawaban pendek' },
+  { value: 'Uraian HOTS', desc: 'Stimulus + analisis mendalam' }
 ];
 
 export const DOC_TYPE_INFO: Record<DocType, { label: string; icon: string; desc: string; badge: string }> = {

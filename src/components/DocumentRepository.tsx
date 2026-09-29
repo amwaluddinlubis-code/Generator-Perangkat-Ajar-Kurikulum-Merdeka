@@ -14,10 +14,15 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { exportToDocx } from '../utils/exportUtils';
+import { EmptyState } from './ui/EmptyState';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface DocumentRepositoryProps {
   documents: EducationalDocument[];
   currentUser: TeacherUser;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onSelectDocument: (doc: EducationalDocument) => void;
   onDeleteDocument: (docId: string) => Promise<void>;
   onCreateNew: () => void;
@@ -26,6 +31,9 @@ interface DocumentRepositoryProps {
 export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
   documents,
   currentUser,
+  loading = false,
+  error = null,
+  onRetry,
   onSelectDocument,
   onDeleteDocument,
   onCreateNew,
@@ -33,19 +41,26 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [docTypeFilter, setDocTypeFilter] = useState('ALL');
   const [jenjangFilter, setJenjangFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
 
-  const filteredDocs = documents.filter((doc) => {
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      doc.title.toLowerCase().includes(q) ||
-      doc.mataPelajaran.toLowerCase().includes(q) ||
-      doc.topik.toLowerCase().includes(q) ||
-      doc.authorName.toLowerCase().includes(q);
+  const filteredDocs = documents
+    .filter((doc) => {
+      const q = searchTerm.toLowerCase();
+      const matchesSearch =
+        doc.title.toLowerCase().includes(q) ||
+        doc.mataPelajaran.toLowerCase().includes(q) ||
+        doc.topik.toLowerCase().includes(q) ||
+        doc.authorName.toLowerCase().includes(q);
 
-    const matchesType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
-    const matchesJenjang = jenjangFilter === 'ALL' || doc.jenjang === jenjangFilter;
-    return matchesSearch && matchesType && matchesJenjang;
-  });
+      const matchesType = docTypeFilter === 'ALL' || doc.docType === docTypeFilter;
+      const matchesJenjang = jenjangFilter === 'ALL' || doc.jenjang === jenjangFilter;
+      return matchesSearch && matchesType && matchesJenjang;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title, 'id');
+      const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortBy === 'newest' ? -diff : diff;
+    });
 
   const ownDocs = documents.filter((doc) => doc.authorId === currentUser.id);
   const recentCount = documents.filter((doc) => {
@@ -121,21 +136,27 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
               </select>
             </label>
 
-            <select value={jenjangFilter} onChange={(e) => setJenjangFilter(e.target.value)} className="apple-input !w-auto !min-w-[160px] !text-[13px] !font-semibold">
+            <select value={jenjangFilter} onChange={(e) => setJenjangFilter(e.target.value)} className="apple-input !w-auto !min-w-[160px] !text-[13px] !font-semibold" aria-label="Filter jenjang">
               <option value="ALL">Semua jenjang</option>
               <option value="SD">SD (Fase A–C)</option>
               <option value="SMP">SMP (Fase D)</option>
               <option value="SMA">SMA (Fase E–F)</option>
               <option value="SMK">SMK</option>
             </select>
+
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title')} className="apple-input !w-auto !min-w-[150px] !text-[13px] !font-semibold" aria-label="Urutkan">
+              <option value="newest">Terbaru dulu</option>
+              <option value="oldest">Terlama dulu</option>
+              <option value="title">Judul A–Z</option>
+            </select>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between px-1 text-[11.5px] text-[var(--app-text-tertiary)]">
           <span>{filteredDocs.length} perangkat ditampilkan</span>
-          {(searchTerm || docTypeFilter !== 'ALL' || jenjangFilter !== 'ALL') && (
+          {(searchTerm || docTypeFilter !== 'ALL' || jenjangFilter !== 'ALL' || sortBy !== 'newest') && (
             <button
               type="button"
-              onClick={() => { setSearchTerm(''); setDocTypeFilter('ALL'); setJenjangFilter('ALL'); }}
+              onClick={() => { setSearchTerm(''); setDocTypeFilter('ALL'); setJenjangFilter('ALL'); setSortBy('newest'); }}
               className="font-semibold text-[var(--app-accent)] hover:underline"
             >
               Reset filter
@@ -144,19 +165,48 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
         </div>
       </section>
 
-      {filteredDocs.length === 0 ? (
-        <section className="apple-card p-12 text-center sm:p-16">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] bg-[var(--app-surface-muted)] text-[var(--app-text-tertiary)]">
-            <BookOpen className="h-6 w-6" />
-          </div>
-          <h3 className="mt-4 text-[17px] font-bold tracking-[-.02em]">Belum ada perangkat yang cocok.</h3>
-          <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-5 text-[var(--app-text-secondary)]">
-            Coba ubah kata kunci atau filter. Jika belum memiliki dokumen, mulai dari generator.
-          </p>
-          <button onClick={onCreateNew} className="btn-apple mt-5">
-            <Sparkles className="h-4 w-4" />
-            Mulai menyusun
-          </button>
+      {loading ? (
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Memuat arsip">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="apple-card min-h-[285px] space-y-3 p-5" aria-hidden="true">
+              <div className="skeleton h-10 w-10 !rounded-[13px]" />
+              <div className="skeleton h-5 w-4/5" />
+              <div className="skeleton h-4 w-3/5" />
+              <div className="skeleton h-4 w-2/5" />
+              <div className="!mt-8 flex gap-2">
+                <div className="skeleton h-9 flex-1 !rounded-full" />
+                <div className="skeleton h-9 w-20 !rounded-full" />
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : error && documents.length === 0 ? (
+        <section className="apple-card">
+          <EmptyState
+            icon={<AlertCircle className="h-6 w-6" />}
+            title="Arsip tidak dapat dimuat"
+            description={error}
+            action={
+              <button type="button" onClick={onRetry} className="btn-apple btn-sm">
+                <RefreshCw className="h-4 w-4" />
+                Coba lagi
+              </button>
+            }
+          />
+        </section>
+      ) : filteredDocs.length === 0 ? (
+        <section className="apple-card">
+          <EmptyState
+            icon={<BookOpen className="h-6 w-6" />}
+            title="Belum ada perangkat yang cocok."
+            description="Coba ubah kata kunci atau filter. Jika belum memiliki dokumen, mulai dari generator."
+            action={
+              <button onClick={onCreateNew} className="btn-apple">
+                <Sparkles className="h-4 w-4" />
+                Mulai menyusun
+              </button>
+            }
+          />
         </section>
       ) : (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

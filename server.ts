@@ -1255,6 +1255,12 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       ['Kelas 10'].includes(tingkat) ? 'Fase E' : 'Fase F'
     );
 
+    // Komposisi kesulitan soal pilihan guru (default 30/40/30 bila tak dikirim)
+    const kompRaw = (soalConfig as any)?.komposisi || {};
+    const kompMudah = Number.isFinite(Number(kompRaw.mudah)) ? Number(kompRaw.mudah) : 30;
+    const kompSedang = Number.isFinite(Number(kompRaw.sedang)) ? Number(kompRaw.sedang) : 40;
+    const kompSukar = Number.isFinite(Number(kompRaw.sukar)) ? Number(kompRaw.sukar) : 30;
+
     const promptInstructions: Record<string, string> = {
       modul_ajar: `
 TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikbudristek No. 12 Tahun 2024** dan **Panduan Pembelajaran dan Asesmen (PPA) 2024**.
@@ -1290,12 +1296,13 @@ STRUKTUR RESMI YANG WAJIB ADA:
    - Rubrik Penilaian KKTP dalam bentuk TABEL LENGKAP dengan 4 skala: *Baru Berkembang*, *Layak*, *Cakap*, *Mahir* beserta deskriptor operasional.
    - Instrumen penilaian sikap dan keterampilan.
 
-5. **LAMPIRAN LENGKAP**:
-   - Lembar Kerja Peserta Didik (LKPD) yang siap dikerjakan siswa (berisi petunjuk, tugas pengamatan, pertanyaan analisis).
-   - Bahan Bacaan Guru dan Peserta Didik (ringkasan materi esensial 1-2 halaman).
-   - Program Pengayaan dan Remedial.
-   - Glosarium (definisi istilah penting).
-   - Daftar Pustaka resmi Kemendikbudristek.
+ 5. **LAMPIRAN LENGKAP**:
+    - Lembar Kerja Peserta Didik (LKPD) yang siap dikerjakan siswa (berisi petunjuk, tugas pengamatan, pertanyaan analisis).
+    - Bahan Bacaan Guru dan Peserta Didik (ringkasan materi esensial 1-2 halaman).
+    - Program Pengayaan dan Remedial.
+    - Glosarium (definisi istilah penting).
+    - Daftar Pustaka resmi Kemendikbudristek.
+${((catatanTambahan as any)?.lampiran?.length ? `   LAMPIRAN YANG DISUSUN (hanya jenis ini, jangan tambah yang lain): ${(catatanTambahan as any).lampiran.join(', ')}.` : '')}
 `,
       rpp: `
 TUGAS: Susunlah **RENCANA PELAKSANAAN PEMBELAJARAN (RPP) INOVATIF & RINGKAS (1-2 LEMBAR)** Kurikulum Merdeka sesuai Permendikbudristek No 12 Tahun 2024.
@@ -1313,19 +1320,16 @@ FORMAT WAJIB:
    - Asesmen Sikap (Observasi dimensi Profil Lulusan).
    - Asesmen Pengetahuan (Tes tulis/lisan).
    - Asesmen Keterampilan (Kinerja/Produk diskusi).
+${((catatanTambahan as any)?.fokusRpp && (catatanTambahan as any).fokusRpp !== 'Seimbang' ? `   FOKUS PENEKANAN: perdalam bagian ${(catatanTambahan as any).fokusRpp} melebihi komponen lain.` : '')}
 6. **TANDA TANGAN PENGESAHAN**: Tempat & Tanggal, Mengetahui Kepala Sekolah & Guru Mata Pelajaran.
 `,
       soal_ujian: `
 TUGAS: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Nasional (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikbudristek No 12 Tahun 2024.
 
-KONFIGURASI SOAL:
+KONFIGURASI SOAL (pilihan guru — patuhi tepat, jangan tambah/kurangi):
 - Jumlah Soal: ${soalConfig?.jumlahSoal || 15} butir soal.
-- Komposisi Bentuk Soal:
-  1. Pilihan Ganda Biasa (4-5 pilihan A, B, C, D, E).
-  2. Pilihan Ganda Kompleks (Model AKM: Centang Benar/Salah atau pilih lebih dari 1 jawaban benar).
-  3. Menjodohkan (Pasangan pernyataan dan jawaban).
-  4. Isian Singkat.
-  5. Uraian HOTS Berbasis Stimulus (Infografis/Studi Kasus/Wacana Kontekstual Indonesia).
+- Bentuk Soal yang dipakai (HANYA bentuk ini): ${Array.isArray(soalConfig?.bentukSoal) && soalConfig.bentukSoal.length ? soalConfig.bentukSoal.join('; ') : 'Pilihan Ganda; Pilihan Ganda Kompleks (AKM); Menjodohkan; Isian Singkat; Uraian HOTS'}.
+- Komposisi Tingkat Kemudahan (proporsi jumlah butir, bulatkan wajar): Mudah ${kompMudah}% (≈C1–C2), Sedang ${kompSedang}% (≈C3–C4), Sukar ${kompSukar}% (≈C5–C6 HOTS).
 
 STRUKTUR RESMI DOKUMEN UJIAN:
 1. **KOP UJIAN RESMI**: Satuan Pendidikan, Penilaian Sumatif Akhir/Tengah Semester, Mata Pelajaran (${mataPelajaran}), Kelas (${tingkat} / ${calculatedFase}), Alokasi Waktu (${alokasiWaktu || '90 Menit'}).
@@ -1351,6 +1355,7 @@ KOMPONEN WAJIB:
    a. Pendekatan Deskripsi Kriteria.
    b. Pendekatan Rubrik Skala Berkembang.
    c. Pendekatan Interval Nilai (0-60 belum mencapai perlu remedial, 61-75 mencapai sebagian, 76-90 sudah tuntas, 91-100 melampaui ketuntasan perlu pengayaan).
+${((catatanTambahan as any)?.pendekatanKktp && (catatanTambahan as any).pendekatanKktp !== 'Ketiganya' ? `   PENDEKATAN YANG DIPAKAI: hanya ${(catatanTambahan as any).pendekatanKktp} — jangan sertakan dua pendekatan lainnya.` : '')}
 4. Panduan Intervensi Remedial dan Pengayaan Berdasarkan Hasil KKTP.
 `,
       lkpd: `
@@ -1361,16 +1366,14 @@ KOMPONEN WAJIB:
 2. Judul Aktivitas yang Menarik Siswa.
 3. Petunjuk Belajar & Keselamatan Kerja/Praktik.
 4. Stimulus / Kasus Masalah Nyata.
-5. Aktivitas 1: Eksplorasi Konsep & Pengamatan Nyata (Tabel Isian).
-6. Aktivitas 2: Analisis & Kolaborasi Pemecahan Masalah (Diskusi Berpikir Kritis).
-7. Aktivitas 3: Kesimpulan & Refleksi Belajar Mandiri.
-8. Rubrik Penilaian Diri & Penilaian Antar-Teman.
+${(() => { const n = Math.min(Math.max(Number((catatanTambahan as any)?.jumlahAktivitas) || 3, 1), 4); const acts = ['Eksplorasi Konsep & Pengamatan Nyata (Tabel Isian)', 'Analisis & Kolaborasi Pemecahan Masalah (Diskusi Berpikir Kritis)', 'Aplikasi & Kreasi Produk', 'Kesimpulan & Refleksi Belajar Mandiri']; const lines = acts.slice(0, n).map((a, i) => `${5 + i}. Aktivitas ${i + 1}: ${a}.`); let next = 5 + n; if ((catatanTambahan as any)?.kunciLkpd) { lines.push(`${next}. Kunci Jawaban Guru (khusus guru, di akhir dokumen).`); next++; } lines.push(`${next}. Rubrik Penilaian Diri & Penilaian Antar-Teman.`); return lines.join('\n'); })()}
 `,
       prota_promes: `
 TUGAS: Susunlah **PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)** Kurikulum Merdeka untuk mata pelajaran ${mataPelajaran} kelas ${tingkat} (${calculatedFase}) tahun ajaran berjalan.
 
 KOMPONEN WAJIB:
 1. Identitas Satuan Pendidikan dan Alokasi Total Jam Pelajaran per Tahun (Intrakurikuler dan Kokurikuler P5).
+${((catatanTambahan as any)?.semesterProta ? `   CAKUPAN: Semester ${(catatanTambahan as any).semesterProta}${(catatanTambahan as any)?.tahunAjaran ? ` Tahun Ajaran ${(catatanTambahan as any).tahunAjaran}` : ''} — susun hanya semester tersebut.` : '')}
 2. Tabel Prota: No, Capaian Pembelajaran / Materi Pokok / Lingkup Materi, Alokasi Waktu (JP), Keterangan Semester (Ganjil/Genap).
 3. Tabel Promes Semester 1 & 2: Distribusi JP per minggu efektif, jadwal asesmen sumatif lingkup materi, asesmen sumatif tengah semester, sumatif akhir semester, dan libur kalender pendidikan.
 `,

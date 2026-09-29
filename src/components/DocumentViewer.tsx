@@ -7,6 +7,8 @@ import {
   exportToPdf,
   copyToClipboard 
 } from '../utils/exportUtils';
+import { Modal } from './ui/Modal';
+import { Field } from './ui/Field';
 import { 
   Printer, 
   Download, 
@@ -22,8 +24,7 @@ import {
   FileDown,
   Loader2,
   RefreshCw,
-  ImagePlus,
-  X
+  ImagePlus
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -274,8 +275,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   return (
     <div className="space-y-5">
       
-      {/* Top Action Bar — Apple frosted */}
-      <div className="glass-panel p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 no-print !rounded-[20px]">
+      {/* Top Action Bar — menempel saat menggulir dokumen panjang */}
+      <div className="glass-panel p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 no-print !rounded-[20px] sticky top-[68px] z-20">
         <div className="flex items-center gap-2">
           {onBackToGenerator && (
             <button
@@ -626,73 +627,65 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       </div>
 
       {/* Modal Ilustrasi AI */}
-      {imgModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-          <div className="apple-card max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-[17px] font-semibold tracking-tight">Ilustrasi AI</h3>
-              <button
-                onClick={() => setImgModalOpen(false)}
-                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-                aria-label="Tutup"
-              >
-                <X className="w-5 h-5" />
+      <Modal
+        isOpen={imgModalOpen}
+        onClose={() => setImgModalOpen(false)}
+        size="md"
+        title="Ilustrasi AI"
+        subtitle="Dibuat dengan Gemini dari deskripsi Anda, lalu disisipkan ke dokumen."
+        footer={
+          <>
+            <button onClick={() => setImgModalOpen(false)} className="btn-apple-secondary btn-sm flex-1">
+              Batal
+            </button>
+            {imgResult ? (
+              <button onClick={handleInsertImage} className="btn-apple btn-sm flex-1">
+                Sisipkan ke dokumen
               </button>
-            </div>
-            <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mb-4">
-              Dibuat dengan Gemini dari deskripsi Anda, lalu disisipkan ke dokumen.
-            </p>
-
-            <label className="block text-[13px] font-semibold mb-1.5">Deskripsi gambar</label>
+            ) : (
+              <button onClick={handleGenerateImage} disabled={imgLoading || !imgPrompt.trim()} className="btn-apple btn-sm flex-1">
+                {imgLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {imgLoading ? 'Membuat...' : 'Buat gambar'}
+              </button>
+            )}
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Field label="Deskripsi gambar" htmlFor="img-prompt">
             <textarea
+              id="img-prompt"
               value={imgPrompt}
               onChange={(e) => setImgPrompt(e.target.value)}
               rows={4}
               className="apple-input resize-none"
               placeholder="Contoh: ilustrasi siklus air untuk anak SD, gaya flat..."
             />
+          </Field>
 
-            <div className="mt-3">
-              <label className="block text-[13px] font-semibold mb-1.5">Rasio</label>
-              <select value={imgRatio} onChange={(e) => setImgRatio(e.target.value)} className="apple-input">
-                <option value="16:9">Lanskap 16:9</option>
-                <option value="4:3">Lanskap 4:3</option>
-                <option value="1:1">Persegi 1:1</option>
-                <option value="3:4">Potret 3:4</option>
-                <option value="9:16">Potret 9:16</option>
-              </select>
+          <Field label="Rasio" htmlFor="img-ratio">
+            <select id="img-ratio" value={imgRatio} onChange={(e) => setImgRatio(e.target.value)} className="apple-input">
+              <option value="16:9">Lanskap 16:9</option>
+              <option value="4:3">Lanskap 4:3</option>
+              <option value="1:1">Persegi 1:1</option>
+              <option value="3:4">Potret 3:4</option>
+              <option value="9:16">Potret 9:16</option>
+            </select>
+          </Field>
+
+          {imgError && (
+            <p role="alert" className="field-error !mt-1">
+              {imgError}
+            </p>
+          )}
+
+          {imgResult && (
+            <div className="overflow-hidden rounded-2xl border border-[var(--app-border)]">
+              <img src={imgResult} alt="Pratinjau ilustrasi AI" className="block h-auto w-full" />
             </div>
-
-            {imgError && (
-              <div className="mt-3 rounded-xl bg-[#fff1f1] dark:bg-[#3a1512] border border-[#ffcfcf] dark:border-[#6b231d] text-[#b3261e] dark:text-[#ff9d97] text-[13px] px-4 py-3">
-                {imgError}
-              </div>
-            )}
-
-            {imgResult && (
-              <div className="mt-3 rounded-2xl overflow-hidden border border-black/10 dark:border-white/15">
-                <img src={imgResult} alt="Pratinjau ilustrasi AI" className="w-full h-auto block" />
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 mt-5">
-              <button onClick={() => setImgModalOpen(false)} className="btn-apple-secondary flex-1">
-                Batal
-              </button>
-              {imgResult ? (
-                <button onClick={handleInsertImage} className="btn-apple flex-1">
-                  Sisipkan ke dokumen
-                </button>
-              ) : (
-                <button onClick={handleGenerateImage} disabled={imgLoading || !imgPrompt.trim()} className="btn-apple flex-1">
-                  {imgLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {imgLoading ? 'Membuat...' : 'Buat gambar'}
-                </button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

@@ -36,6 +36,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const isVerified = currentUser.status === 'VERIFIED';
 
   const getTitle = (): { kicker: string; title: string } => {
+    if (activeTarget === 'dashboard') return { kicker: 'Beranda', title: 'Ringkasan kerja' };
     if (activeTarget === 'profile') return { kicker: 'Ruang kerja', title: 'Profil saya' };
     if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
     if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
@@ -61,13 +62,13 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             <Menu className="h-5 w-5" />
           </button>
 
-          <div className="min-w-0">
+          <nav className="min-w-0" aria-label="Breadcrumb">
             <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--app-text-tertiary)]">
               <span>{page.kicker}</span>
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
             </div>
             <h1 className="truncate text-[16px] font-bold tracking-[-.025em]">{page.title}</h1>
-          </div>
+          </nav>
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

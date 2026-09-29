@@ -153,6 +153,18 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
       if (config.levelKognitif !== undefined && (typeof config.levelKognitif !== 'string' || config.levelKognitif.length > 100)) {
         errors.push('Level kognitif tidak valid.');
       }
+      if (config.komposisi !== undefined) {
+        const k = config.komposisi as Record<string, unknown>;
+        const parts = ['mudah', 'sedang', 'sukar'].map(key => Number((k as any)?.[key]));
+        if (
+          !k || typeof k !== 'object' || Array.isArray(k) ||
+          parts.some(v => !Number.isFinite(v) || v < 0 || v > 100)
+        ) {
+          errors.push('Komposisi kesulitan harus angka 0–100 per tingkat.');
+        } else if (parts[0] + parts[1] + parts[2] !== 100) {
+          errors.push('Komposisi kesulitan harus total 100%.');
+        }
+      }
     }
   }
 
@@ -163,6 +175,13 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
       const notes = input.catatanTambahan as Record<string, unknown>;
       if (notes.temaP5 !== undefined && (typeof notes.temaP5 !== 'string' || notes.temaP5.length > LIMITS.generatorField)) errors.push('Tema P5 terlalu panjang.');
       if (notes.instruksiKhusus !== undefined && (typeof notes.instruksiKhusus !== 'string' || notes.instruksiKhusus.length > LIMITS.generatorField)) errors.push('Instruksi khusus terlalu panjang.');
+      if (notes.lampiran !== undefined && (!Array.isArray(notes.lampiran) || notes.lampiran.length > 10 || notes.lampiran.some(v => typeof v !== 'string' || v.length > 100))) errors.push('Daftar lampiran tidak valid.');
+      for (const field of ['fokusRpp', 'pendekatanKktp', 'semesterProta', 'tahunAjaran']) {
+        const v = notes[field];
+        if (v !== undefined && (typeof v !== 'string' || v.length > 100)) errors.push(`Kolom ${field} tidak valid.`);
+      }
+      if (notes.jumlahAktivitas !== undefined && (typeof notes.jumlahAktivitas !== 'number' || !Number.isInteger(notes.jumlahAktivitas) || notes.jumlahAktivitas < 1 || notes.jumlahAktivitas > 10)) errors.push('Jumlah aktivitas tidak valid.');
+      if (notes.kunciLkpd !== undefined && typeof notes.kunciLkpd !== 'boolean') errors.push('Flag kunci LKPD tidak valid.');
     }
   }
 
@@ -379,7 +398,7 @@ export function validateDocumentStructure(
   const stats = {
     chars: text.length,
     tables: (text.match(/^\s*\|.*\|\s*$/gm) || []).filter(line => !/^\s*\|[\s:\-|]*\|\s*$/.test(line)).length,
-    questions: (text.match(/(?:^|\n)\s*(?:\*\*)?soal\s+\d+/gi) || []).length
+    questions: (text.match(/(?:^|\n)\s*(?:\*\*)?(?:soal|nomor|butir)\s+\d+/gi) || []).length
   };
   const issues: string[] = [];
 

@@ -49,7 +49,7 @@ PerangkatAjar/
 │   ├── types/index.ts     # TeacherUser, EducationalDocument, GeneratorParams, ...
 │   ├── data/
 │   │   ├── curriculumData.ts  # DOC_TYPE_INFO, JENJANG_CONFIGS, DIMENSI_P5, ...
-│   │   └── topicCatalog.ts    # Katalog topik per fase/kelas + pencarian
+│   │   └── topicCatalog.ts    # Katalog 174 topik: semua mapel/Jenjang + 6 agama (020/2026)
 │   ├── components/
 │   │   ├── Sidebar.tsx / TopHeader.tsx   # Navigasi (profil hanya di header)
 │   │   ├── LoginPage.tsx                 # Masuk/daftar + akun demo 1-ketuk
@@ -86,6 +86,7 @@ PerangkatAjar/
 | `prota_promes` | Tabel Prota + Promes ganjil/genap |
 | `modul_p5` | Projek P5 (8 tema, 4 tahap, rubrik, jurnal) |
 | `stats` | Statistik, grafik, lencana, riwayat |
+| `dashboard` | Beranda: sapaan, ringkasan, aksi cepat, aktivitas terbaru, sebaran jenis dokumen |
 | `profile` | Profil Saya: edit mandiri (nama, sekolah, mapel, NIP, NPSN), statistik sendiri, ganti tema/akun |
 | `repository` | Arsip semua dokumen |
 | `admin` | Verifikasi + edit profil + ubah peran + tambah/hapus guru |
@@ -164,6 +165,27 @@ npm run dev
 - Toggle bulan/matahari di header; pilihan tersimpan (`rgm-theme`); anti-kedip via skrip `index.html`.
 - Kertas dokumen (`.doc-paper`): lebar 210mm, serif formal, kop + ornamen + pengesahan; cetak via `@page A4`.
 - Standar naskah di `.docx`: Calibri 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
+
+### 6.1 Design system (satu sistem, dipakai semua halaman)
+
+Token di `src/index.css`: warna (`--app-*`), radius 12/18/24/30, spacing basis 4/8 (`--app-space-*`), shadow ringan 3 tingkat, fokus terlihat + `prefers-reduced-motion`.
+
+| Kebutuhan | Standar | Contoh pakai |
+|---|---|---|
+| Tombol | `.btn-apple` / `.btn-apple-secondary` / `.btn-danger`, `.btn-sm` | Semua aksi |
+| Input/select/textarea | `.apple-input` + `.field-*` (label, required, hint, error) | Semua form |
+| Status | `.badge` + tone `neutral/success/warning/danger/info` | Verifikasi, kualitas, arsip |
+| Kartu | `.apple-card` / `.metric-card` / `.soft-section` | Dashboard, arsip |
+| Modal | `.modal-backdrop/.modal-panel/.modal-header/.modal-body/.modal-footer`, ukuran `sm/md/lg` | Semua dialog |
+| Tabel | `.data-table` dalam `.data-table-wrap` | Verifikasi, arsip |
+| Loading | `.skeleton` | Daftar & kartu saat memuat |
+| Kosong | `.empty-state` | Arsip, riwayat, hasil filter |
+
+Primitif React (`src/components/ui/`): `Modal` (ESC + fokus + `role=dialog`), `Badge`, `EmptyState`, `Field` (error dekat field + `aria-describedby`). Aturan: halaman baru wajib memakai primitif ini, bukan merakit ulang. Model pembelajaran mengikuti jenjang profil (`MODEL_PEMBELAJARAN_PER_JENJANG`: SD 6, SMP 7, SMA 7, SMK 6 — tanpa diferensiasi/TaRL); saran katalog di luar daftar muncul sebagai opsi dinamis. Tabel memakai `.data-table`; bulk action tersedia di verifikasi guru; daftar memakai skeleton saat memuat dan empty/error state dengan aksi coba lagi.
+
+**Aksesibilitas & responsif:** target sentuh ≥24px (`.check-hit`), fokus terlihat + `prefers-reduced-motion`, input 16px anti-zoom iOS, tabel punya kolom lengket + wilayah gulir keyboard, fokus pindah ke konten tiap navigasi, kontras teks sekunder memenuhi AA.
+
+**Alur generator (wizard 3 langkah):** semua isian default kosong dan wajib diisi/dipilih (validasi bawaan + pesan dekat field); hero ringkas satu baris; langkah 1 format (strip info ikut sidebar) + kelas/fase terkunci jenjang; langkah 2 terbagi seksi berlabel — inti bersama (mapel & topik → waktu JP/durasi/pertemuan/model per-jenjang/profil) **plus input khusus tiap jenis**: modul_ajar→pilihan lampiran, rpp→fokus penekanan, soal→jumlah bebas 1–50 + bentuk multi-pilih + komposisi mudah/sedang/sukar (total 100%), lkpd→jumlah aktivitas + kunci guru, kktp→pendekatan KKTP, prota→semester + tahun ajaran, p5→tema; semuanya di wiring ke prompt AI dan template cadangan; dimensi P5 minimal 1; langkah 3 ringkasan + mini pratinjau kertas + identitas; error tampil inline dengan tombol coba lagi; progres bertahap selama AI bekerja.
 
 ---
 
@@ -403,6 +425,23 @@ Format error yang disarankan:
 ```
 
 ## 16. Pengujian Minimum Sebelum Go-Live
+
+CI (`.github/workflows/ci.yml` + `ci-runtime.yml`, cabang `main` & `feat/**`): `npm ci --legacy-peer-deps` → `lint` → `test` → `build`. Test kontrak UI (`tests/uiregression.test.ts`) mengunci katalog dokumen, konsistensi jenjang/fase, saran topik, token & class design system, dan keterjangkauan semua target navigasi.
+
+### Checklist regresi manual tiap rilis UI
+
+| Alur | Harapan |
+|---|---|
+| Masuk (email saja & email+password) | Berhasil/gagal dengan pesan jelas, tanpa error konsol |
+| Wizard 3 langkah tiap 7 tipe | Lanjut–kembali–susun mulus, validasi dekat field |
+| Generate → badge kualitas → viewer | Status jujur tampil, kop sekolah benar, ekspor docx/pdf bisa dibuka |
+| Regen 1 bagian | Hanya bagian itu berubah, heading utuh |
+| Ilustrasi AI → sisip | Gambar tampil di pratinjau & PDF |
+| Arsip cari/filter/sort/hapus | Hasil tepat, kosong ada empty state |
+| Verifikasi: setujui/tolak/bulk | Status berubah, audit tercatat |
+| Profil: edit + password + tema | Tersimpan, sesi tetap valid |
+| Sekolah: identitas + logo | Kop semua output ikut berubah |
+| Responsif 360px + dark mode | Tanpa scroll ganda, kontras terbaca, drawer + ESC |
 
 ### Unit test
 

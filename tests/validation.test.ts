@@ -60,6 +60,53 @@ test('image validation allowlists supported aspect ratios', () => {
   assert.equal(validateImagePayload({ prompt: 'Ilustrasi kelas', aspectRatio: '2:1' }).ok, false);
 });
 
+test('soal custom: komposisi harus total 100% dan bentuk valid', () => {
+  const base = {
+    docType: 'soal_ujian',
+    mataPelajaran: 'Matematika',
+    topik: 'Pecahan',
+    soalConfig: {
+      jumlahSoal: 30,
+      bentukSoal: ['Pilihan Ganda', 'Uraian HOTS'],
+      komposisi: { mudah: 30, sedang: 40, sukar: 30 }
+    }
+  };
+  assert.equal(validateGeneratorPayload(base).ok, true);
+
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    soalConfig: { ...base.soalConfig, komposisi: { mudah: 30, sedang: 30, sukar: 30 } }
+  }).ok, false);
+
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    soalConfig: { ...base.soalConfig, komposisi: { mudah: -5, sedang: 50, sukar: 55 } }
+  }).ok, false);
+
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    soalConfig: { ...base.soalConfig, jumlahSoal: 0 }
+  }).ok, false);
+});
+
+test('catatan tambahan per-jenis divalidasi batasnya', () => {
+  const base = { docType: 'lkpd', mataPelajaran: 'IPAS', topik: 'Siklus Air' };
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    catatanTambahan: { jumlahAktivitas: 3, kunciLkpd: true, pendekatanKktp: 'Rubrik Skala' }
+  }).ok, true);
+
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    catatanTambahan: { jumlahAktivitas: 99 }
+  }).ok, false);
+
+  assert.equal(validateGeneratorPayload({
+    ...base,
+    catatanTambahan: { lampiran: ['A', 1] }
+  }).ok, false);
+});
+
 test('generated document validation rejects credential-like output', () => {
   assert.equal(validateGeneratedDocument('Judul', '# Aman\nIsi dokumen').ok, true);
   assert.equal(validateGeneratedDocument('Judul', 'AIzaSyExampleKeyThatShouldNeverPass123456789').ok, false);
