@@ -5,7 +5,7 @@ import { app } from '../server.ts';
 let server: ReturnType<typeof app.listen>;
 let baseUrl = '';
 
-test.before(async () => {
+test.before({ timeout: 5000 }, async () => {
   server = app.listen(0, '127.0.0.1');
   await new Promise<void>(resolve => server.once('listening', () => resolve()));
   const address = server.address();
@@ -13,7 +13,7 @@ test.before(async () => {
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
-test.after(async () => {
+test.after({ timeout: 5000 }, async () => {
   server.closeAllConnections();
   await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 });
@@ -44,13 +44,13 @@ async function login(email: string) {
   return result.cookie!;
 }
 
-test('API rejects protected document access without a session', async () => {
+test('API rejects protected document access without a session', { timeout: 10000 }, async () => {
   const result = await request('/api/documents');
   assert.equal(result.response.status, 401);
   assert.equal(result.body?.error?.code, 'AUTH_REQUIRED');
 });
 
-test('school admin cannot see or modify users from another school', async () => {
+test('school admin cannot see or modify users from another school', { timeout: 10000 }, async () => {
   const adminCookie = await login('admin@guru.belajar.id');
 
   const list = await request('/api/users', {}, adminCookie);
@@ -70,7 +70,7 @@ test('school admin cannot see or modify users from another school', async () => 
   assert.equal(update.response.status, 403);
 });
 
-test('Super Admin can inspect users across tenants', async () => {
+test('Super Admin can inspect users across tenants', { timeout: 10000 }, async () => {
   const cookie = await login('amwaluddin.lubis@gmail.com');
   const result = await request('/api/users', {}, cookie);
   assert.equal(result.response.ok, true);
@@ -78,7 +78,7 @@ test('Super Admin can inspect users across tenants', async () => {
   assert.ok(result.body.users.some((user: any) => user.id === 'user-guru-2'));
 });
 
-test('teacher document creation derives author and tenant from the session', async () => {
+test('teacher document creation derives author and tenant from the session', { timeout: 10000 }, async () => {
   const cookie = await login('siti.nurhaliza@guru.sd.belajar.id');
 
   const result = await request('/api/documents', {
@@ -111,7 +111,7 @@ test('teacher document creation derives author and tenant from the session', asy
   assert.ok(docs.body.documents.some((doc: any) => doc.id === result.body.document.id));
 });
 
-test('another school admin cannot delete a teacher document', async () => {
+test('another school admin cannot delete a teacher document', { timeout: 10000 }, async () => {
   const teacherCookie = await login('siti.nurhaliza@guru.sd.belajar.id');
   const created = await request('/api/documents', {
     method: 'POST',
