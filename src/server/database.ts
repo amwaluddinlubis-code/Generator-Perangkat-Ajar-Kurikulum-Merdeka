@@ -181,13 +181,12 @@ function getDb(): DatabaseSync {
       window_started_at INTEGER NOT NULL,
       request_count INTEGER NOT NULL
     ) STRICT;
-  
+  `);
+
   const userColumns = database.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
   if (!userColumns.some(column => column.name === 'deleted_at')) {
     database.exec('ALTER TABLE users ADD COLUMN deleted_at TEXT');
   }
-
-`);
 
   return database;
 }
