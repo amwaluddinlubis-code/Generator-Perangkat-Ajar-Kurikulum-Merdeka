@@ -674,6 +674,12 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
       error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun dengan hak admin hanya dapat dikelola oleh Super Admin.' }
     });
   }
+  if (requester.role === 'ADMIN' && user.schoolName !== requester.schoolName) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
+    });
+  }
 
   user.status = status;
   if (status === 'VERIFIED') {
@@ -708,6 +714,9 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   if (target.role === 'SUPER_ADMIN' && !isSelf) return res.status(403).json({ success: false, error: { code: 'SUPER_ADMIN_PROTECTED', message: 'Akun Super Admin tidak dapat diubah.' } });
   if (target.role === 'ADMIN' && requester.role !== 'SUPER_ADMIN' && !isSelf) {
     return res.status(403).json({ success: false, error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Profil admin hanya dapat dikelola oleh Super Admin.' } });
+  }
+  if (requester.role === 'ADMIN' && !isSelf && target.schoolName !== requester.schoolName) {
+    return res.status(403).json({ success: false, error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' } });
   }
   if (requester.role === 'ADMIN' && isSelf && schoolName !== undefined) {
     return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Admin tidak dapat mengganti sekolah sendiri.' } });
@@ -765,6 +774,12 @@ app.delete('/api/users/:id', (req: Request, res: Response) => {
     return res.status(403).json({
       success: false,
       error: { code: 'PRIVILEGED_USER_PROTECTED', message: 'Akun admin hanya dapat dihapus oleh Super Admin.' }
+    });
+  }
+  if (requester.role === 'ADMIN' && target.schoolName !== requester.schoolName) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'TENANT_ACCESS_DENIED', message: 'Admin hanya dapat mengelola guru di sekolahnya.' }
     });
   }
 
