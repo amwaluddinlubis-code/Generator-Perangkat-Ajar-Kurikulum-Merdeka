@@ -8,7 +8,7 @@
     "build": "vite build",
     "start": "tsx server.ts",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "node -e \"const fs=require('node:fs'); for (const p of ['dist','server.js']) fs.rmSync(p,{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "backup": "tsx scripts/backup.ts",
