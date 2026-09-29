@@ -216,6 +216,7 @@ export default function App() {
         authorId: currentUser.id,
         authorName: currentUser.name,
         schoolName: currentUser.schoolName,
+        schoolId: currentUser.schoolId,
         isPublic: false,
         durationMinutes: data.durationMinutes || 3.2
       };
