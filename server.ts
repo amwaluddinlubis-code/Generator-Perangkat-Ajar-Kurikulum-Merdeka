@@ -585,7 +585,7 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: { code: 'INVALID_LOGIN_DOMAIN', message: 'Gunakan email Belajar.id yang valid.' } });
   }
 
-  const existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+  const existingUser = getDbUserByEmail(cleanEmail);
   if (existingUser) {
     if (existingUser.status === 'REJECTED') {
       recordAudit(req, 'auth.login.rejected', 'user', existingUser.id, false, existingUser.id);
@@ -602,7 +602,7 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   const safeSchoolName = typeof schoolName === 'string' && schoolName.trim().length <= LIMITS.schoolName ? schoolName.trim() : '';
   const safeMapel = typeof mataPelajaran === 'string' && mataPelajaran.trim().length <= LIMITS.subject ? mataPelajaran.trim() : '';
 
-  const isSuper = cleanEmail === 'amwaluddin.lubis@gmail.com' || cleanEmail.includes('admin@');
+  const isSuper = cleanEmail === 'amwaluddin.lubis@gmail.com';
   const role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU' = isSuper ? 'SUPER_ADMIN' : 'GURU';
   const status: 'VERIFIED' | 'PENDING' = isSuper ? 'VERIFIED' : 'PENDING';
 
@@ -616,7 +616,8 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     name: safeName || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase(),
     email: cleanEmail,
-    schoolName: safeSchoolName || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
+    schoolName: safeSchoolName || 'Sekolah Belum Diatur',
+    schoolId: '',
     jenjang: detectedJenjang,
     mataPelajaran: safeMapel || 'Semua Mata Pelajaran',
     role,
@@ -626,10 +627,10 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     verifiedBy: status === 'VERIFIED' ? 'Sistem Terverifikasi' : undefined
   };
 
-  users.unshift(newUser);
-  saveDB();
+  const persistedUser = createDbUser(newUser);
+  users.unshift(persistedUser as TeacherUser);
 
-  const token = createSession(newUser.id);
+  const token = createSession(persistedUser.id);
   res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
   recordAudit(req, 'auth.register.success', 'user', newUser.id, true, newUser.id);
 
@@ -638,7 +639,7 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     message: status === 'VERIFIED'
       ? 'Akun Admin berhasil diaktifkan!'
       : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi admin.',
-    user: newUser
+    user: persistedUser
   });
 });
 
