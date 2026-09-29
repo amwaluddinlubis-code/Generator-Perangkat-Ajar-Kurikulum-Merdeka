@@ -1341,9 +1341,23 @@ app.post('/api/generate-image', async (req: Request, res: Response) => {
     console.error('Error generating image:', error?.message || error);
     res.status(500).json({
       success: false,
-      message: 'Gagal membuat ilustrasi: ' + (error?.message || 'Terjadi kesalahan sistem.')
+      message: 'Gagal membuat ilustrasi. Silakan coba lagi.'
     });
   }
+});
+
+// Final API error boundary. Do not expose provider/database internals to clients.
+app.use((error: unknown, req: Request, res: Response, next: Function) => {
+  console.error('[API Error]', {
+    method: req.method,
+    path: req.path,
+    error: error instanceof Error ? error.message : String(error)
+  });
+  if (res.headersSent) return next(error);
+  res.status(500).json({
+    success: false,
+    error: { code: 'INTERNAL_SERVER_ERROR', message: 'Terjadi kesalahan sistem. Silakan coba lagi.' }
+  });
 });
 
 // Vite or Static file serving
