@@ -821,7 +821,7 @@ app.get('/api/documents', (req: Request, res: Response) => {
   let filtered = requester.role === 'SUPER_ADMIN'
     ? [...documents]
     : requester.role === 'ADMIN'
-      ? documents.filter(d => d.schoolName === requester.schoolName)
+      ? documents.filter(d => d.schoolId === requester.schoolId)
       : documents.filter(d => d.authorId === requester.id);
 
   if (authorId && authorId !== 'all') {
@@ -863,14 +863,15 @@ app.post('/api/documents', (req: Request, res: Response) => {
     authorId: requester.id,
     authorName: requester.name,
     schoolName: requester.schoolName,
+    schoolId: requester.schoolId,
     isPublic: false,
     durationMinutes: typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) ? Math.min(Math.max(durationMinutes, 0), 999) : undefined
   };
 
-  documents.unshift(newDoc);
-  saveDB();
-  recordAudit(req, 'document.create', 'document', newDoc.id, true, requester.id);
-  res.json({ success: true, message: 'Dokumen perangkat ajar berhasil disimpan ke arsip!', document: newDoc });
+  const persistedDocument = createDbDocument(newDoc);
+  documents.unshift(persistedDocument as EducationalDocument);
+  recordAudit(req, 'document.create', 'document', persistedDocument.id, true, requester.id);
+  res.json({ success: true, message: 'Dokumen perangkat ajar berhasil disimpan ke arsip!', document: persistedDocument });
 });
 
 app.delete('/api/documents/:id', (req: Request, res: Response) => {
@@ -878,17 +879,16 @@ app.delete('/api/documents/:id', (req: Request, res: Response) => {
   if (!requester) return;
 
   const { id } = req.params;
-  const target = documents.find(d => d.id === id);
+  const target = getDbDocumentById(id);
   if (!target) return res.status(404).json({ success: false, error: { code: 'DOCUMENT_NOT_FOUND', message: 'Dokumen tidak ditemukan.' } });
 
-  const allowed = requester.role === 'SUPER_ADMIN' || target.authorId === requester.id || (requester.role === 'ADMIN' && target.schoolName === requester.schoolName);
+  const allowed = requester.role === 'SUPER_ADMIN' || target.authorId === requester.id || (requester.role === 'ADMIN' && target.schoolId === requester.schoolId);
   if (!allowed) {
     recordAudit(req, 'document.delete.denied', 'document', id, false, requester.id);
     return res.status(403).json({ success: false, error: { code: 'DOCUMENT_ACCESS_DENIED', message: 'Anda tidak memiliki akses ke dokumen ini.' } });
   }
 
-  documents = documents.filter(d => d.id !== id);
-  saveDB();
+  deleteDbDocument(id);
   recordAudit(req, 'document.delete', 'document', id, true, requester.id);
   res.json({ success: true, message: 'Dokumen berhasil dihapus dari arsip' });
 });
