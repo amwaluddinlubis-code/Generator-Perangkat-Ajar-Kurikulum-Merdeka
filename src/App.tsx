@@ -533,13 +533,27 @@ export default function App() {
               onDeleteUser={handleDeleteUser}
               onUpdateUser={handleUpdateUser}
               onAddUser={async (userData) => {
-                await handleLogin({
-                  email: userData.email || '',
-                  name: userData.name,
-                  schoolName: userData.schoolName,
-                  jenjang: userData.jenjang,
-                  mataPelajaran: userData.mataPelajaran
-                });
+                try {
+                  const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.success) {
+                    throw new Error(data?.error?.message || data?.message || 'Gagal menambahkan guru.');
+                  }
+
+                  const usersRes = await fetch('/api/users');
+                  if (usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    if (Array.isArray(usersData.users)) setUsers(usersData.users);
+                  }
+                  showToast(data.message || 'Guru berhasil ditambahkan.', 'success');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Gagal menambahkan guru.', 'error');
+                  throw error;
+                }
               }}
             />
           )}
