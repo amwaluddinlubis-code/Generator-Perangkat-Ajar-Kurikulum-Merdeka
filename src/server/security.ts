@@ -84,9 +84,13 @@ export function parseCookies(header: string | undefined): Record<string, string>
   }, {});
 }
 
-export function getSessionUserIdFromCookieHeader(header: string | undefined, now = Date.now()): string | null {
+export function getSessionTokenFromCookieHeader(header: string | undefined): string | null {
   const cookies = parseCookies(header);
-  return getSessionUserIdFromToken(cookies[SESSION_COOKIE_NAME], now);
+  return cookies[SESSION_COOKIE_NAME] || null;
+}
+
+export function getSessionUserIdFromCookieHeader(header: string | undefined, now = Date.now()): string | null {
+  return getSessionUserIdFromToken(getSessionTokenFromCookieHeader(header) || undefined, now);
 }
 
 export function buildSessionCookie(token: string, secure = process.env.NODE_ENV === 'production'): string {
