@@ -74,6 +74,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
   const [editNip, setEditNip] = useState<string>('');
   const [editNpsn, setEditNpsn] = useState<string>('');
   const [editRole, setEditRole] = useState<'GURU' | 'ADMIN'>('GURU');
+  const canChangeTenant = currentUser.role === 'SUPER_ADMIN';
 
   const openEdit = (t: TeacherUser) => {
     setEditingUser(t);
@@ -431,7 +432,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
               </div>
               <div>
                 <label className="block text-[13px] font-semibold mb-1.5">Sekolah</label>
-                <input type="text" required value={editSchool} onChange={(e) => setEditSchool(e.target.value)} className="apple-input" />
+                <input type="text" required value={editSchool} onChange={(e) => setEditSchool(e.target.value)} disabled={!canChangeTenant} className="apple-input disabled:opacity-60" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
