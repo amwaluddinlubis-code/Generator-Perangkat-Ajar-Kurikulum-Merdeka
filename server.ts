@@ -789,7 +789,6 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
     return res.status(403).json({ success: false, error: { code: 'TENANT_SCOPE_LOCKED', message: 'Hanya Super Admin yang dapat memindahkan akun ke sekolah lain.' } });
   }
 
-  const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
   if (name !== undefined && !isNonEmptyString(name, LIMITS.name)) return res.status(400).json({ success: false, error: { code: 'INVALID_NAME', message: 'Nama wajib diisi dan terlalu panjang.' } });
   if (schoolName !== undefined && exceedsLength(schoolName, LIMITS.schoolName)) return res.status(400).json({ success: false, error: { code: 'INVALID_SCHOOL_NAME', message: 'Nama sekolah terlalu panjang.' } });
   if (mataPelajaran !== undefined && exceedsLength(mataPelajaran, LIMITS.subject)) return res.status(400).json({ success: false, error: { code: 'INVALID_SUBJECT', message: 'Mata pelajaran terlalu panjang.' } });
