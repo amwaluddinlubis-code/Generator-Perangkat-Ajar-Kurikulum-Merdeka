@@ -1389,6 +1389,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
         dimensiP5,
         authorName,
         schoolName,
+        soalConfig,
         catatanTambahan
       });
       modelUsed = 'kurikulum-merdeka-verified-engine';

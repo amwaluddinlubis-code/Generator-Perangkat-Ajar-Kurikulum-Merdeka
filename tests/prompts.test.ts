@@ -107,6 +107,18 @@ test('prompt soal memakai konfigurasi guru', () => {
   assert.ok(prompt.includes('25%'), 'komposisi dipakai');
 });
 
+test('prompt soal memisahkan komponen dan mengikuti jumlah opsi PG', () => {
+  const prompt = buildGeneratorPrompt({
+    ...BASE_CTX,
+    docType: 'soal_ujian',
+    soalConfig: { jumlahSoal: 12, bentukSoal: ['Pilihan Ganda', 'Uraian HOTS'], jumlahOpsiPilihanGanda: 6 }
+  });
+  assert.ok(prompt.includes('tepat 6 opsi'));
+  assert.ok(prompt.includes('KUNCI JAWABAN (TABEL TERPISAH)'));
+  assert.ok(prompt.includes('PEMBAHASAN (SEKSI TERPISAH)'));
+  assert.ok(prompt.includes('PEDOMAN PENSKORAN (TABEL TERPISAH)'));
+});
+
 test('validator prompt menangkap kerusakan', () => {
   const ctx = { ...BASE_CTX };
   assert.ok(validateBuiltPrompt('', ctx).length > 0, 'prompt kosong ditolak');

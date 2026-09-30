@@ -838,7 +838,7 @@
   color: #111111;
   width: min(210mm, 100%);
   margin-inline: auto;
-  padding: 20mm 18mm 22mm;
+  padding: 15mm 20mm 20mm;
   min-height: 260mm;
   box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.10);
   border: 1px solid rgba(0,0,0,0.06);
@@ -876,6 +876,17 @@
   background: #fafafa;
   border-left: 3px solid #111;
   font-style: italic;
+}
+.doc-paper .exam-pg-two-column {
+  column-count: 2;
+  column-gap: 12mm;
+  column-rule: 1px solid #777;
+}
+.doc-paper .exam-pg-two-column > * {
+  break-inside: avoid;
+}
+@media (max-width: 760px) {
+  .doc-paper .exam-pg-two-column { column-count: 1; column-rule: 0; }
 }
 .doc-paper .prose-educational img {
   display: block;
@@ -921,7 +932,7 @@
 /* Print — tetap terang untuk dokumen sekolah */
 @page {
   size: A4;
-  margin: 20mm 18mm;
+  margin: 15mm 20mm 20mm 20mm;
 }
 @media print {
   nav, header, aside, .no-print, button, .tab-nav, .alert-box { display: none !important; }
@@ -936,7 +947,7 @@
     border-radius: 0 !important;
     min-height: unset !important;
   }
-  .print-container { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 1.5cm !important; box-shadow: none !important; border: none !important; background: #fff !important; }
+  .print-container { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; border: none !important; background: #fff !important; }
   .print-kop { display: block !important; }
   .prose-educational { color: #000 !important; }
   .prose-educational th, .prose-educational td { border: 1px solid #000 !important; }

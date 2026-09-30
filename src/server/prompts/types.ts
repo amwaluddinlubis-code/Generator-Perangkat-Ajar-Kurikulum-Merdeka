@@ -17,6 +17,7 @@ export interface PromptContext {
   soalConfig?: {
     jumlahSoal?: number;
     bentukSoal?: string[];
+    jumlahOpsiPilihanGanda?: number;
     komposisi?: { mudah?: number; sedang?: number; sukar?: number };
   };
   catatanTambahan?: Record<string, any>;

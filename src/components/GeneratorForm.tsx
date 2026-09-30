@@ -44,6 +44,43 @@ interface GeneratorFormProps {
   submitError?: string | null;
 }
 
+interface StoredGeneratorInputs {
+  jenjang: Jenjang;
+  fase: string;
+  tingkat: string;
+  mataPelajaran: string;
+  customMapel: string;
+  topik: string;
+  alokasiJP: string;
+  durasiJP: string;
+  jumlahPertemuan: string;
+  modelPembelajaran: string;
+  targetPeserta: string;
+  dimensiP5: string[];
+  teacherStory: string;
+  studentProfile: string;
+  learningNeeds: string;
+  localContext: string;
+  priorKnowledge: string;
+  emotionalConsiderations: string;
+  teacherIntent: string;
+  teacherVoice: TeacherVoice;
+  temaP5: string;
+  lampiran: string[];
+  fokusRpp: string;
+  jumlahAktivitas: string;
+  kunciLkpd: boolean;
+  pendekatanKktp: string;
+  semesterProta: string;
+  tahunAjaran: string;
+  jumlahSoal: string;
+  bentukSoal: string[];
+  jumlahOpsiPilihanGanda: string;
+  komposisi: { mudah: string; sedang: string; sukar: string };
+}
+
+const storedInputsKey = (userId: string) => `perangkat-ajar:last-generator-inputs:${userId}`;
+
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   currentUser,
   onGenerate,
@@ -86,6 +123,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setTahunAjaran('');
     setJumlahSoal('');
     setBentukSoal([]);
+    setJumlahOpsiPilihanGanda('4');
     setKomposisi({ mudah: '', sedang: '', sukar: '' });
     setTemaP5('');
     setTeacherStory('');
@@ -154,6 +192,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   // Soal config (custom penuh oleh guru)
   const [jumlahSoal, setJumlahSoal] = useState<string>('');
   const [bentukSoal, setBentukSoal] = useState<string[]>([]);
+  const [jumlahOpsiPilihanGanda, setJumlahOpsiPilihanGanda] = useState<string>('4');
   const [komposisi, setKomposisi] = useState<{ mudah: string; sedang: string; sukar: string }>({ mudah: '', sedang: '', sukar: '' });
 
   const toggleBentuk = (value: string) => {
@@ -176,6 +215,60 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [semesterProta, setSemesterProta] = useState<string>('');
   const [tahunAjaran, setTahunAjaran] = useState<string>('');
   const [extraError, setExtraError] = useState<string | null>(null);
+  const [hasStoredInputs, setHasStoredInputs] = useState(false);
+
+  const readStoredInputs = (): StoredGeneratorInputs | null => {
+    try {
+      const raw = window.localStorage.getItem(storedInputsKey(currentUser.id));
+      return raw ? JSON.parse(raw) as StoredGeneratorInputs : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const restoreStoredInputs = () => {
+    const saved = readStoredInputs();
+    if (!saved) return;
+    setJenjang(saved.jenjang);
+    setFase(saved.fase);
+    setTingkat(saved.tingkat);
+    setMataPelajaran(saved.mataPelajaran);
+    setCustomMapel(saved.customMapel);
+    setTopik(saved.topik);
+    setAlokasiJP(saved.alokasiJP);
+    setDurasiJP(saved.durasiJP);
+    setJumlahPertemuan(saved.jumlahPertemuan);
+    setModelPembelajaran(saved.modelPembelajaran);
+    setTargetPeserta(saved.targetPeserta);
+    setDimensiP5(saved.dimensiP5);
+    setTeacherStory(saved.teacherStory);
+    setStudentProfile(saved.studentProfile);
+    setLearningNeeds(saved.learningNeeds);
+    setLocalContext(saved.localContext);
+    setPriorKnowledge(saved.priorKnowledge);
+    setEmotionalConsiderations(saved.emotionalConsiderations);
+    setTeacherIntent(saved.teacherIntent);
+    setTeacherVoice(saved.teacherVoice);
+    setTemaP5(saved.temaP5);
+    setLampiran(saved.lampiran);
+    setFokusRpp(saved.fokusRpp);
+    setJumlahAktivitas(saved.jumlahAktivitas);
+    setKunciLkpd(saved.kunciLkpd);
+    setPendekatanKktp(saved.pendekatanKktp);
+    setSemesterProta(saved.semesterProta);
+    setTahunAjaran(saved.tahunAjaran);
+    setJumlahSoal(saved.jumlahSoal);
+    setBentukSoal(saved.bentukSoal);
+    setJumlahOpsiPilihanGanda(saved.jumlahOpsiPilihanGanda);
+    setKomposisi(saved.komposisi);
+    setDimensiError(false);
+    setExtraError(null);
+    setFormStep(0);
+  };
+
+  useEffect(() => {
+    setHasStoredInputs(Boolean(readStoredInputs()));
+  }, [currentUser.id]);
 
   const toggleLampiran = (item: string) => {
     setExtraError(null);
@@ -193,6 +286,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       const n = Number(jumlahSoal);
       if (!jumlahSoal || !Number.isInteger(n) || n < 1 || n > 50) return 'Isi jumlah soal 1–50 butir.';
       if (bentukSoal.length === 0) return 'Pilih minimal 1 bentuk soal.';
+      if (bentukSoal.includes('Pilihan Ganda') && (!jumlahOpsiPilihanGanda || Number(jumlahOpsiPilihanGanda) < 2 || Number(jumlahOpsiPilihanGanda) > 6)) return 'Tentukan 2â€“6 opsi untuk setiap soal pilihan ganda.';
       if (komposisiTotal !== 100) return 'Komposisi kesulitan harus total 100%.';
     }
     if (docType === 'modul_p5' && !temaP5) return 'Pilih tema projek P5.';
@@ -283,6 +377,21 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
     const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
 
+    const savedInputs: StoredGeneratorInputs = {
+      jenjang, fase, tingkat, mataPelajaran, customMapel, topik: topik.trim(),
+      alokasiJP, durasiJP, jumlahPertemuan, modelPembelajaran, targetPeserta, dimensiP5,
+      teacherStory: teacherStory.trim(), studentProfile: studentProfile.trim(), learningNeeds: learningNeeds.trim(),
+      localContext: localContext.trim(), priorKnowledge: priorKnowledge.trim(), emotionalConsiderations: emotionalConsiderations.trim(),
+      teacherIntent: teacherIntent.trim(), teacherVoice, temaP5, lampiran, fokusRpp, jumlahAktivitas,
+      kunciLkpd, pendekatanKktp, semesterProta, tahunAjaran: tahunAjaran.trim(), jumlahSoal, bentukSoal, jumlahOpsiPilihanGanda, komposisi
+    };
+    try {
+      window.localStorage.setItem(storedInputsKey(currentUser.id), JSON.stringify(savedInputs));
+      setHasStoredInputs(true);
+    } catch {
+      // Penyimpanan ulang adalah bantuan; kegagalannya tidak boleh menghambat guru membuat dokumen.
+    }
+
     onGenerate({
       authorId: currentUser.id,
       docType,
@@ -300,6 +409,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             soalConfig: {
               jumlahSoal: Number(jumlahSoal) || 0,
               bentukSoal,
+              jumlahOpsiPilihanGanda: bentukSoal.includes('Pilihan Ganda') ? Number(jumlahOpsiPilihanGanda) || 4 : undefined,
               komposisi: {
                 mudah: Number(komposisi.mudah) || 0,
                 sedang: Number(komposisi.sedang) || 0,
@@ -394,6 +504,17 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-7">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#007aff]/20 bg-[#007aff]/[0.06] px-4 py-3">
+            <div>
+              <p className="text-[13px] font-semibold">Gunakan kembali isian guru</p>
+              <p className="mt-0.5 text-[12px] text-[var(--app-text-secondary)]">
+                {hasStoredInputs
+                  ? 'Pulihkan Cerita guru & konteks kelas serta pengaturan terakhir.'
+                  : 'Belum ada isian tersimpan. Isian akan tersedia setelah Anda membuat dokumen pertama.'}
+              </p>
+            </div>
+            <button type="button" onClick={restoreStoredInputs} disabled={!hasStoredInputs} className="btn-apple-secondary !min-h-[36px] !px-3.5 !text-[12px] disabled:cursor-not-allowed disabled:opacity-45">{hasStoredInputs ? 'Gunakan isian terakhir' : 'Belum tersedia'}</button>
+        </div>
         {/* Progres penyusunan bertahap */}
         {isGenerating && (
           <div className="mb-6 rounded-2xl border border-black/10 dark:border-white/15 bg-[#f5f5f7] dark:bg-white/5 px-5 py-4" role="status" aria-live="polite">
@@ -804,28 +925,30 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 Bentuk soal <span className="text-[var(--app-danger)] font-bold" aria-hidden="true">*</span>
                 <span className="sr-only">(wajib, pilih minimal 1)</span>
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" role="group" aria-labelledby="gen-bentuk-label">
-                {BENTUK_SOAL_OPTIONS.map(opt => {
-                  const checked = bentukSoal.includes(opt.value);
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => toggleBentuk(opt.value)}
-                      aria-pressed={checked}
-                      className={`p-3 rounded-2xl text-left transition-all cursor-pointer min-h-[52px] border ${
-                        checked
-                          ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                          : 'bg-white dark:bg-white/5 border-black/10 dark:border-white/15 hover:border-black/30 dark:hover:border-white/30'
-                      }`}
-                    >
-                      <span className="block text-[13.5px] font-semibold leading-snug">{opt.value}</span>
-                      <span className={`block text-[12px] mt-0.5 ${checked ? 'opacity-70' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <select
+                id="gen-bentuk"
+                multiple
+                required
+                size={BENTUK_SOAL_OPTIONS.length}
+                value={bentukSoal}
+                onChange={(e) => { setBentukSoal(Array.from(e.target.selectedOptions, option => option.value)); setExtraError(null); }}
+                className="apple-input !bg-white dark:!bg-white/5 min-h-[145px]"
+                aria-labelledby="gen-bentuk-label"
+              >
+                {BENTUK_SOAL_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.value} — {opt.desc}</option>)}
+              </select>
+              <p className="field-hint">Pilih satu atau beberapa bentuk soal. Gunakan Ctrl/Cmd atau Shift untuk memilih beberapa opsi.</p>
             </div>
+
+            {bentukSoal.includes('Pilihan Ganda') && (
+              <div>
+                <label className="field-label field-required" htmlFor="gen-jumlah-opsi">Jumlah opsi jawaban per nomor Pilihan Ganda</label>
+                <select id="gen-jumlah-opsi" value={jumlahOpsiPilihanGanda} required onChange={e => setJumlahOpsiPilihanGanda(e.target.value)} className="apple-input !bg-white dark:!bg-white/5">
+                  {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} opsi ({'ABCDEF'.slice(0, n).split('').join(', ')})</option>)}
+                </select>
+                <p className="field-hint">Semua nomor Pilihan Ganda akan memakai jumlah opsi ini secara konsisten.</p>
+              </div>
+            )}
 
             <div className="sm:col-span-2">
               <p className="text-[14px] font-semibold mb-1" id="gen-komposisi-label">

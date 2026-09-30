@@ -10,11 +10,13 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Area | Isi |
 |---|---|
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
+| Bank soal terstruktur | Satu paket dapat memuat beberapa bentuk soal; opsi Pilihan Ganda dapat diatur 2–6 per nomor; kisi-kisi, kunci, pembahasan, dan penskoran dipisahkan |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
 | Prompt berversi | `src/server/prompts/` — 1 file per jenis + `base.ts` + builder; versi tercatat di meta/audit; test snapshot per jenis |
 | Generasi berpusat pada guru | Form menangkap cerita guru, profil/kebutuhan murid, konteks lokal, pengetahuan awal, pertimbangan emosi, niat, dan nada suara; hasil diberi `needs_review` bila konteks belum memadai |
+| Isian generator tersimpan | Isian terakhir guru disimpan lokal per akun dan dapat dipulihkan untuk dokumen berikutnya; topik/format tetap dapat disesuaikan |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
-| Ekspor | `.docx` asli (Calibri 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
+| Ekspor | `.docx` asli (Calibri 12pt, A4, margin atas 1,5 cm dan sisi lain 2 cm), `.pdf` A4, cetak langsung, salin |
 | Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
 | Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
@@ -562,12 +564,17 @@ Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim 
 - Validator kualitas menandai keluaran `needs_review` bila cerita, niat, atau konteks kelas terlalu tipis.
 - Versi prompt dinaikkan ke `2026-09-30`; cakupan diuji melalui prompt dan quality tests.
 
-### P1 — Review manusia sebelum ekspor (selesai 30 September 2026)
+### P1 — Review manusia yang fleksibel (selesai 30 September 2026)
 
-- Dokumen dengan status kualitas `needs_review` atau memiliki catatan kualitas menampilkan review gate di viewer.
-- Guru wajib membaca dan menyatakan telah menyesuaikan dokumen sebelum tombol `.docx` dan `.pdf` dibuka.
-- Catatan kualitas tetap terlihat agar guru dapat memperbaiki isi, lalu menyimpan versi yang telah direvisi.
-- Dokumen yang lolos tanpa catatan tetap dapat diekspor tanpa langkah tambahan.
+- Dokumen dengan status kualitas `needs_review` atau memiliki catatan kualitas menampilkan catatan yang jelas di viewer.
+- Guru tetap dapat langsung mengedit, menyimpan, dan mengekspor hasil tanpa menunggu persetujuan siapa pun.
+- Review sekolah bersifat opsional dan hanya dipakai bila sekolah menginginkan kolaborasi tambahan.
+
+### P2 — Lifecycle review multi-guru (opsional)
+
+- Status `DRAFT`, `REVIEW`, `APPROVED`, dan `ARCHIVED` tetap tersedia sebagai metadata kolaborasi.
+- Guru dapat menggunakan hasil secara mandiri tanpa approval formal; admin hanya membatasi status persetujuan/pengarsipan bila workflow sekolah dipakai.
+- Catatan kualitas dan status tidak menjadi penghalang untuk mengedit atau mengekspor dokumen.
 
 ### Selesai dan terverifikasi otomatis
 

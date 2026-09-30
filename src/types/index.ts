@@ -93,6 +93,7 @@ export interface GeneratorParams {
   soalConfig?: {
     jumlahSoal: number;
     bentukSoal: string[];
+    jumlahOpsiPilihanGanda?: number;
     levelKognitif?: string;
     komposisi?: { mudah: number; sedang: number; sukar: number };
   };

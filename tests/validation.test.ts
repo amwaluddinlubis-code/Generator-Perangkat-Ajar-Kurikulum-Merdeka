@@ -62,6 +62,12 @@ test('generator validation rejects oversized and malformed structured input', ()
   }).ok, false);
 });
 
+test('generator validation menerima beberapa bentuk dan membatasi opsi pilihan ganda', () => {
+  const base = { docType: 'soal_ujian', mataPelajaran: 'Matematika', topik: 'Pecahan' };
+  assert.equal(validateGeneratorPayload({ ...base, soalConfig: { jumlahSoal: 10, bentukSoal: ['Pilihan Ganda', 'Uraian HOTS'], jumlahOpsiPilihanGanda: 6 } }).ok, true);
+  assert.equal(validateGeneratorPayload({ ...base, soalConfig: { jumlahSoal: 10, bentukSoal: ['Pilihan Ganda'], jumlahOpsiPilihanGanda: 7 } }).ok, false);
+});
+
 test('image validation allowlists supported aspect ratios', () => {
   assert.equal(validateImagePayload({ prompt: 'Ilustrasi kelas', aspectRatio: '16:9' }).ok, true);
   assert.equal(validateImagePayload({ prompt: 'Ilustrasi kelas', aspectRatio: '2:1' }).ok, false);

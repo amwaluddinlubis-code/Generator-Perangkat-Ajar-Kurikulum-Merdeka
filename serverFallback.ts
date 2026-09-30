@@ -19,6 +19,7 @@ export interface FallbackParams {
   modelPembelajaran?: string;
   targetPeserta?: string;
   dimensiP5?: string[];
+  soalConfig?: { jumlahSoal?: number; bentukSoal?: string[]; jumlahOpsiPilihanGanda?: number };
   authorName?: string;
   schoolName?: string;
   catatanTambahan?: any;
@@ -48,6 +49,19 @@ export function generateFallbackDocument(params: FallbackParams): string {
   const agamaNote = isAgamaMapel(mataPelajaran)
     ? ' Pembelajaran diarahkan pada pengamalan nilai ajaran agama dalam sikap, pengetahuan, dan keterampilan sehari-hari sesuai CP revisi BKPDM 020 Tahun 2026.'
     : '';
+  const selectedQuestionForms = Array.isArray(params.soalConfig?.bentukSoal) && params.soalConfig.bentukSoal.length
+    ? params.soalConfig.bentukSoal.join(', ')
+    : 'Pilihan Ganda, Pilihan Ganda Kompleks (AKM), Menjodohkan, Isian Singkat, dan Uraian HOTS';
+  const pgOptionCount = Math.min(6, Math.max(2, Number(params.soalConfig?.jumlahOpsiPilihanGanda) || 4));
+  const pgOptionLetters = 'ABCDEF'.slice(0, pgOptionCount).split('');
+  const pgOptionLines = pgOptionLetters.map((letter, index) => `${letter}. ${[
+    'Mengintegrasikan pemahaman konsep untuk menyelesaikan tantangan nyata di lingkungan sekitar',
+    'Mengidentifikasi variabel penyebab dan mengumpulkan data lapangan',
+    'Menghafal definisi tanpa mengaitkannya dengan fenomena aktual',
+    'Mengandalkan metode konvensional tanpa mempertimbangkan efisiensi',
+    'Menyerahkan pemecahan masalah kepada pihak lain tanpa analisis',
+    'Menguji kembali solusi melalui bukti dan refleksi'
+  ][index]}`).join('\n');
 
   /** Susun lampiran modul ajar sesuai pilihan guru (default: semua). */
   const buildLampiranSection = (): string => {
@@ -187,7 +201,7 @@ ${ppaBibliographyNumber}. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pem
 * **Topik / Lingkup Materi**: ${topik}
 * **Alokasi Waktu Ujian**: 60 - 90 Menit
 * **Komposisi Level Kognitif**: C3 (Aplikasi), C4 (Analisis), C5 (Evaluasi), C6 (Kreasi)
-* **Bentuk Soal**: Pilihan Ganda (PG), Pilihan Ganda Kompleks (Model AKM), Menjodohkan, Isian Singkat, dan Uraian Analitis HOTS.
+* **Bentuk Soal**: ${selectedQuestionForms}.
 
 | No | Materi / Indikator | Level Kognitif | Bentuk Soal | No. Butir |
 | :--- | :--- | :---: | :---: | :---: |
@@ -206,11 +220,7 @@ ${ppaBibliographyNumber}. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pem
 
 **Soal 1 (Level Kognitif C3 - Aplikasi)**
 Berdasarkan wacana di atas, penerapan prinsip utama dari **${topik}** dalam kehidupan sehari-hari paling tepat ditunjukkan oleh contoh...
-A. Mengabaikan prosedur standar karena memakan waktu lebih lama
-B. Mengintegrasikan pemahaman konsep untuk menyelesaikan tantangan nyata di lingkungan sekitar
-C. Hanya menghafal definisi tanpa mengaitkannya dengan fenomena aktual
-D. Mengandalkan metode konvensional tanpa mempertimbangkan efisiensi
-E. Menyerahkan seluruh pemecahan masalah kepada pihak lain tanpa analisis
+${pgOptionLines}
 *(Kunci Jawaban: B)*
 
 **Soal 2 (Level Kognitif C4 - Analisis)**
@@ -251,7 +261,25 @@ Di suatu lingkungan satuan pendidikan, ditemukan permasalahan nyata terkait **${
 
 ---
 
-### III. PEDOMAN PENSKORAN & RUBRIK ASESMEN
+### III. KUNCI JAWABAN
+
+| Nomor | Bentuk | Jawaban |
+| :---: | :--- | :--- |
+| 1 | Pilihan Ganda | B |
+| 2 | Pilihan Ganda | B |
+| 3 | Pilihan Ganda Kompleks | B, S, B |
+| 4 | Menjodohkan | 1-B, 2-C, 3-A |
+| 5 | Uraian HOTS | Jawaban terbuka sesuai rubrik |
+
+### IV. PEMBAHASAN
+
+1. **Nomor 1:** Pilihan B paling tepat karena menghubungkan konsep dengan tantangan nyata.
+2. **Nomor 2:** Pilihan B menunjukkan analisis berbasis variabel, data, dan hipotesis.
+3. **Nomor 3:** Pernyataan dinilai berdasarkan bukti dan prinsip **${topik}**.
+4. **Nomor 4:** Pasangan mencocokkan konsep dasar, analisis masalah, dan tindak lanjut.
+5. **Nomor 5:** Jawaban dinilai dari ketepatan analisis, kelayakan solusi, dan alasan berbasis konsep.
+
+### V. PEDOMAN PENSKORAN & RUBRIK ASESMEN
 * **Pilihan Ganda Biasa**: Bobot 2 poin per butir benar.
 * **Pilihan Ganda Kompleks**: Bobot 3 poin jika seluruh opsi tepat.
 * **Menjodohkan**: Bobot 3 poin.

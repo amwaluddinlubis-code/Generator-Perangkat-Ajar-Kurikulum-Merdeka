@@ -624,10 +624,10 @@ export async function exportToDocx(
               height: 16838 // 297mm
             },
             margin: {
-              top: 2268, // 4cm
-              bottom: 1701, // 3cm
-              left: 1701, // 3cm
-              right: 1701 // 3cm
+              top: 850, // 1,5cm
+              bottom: 1134, // 2cm
+              left: 1134, // 2cm
+              right: 1134 // 2cm
             }
           }
         },
@@ -734,7 +734,7 @@ export function downloadWordDocument(
     <style>
       @page {
         size: A4;
-        margin: 2.5cm 2cm 2.5cm 2cm;
+        margin: 1.5cm 2cm 2cm 2cm;
       }
       body {
         font-family: Calibri, 'Segoe UI', Arial, sans-serif;

@@ -150,6 +150,11 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
         config.bentukSoal.length > 10 ||
         config.bentukSoal.some(value => typeof value !== 'string' || value.length > 100)
       )) errors.push('Bentuk soal tidak valid.');
+      if (config.jumlahOpsiPilihanGanda !== undefined && (
+        typeof config.jumlahOpsiPilihanGanda !== 'number' ||
+        !Number.isInteger(config.jumlahOpsiPilihanGanda) ||
+        config.jumlahOpsiPilihanGanda < 2 || config.jumlahOpsiPilihanGanda > 6
+      )) errors.push('Jumlah opsi pilihan ganda harus antara 2 dan 6.');
       if (config.levelKognitif !== undefined && (typeof config.levelKognitif !== 'string' || config.levelKognitif.length > 100)) {
         errors.push('Level kognitif tidak valid.');
       }

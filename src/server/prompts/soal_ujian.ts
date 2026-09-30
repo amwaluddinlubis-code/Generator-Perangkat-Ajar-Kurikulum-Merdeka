@@ -21,7 +21,14 @@ export const soalUjianSpec: PromptSpec = {
       ? ctx.soalConfig.bentukSoal.join('; ')
       : 'Pilihan Ganda; Pilihan Ganda Kompleks; Menjodohkan; Isian Singkat; Uraian HOTS';
     const komp = resolveKomposisi((ctx.soalConfig as any)?.komposisi);
+    const opsi = Math.min(6, Math.max(2, Number(ctx.soalConfig?.jumlahOpsiPilihanGanda) || 4));
+    const letters = 'ABCDEF'.slice(0, opsi).split('').join(', ');
     return `TUGAS: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Nasional (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikbudristek No 12 Tahun 2024.
+
+ATURAN TAMBAHAN WAJIB:
+- Setiap nomor pilihan ganda wajib memiliki tepat ${opsi} opsi (${letters}).
+- Jika beberapa bentuk soal dipilih, distribusikan ${jumlah} butir secara seimbang dan beri label bentuk soal pada setiap nomor.
+- Pisahkan secara jelas tabel kisi-kisi, kunci jawaban, pembahasan, dan pedoman penskoran.
 
 KONFIGURASI SOAL (patuhi tepat, jangan tambah/kurangi):
 - Jumlah Soal: ${jumlah} butir.
