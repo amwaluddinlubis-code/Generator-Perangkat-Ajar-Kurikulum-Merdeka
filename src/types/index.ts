@@ -9,11 +9,15 @@ export type DocType =
   | 'prota_promes' 
   | 'modul_p5';
 
+export type DocumentStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'ARCHIVED';
+
 export interface TeacherUser {
   id: string;
   name: string;
   email: string;
   schoolName: string;
+  /** Immutable primary tenant/school identifier derived by the server. */
+  schoolId: string;
   npsn?: string;
   nip?: string;
   jenjang: Jenjang;
@@ -37,15 +41,33 @@ export interface EducationalDocument {
   topik: string;
   content: string;
   createdAt: string;
+  updatedAt?: string;
+  status?: DocumentStatus;
+  version?: number;
   authorId: string;
   authorName: string;
   schoolName: string;
+  /** Server-owned tenant boundary. Never accepted from client input. */
+  schoolId: string;
   isPublic?: boolean;
   durationMinutes?: number;
 }
 
-export interface MonthlyProductivityData {
-  month: string;
+export interface SchoolConfig {
+  id: string;
+  name: string;
+  npsn?: string;
+  jenjang: string;
+  status: string;
+  address?: string;
+  city?: string;
+  accreditation?: string;
+  principalName?: string;
+  principalNip?: string;
+  logoUrl?: string;
+}
+
+export interface MonthlyProductivityData {  month: string;
   monthShort: string;
   year: number;
   total: number;
@@ -71,15 +93,39 @@ export interface GeneratorParams {
   soalConfig?: {
     jumlahSoal: number;
     bentukSoal: string[];
-    levelKognitif: string;
+    jumlahOpsiPilihanGanda?: number;
+    levelKognitif?: string;
+    komposisi?: { mudah: number; sedang: number; sukar: number };
   };
   authorName: string;
   schoolName: string;
   nip?: string;
   kepalaSekolah?: string;
   nipKepalaSekolah?: string;
+  classroomContext?: ClassroomContext;
   catatanTambahan?: {
     temaP5?: string;
     instruksiKhusus?: string;
+    lampiran?: string[];
+    fokusRpp?: string;
+    jumlahAktivitas?: number;
+    kunciLkpd?: boolean;
+    pendekatanKktp?: string;
+    semesterProta?: string;
+    tahunAjaran?: string;
   };
+}
+
+export type TeacherVoice = 'hangat' | 'reflektif' | 'praktis' | 'dialogis' | 'kreatif';
+
+/** Cerita dan pertimbangan guru yang menjadi sumber konteks manusiawi dokumen. */
+export interface ClassroomContext {
+  teacherStory: string;
+  studentProfile: string;
+  learningNeeds: string;
+  localContext: string;
+  priorKnowledge: string;
+  emotionalConsiderations: string;
+  teacherIntent: string;
+  teacherVoice: TeacherVoice;
 }

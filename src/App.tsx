@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  TeacherUser, 
-  EducationalDocument, 
-  GeneratorParams, 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  TeacherUser,
+  EducationalDocument,
+  GeneratorParams,
+  SchoolConfig,
   DocType,
-  Jenjang 
+  Jenjang
 } from './types';
 import { Sidebar, NavigationTarget } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
@@ -16,8 +17,11 @@ import { BelajarIdAuthModal } from './components/BelajarIdAuthModal';
 import { CurriculumGuideModal } from './components/CurriculumGuideModal';
 import { UserProfileStatsDashboard } from './components/UserProfileStatsDashboard';
 import { ProfilePage } from './components/ProfilePage';
+import { DashboardPage } from './components/DashboardPage';
+import { SchoolSettingsPage } from './components/SchoolSettingsPage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
+import { getServerMessage } from './utils/api';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -35,35 +39,32 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(() => {
-    const cachedUser = localStorage.getItem('ruang_guru_current_user');
-    if (cachedUser) {
-      try {
-        return JSON.parse(cachedUser);
-      } catch (e) {
-        localStorage.removeItem('ruang_guru_current_user');
-      }
-    }
-    return null;
-  });
+  // Identity is established by the server-side session cookie.
+  // localStorage is intentionally not used as an authentication source.
+  const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null);
 
   const [users, setUsers] = useState<TeacherUser[]>([]);
   const [documents, setDocuments] = useState<EducationalDocument[]>([]);
   const [currentDoc, setCurrentDoc] = useState<EducationalDocument | null>(null);
   const [showDocumentResult, setShowDocumentResult] = useState<boolean>(false);
+  const [schoolConfig, setSchoolConfig] = useState<SchoolConfig | null>(null);
   
   // Navigation State with dedicated sidebar targets
-  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('modul_ajar');
+  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [lastGenerateError, setLastGenerateError] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string>('');
+  const [lastQuality, setLastQuality] = useState<{ status: string; issues: string[] } | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [guideModalOpen, setGuideModalOpen] = useState<boolean>(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ message, type });
@@ -73,70 +74,122 @@ export default function App() {
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
-      // Load available demo and verification profiles.
-      const usersRes = await fetch('/api/users');
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        if (usersData.users) {
-          setUsers(usersData.users);
-          // Revalidasi sesi: profil tersimpan bisa basi bila admin
-          // mengubah status / menghapus akun dari perangkat lain.
-          try {
-            const raw = localStorage.getItem('ruang_guru_current_user');
-            if (raw) {
-              const stored = JSON.parse(raw) as TeacherUser;
-              const fresh = (usersData.users as TeacherUser[]).find(u => u.id === stored.id);
-              if (!fresh) {
-                localStorage.removeItem('ruang_guru_current_user');
-                setCurrentUser(null);
-                showToast('Akun Anda telah dihapus oleh admin. Silakan masuk kembali.', 'info');
-              } else if (JSON.stringify(fresh) !== JSON.stringify(stored)) {
-                setCurrentUser(fresh);
-                localStorage.setItem('ruang_guru_current_user', JSON.stringify(fresh));
-                if (fresh.status !== stored.status) {
-                  showToast(
-                    fresh.status === 'VERIFIED'
-                      ? 'Kabar baik — akun Anda telah diverifikasi admin.'
-                      : `Status akun Anda berubah menjadi: ${fresh.status}`,
-                    'info'
-                  );
-                }
-              }
-            }
-          } catch { /* abaikan data lokal rusak */ }
+      const currentRes = await fetch('/api/users/current');
+      if (!currentRes.ok) {
+        setCurrentUser(null);
+        setUsers([]);
+        setDocuments([]);
+        if (currentRes.status !== 401) {
+          setLoadError('Tidak dapat terhubung ke server. Periksa koneksi lalu coba lagi.');
         }
+        return;
       }
 
-      // Load documents for the archive and recent activity.
+      const currentData = await currentRes.json();
+      if (!currentData.user) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const activeUser = currentData.user as TeacherUser;
+      setCurrentUser(activeUser);
+      setLoadError(null);
+
+      if (activeUser.role === 'ADMIN' || activeUser.role === 'SUPER_ADMIN') {
+        const usersRes = await fetch('/api/users');
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          if (Array.isArray(usersData.users)) setUsers(usersData.users);
+        }
+      } else {
+        setUsers([]);
+      }
+
       const docsRes = await fetch('/api/documents');
       if (docsRes.ok) {
         const docsData = await docsRes.json();
-        if (docsData.documents) {
+        if (Array.isArray(docsData.documents)) {
           setDocuments(docsData.documents);
-          if (docsData.documents.length > 0 && !currentDoc) {
-            setCurrentDoc(docsData.documents[0]);
-          }
+          if (docsData.documents.length > 0) setCurrentDoc(prev => prev || docsData.documents[0]);
         }
+      } else if (docsRes.status === 401 || docsRes.status === 403) {
+        setDocuments([]);
       }
     } catch (err) {
       console.warn('Backend server connecting or loading offline defaults:', err);
+      setCurrentUser(null);
+      setUsers([]);
+      setDocuments([]);
+      setLoadError('Tidak dapat terhubung ke server. Periksa koneksi lalu coba lagi.');
+    } finally {
+      setInitialLoading(false);
     }
   };
 
   useEffect(() => {
     loadInitialData();
+    // Hasil redirect Google OAuth (?auth= / ?auth_error=) — tampilkan pesan lalu bersihkan URL.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const auth = params.get('auth');
+      const authError = params.get('auth_error');
+      if (auth === 'google_ok') showToast('Masuk dengan Google Belajar.id berhasil!', 'success');
+      else if (auth === 'pending') showToast('Akun Google Anda terhubung dan menunggu verifikasi admin.', 'info');
+      else if (authError === 'invalid_domain') showToast('Akun Google tersebut bukan email Belajar.id yang valid.', 'error');
+      else if (authError === 'account_rejected') showToast('Akun tersebut tidak memiliki akses ke aplikasi.', 'error');
+      else if (authError) showToast('Login Google gagal. Silakan coba lagi atau masuk manual.', 'error');
+      if (auth || authError) {
+        params.delete('auth');
+        params.delete('auth_error');
+        const clean = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+        window.history.replaceState(null, '', clean);
+      }
+    } catch {
+      /* abaikan — bukan browser / URL tidak valid */
+    }
     // Revalidasi tiap jendela kembali fokus (kembali dari tab admin, dsb.)
     const onFocus = () => loadInitialData();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, []);
 
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Fokus ke konten utama tiap ganti halaman — predictable bagi pembaca layar
+  const activeTargetRef = useRef(activeTarget);
+  useEffect(() => {
+    if (activeTargetRef.current !== activeTarget) {
+      activeTargetRef.current = activeTarget;
+      mainRef.current?.focus({ preventScroll: true });
+    }
+  }, [activeTarget]);
+
+  // Muat identitas sekolah untuk kop dokumen (semua peran boleh baca).
+  useEffect(() => {
+    if (!currentUser) {
+      setSchoolConfig(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/schools/mine');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.school) setSchoolConfig(data.school as SchoolConfig);
+        }
+      } catch {
+        /* abaikan — kop memakai fallback identitas profil */
+      }
+    })();
+  }, [currentUser?.id]);
+
   // Handle Login / Belajar.id Switcher
-  const handleLogin = async (data: { 
-    email: string; 
-    name?: string; 
-    schoolName?: string; 
-    jenjang?: Jenjang; 
+  const handleLogin = async (data: {
+    email: string;
+    password?: string;
+    name?: string;
+    schoolName?: string;
+    jenjang?: Jenjang;
     mataPelajaran?: string;
     nip?: string;
   }) => {
@@ -155,14 +208,13 @@ export default function App() {
 
       const activeTeacher: TeacherUser = resData.user;
       setCurrentUser(activeTeacher);
-      localStorage.removeItem('ruang_guru_logged_out');
-      localStorage.setItem('ruang_guru_current_user', JSON.stringify(activeTeacher));
 
-      // Reload users list
-      const usersRes = await fetch('/api/users');
-      if (usersRes.ok) {
-        const uJson = await usersRes.json();
-        setUsers(uJson.users);
+      if (activeTeacher.role === 'ADMIN' || activeTeacher.role === 'SUPER_ADMIN') {
+        const usersRes = await fetch('/api/users');
+        if (usersRes.ok) {
+          const uJson = await usersRes.json();
+          setUsers(uJson.users);
+        }
       }
 
       showToast(resData.message || `Selamat datang, ${activeTeacher.name}!`, 'success');
@@ -181,9 +233,10 @@ export default function App() {
     } catch (e) {
       // offline logout ok
     }
-    localStorage.setItem('ruang_guru_logged_out', 'true');
-    localStorage.removeItem('ruang_guru_current_user');
     setCurrentUser(null);
+    setUsers([]);
+    setDocuments([]);
+    setCurrentDoc(null);
     setLogoutModalOpen(false);
     setAuthModalOpen(false);
     showToast('Anda telah berhasil keluar dari akun Ruang Guru Merdeka', 'info');
@@ -197,17 +250,23 @@ export default function App() {
     }
 
     setIsGenerating(true);
+    setLastGenerateError(null);
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
+        body: JSON.stringify({
+          ...params,
+          authorId: undefined,
+          authorName: undefined,
+          schoolName: undefined
+        })
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Gagal menghasilkan perangkat ajar');
+        throw new Error(getServerMessage(data, 'Gagal menghasilkan perangkat ajar'));
       }
 
       const newDoc: EducationalDocument = {
@@ -222,19 +281,25 @@ export default function App() {
         content: data.content,
         createdAt: new Date().toISOString(),
         authorId: currentUser.id,
-        authorName: params.authorName || currentUser.name,
-        schoolName: params.schoolName || currentUser.schoolName,
-        isPublic: true,
+        authorName: currentUser.name,
+        schoolName: currentUser.schoolName,
+        schoolId: currentUser.schoolId,
+        isPublic: false,
         durationMinutes: data.durationMinutes || 3.2
       };
 
-      setCurrentDoc(newDoc);
+      const persistedDoc = await handleSaveDocument(newDoc);
+      setCurrentDoc(persistedDoc || newDoc);
       setShowDocumentResult(true);
       const used = data.modelUsed || '';
       setLastModelUsed(used);
-      // Auto-save to documents list
-      await handleSaveDocument(newDoc);
-      if (/gemini/i.test(used)) {
+      const quality = data.quality && typeof data.quality.status === 'string'
+        ? { status: data.quality.status, issues: Array.isArray(data.quality.issues) ? data.quality.issues : [] }
+        : null;
+      setLastQuality(quality);
+      if (quality?.status === 'needs_review') {
+        showToast(`Dokumen jadi dengan ${quality.issues.length} catatan — periksa panel kualitas sebelum diekspor.`, 'info');
+      } else if (/gemini/i.test(used)) {
         showToast('Perangkat ajar berhasil disusun AI dan siap diekspor .docx / .pdf!', 'success');
       } else {
         showToast('AI sedang sibuk — dokumen disusun dari template cadangan terverifikasi.', 'info');
@@ -246,14 +311,17 @@ export default function App() {
       console.error('Generate error:', err);
       let friendlyMsg = 'Terjadi kesalahan saat menyusun dokumen. Silakan coba kembali.';
       const raw = String(err?.message || '');
-      if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
-        friendlyMsg = 'Server AI mengalami lonjakan antrean sesaat. Sistem telah mengoptimalkan koneksi alternatif, silakan klik tombol "Susun Perangkat Ajar" sekali lagi.';
-      } else if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED')) {
-        friendlyMsg = 'Batas frekuensi permintaan tercapai. Silakan tunggu beberapa detik lalu coba kembali.';
+      if (/sesi|login|auth|401/i.test(raw)) {
+        friendlyMsg = 'Sesi Anda berakhir. Silakan masuk kembali lalu ulangi penyusunan.';
+      } else if (raw.includes('503') || raw.includes('high demand') || raw.includes('UNAVAILABLE')) {
+        friendlyMsg = 'Server AI mengalami lonjakan antrean sesaat. Silakan klik tombol "Coba lagi" sekali lagi.';
+      } else if (raw.includes('429') || raw.includes('RESOURCE_EXHAUSTED') || /frekuensi|rate limit/i.test(raw)) {
+        friendlyMsg = 'Batas frekuensi permintaan tercapai. Tunggu ±1 menit lalu klik "Coba lagi".';
       } else if (raw.length > 0 && !raw.includes('{')) {
         friendlyMsg = raw;
       }
       showToast(friendlyMsg, 'error');
+      setLastGenerateError(friendlyMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -268,14 +336,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          status,
-          adminName: currentUser.name
+          status
         })
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal mengubah status');
+        throw new Error(getServerMessage(data, 'Gagal mengubah status'));
       }
 
       setUsers(prev => prev.map(u => u.id === userId ? data.user : u));
@@ -304,16 +371,15 @@ export default function App() {
       const res = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields, requesterId: currentUser?.id })
+        body: JSON.stringify(fields)
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Gagal memperbarui profil');
+        throw new Error(getServerMessage(data, 'Gagal memperbarui profil'));
       }
       setUsers(prev => prev.map(u => u.id === userId ? data.user : u));
       if (currentUser && currentUser.id === userId) {
         setCurrentUser(data.user);
-        localStorage.setItem('ruang_guru_current_user', JSON.stringify(data.user));
       }
       showToast(data.message, 'success');
     } catch (err: any) {
@@ -322,7 +388,7 @@ export default function App() {
   };
 
   // Handle Save Document to Repository
-  const handleSaveDocument = async (doc: EducationalDocument) => {
+  const handleSaveDocument = async (doc: EducationalDocument): Promise<EducationalDocument | null> => {
     try {
       const res = await fetch('/api/documents', {
         method: 'POST',
@@ -330,12 +396,16 @@ export default function App() {
         body: JSON.stringify(doc)
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setDocuments(prev => [data.document, ...prev.filter(d => d.id !== doc.id)]);
+      if (res.ok && data.success && data.document) {
+        const persisted = data.document as EducationalDocument;
+        setDocuments(prev => [persisted, ...prev.filter(d => d.id !== persisted.id)]);
+        setCurrentDoc(prev => prev?.id === persisted.id ? persisted : prev);
+        return persisted;
       }
     } catch (err) {
       console.error('Save doc error', err);
     }
+    return null;
   };
 
   // Handle Delete Document
@@ -361,7 +431,7 @@ export default function App() {
         {/* Toast Notification — Apple pill */}
         {toast && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md">
+            <div className="toast-surface rounded-full px-5 py-3 text-[13.5px] font-medium flex items-center gap-2">
               {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158]" />}
               {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961]" />}
               {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a]" />}
@@ -378,6 +448,7 @@ export default function App() {
               name: 'Amwaluddin Lubis, M.Pd.',
               email: 'amwaluddin.lubis@gmail.com',
               schoolName: 'Balai Penjaminan Mutu Pendidikan (BPMP)',
+              schoolId: 'school-demo-bpmp',
               nip: '19820514 200801 1 008',
               jenjang: 'SMA',
               mataPelajaran: 'Pengawas Kurikulum & Bahasa',
@@ -404,12 +475,12 @@ export default function App() {
   ].includes(activeTarget);
 
   return (
-    <div className="min-h-screen text-[#1d1d1f] dark:text-[#f5f5f7] flex">
+    <div className="app-shell flex">
       
       {/* Toast Notification — Apple pill */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print">
-          <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md max-w-[92vw]">
+          <div className="toast-surface max-w-[92vw] rounded-full px-5 py-3 text-[13.5px] font-medium flex items-center gap-2">
             {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158] shrink-0" />}
             {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961] shrink-0" />}
             {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a] shrink-0" />}
@@ -428,6 +499,7 @@ export default function App() {
         }}
         pendingCount={pendingUsersCount}
         docsCount={documents.length}
+        isAdmin={currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN'}
         isCollapsed={isSidebarCollapsed}
         setIsCollapsed={setIsSidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
@@ -435,8 +507,8 @@ export default function App() {
       />
 
       {/* Main App Layout Area — offset mengikuti lebar sidebar Apple */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-        isSidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[280px]'
+      <div className={`app-main flex min-w-0 flex-1 flex-col transition-[padding] duration-300 ${
+        isSidebarCollapsed ? 'lg:pl-[78px]' : 'lg:pl-[272px]'
       }`}>
         
         {/* Streamlined Top Header */}
@@ -451,8 +523,29 @@ export default function App() {
         />
 
         {/* Content View Container — lega ala Apple */}
-        <main className="flex-1 px-4 sm:px-8 lg:px-12 py-6 sm:py-10 max-w-[1400px] w-full mx-auto">
-          
+        <main ref={mainRef} tabIndex={-1} className="app-page flex-1 focus:outline-none">
+
+          {/* VIEW 0: BERANDA DASHBOARD */}
+          {activeTarget === 'dashboard' && (
+            <DashboardPage
+              currentUser={currentUser}
+              documents={documents}
+              pendingCount={pendingUsersCount}
+              onNavigate={(target) => {
+                setActiveTarget(target);
+                setShowDocumentResult(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onSelectDocument={(doc) => {
+                setCurrentDoc(doc);
+                setActiveTarget(doc.docType);
+                setShowDocumentResult(true);
+                setLastQuality(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          )}
+
           {/* VIEW 1: DEDICATED GENERATOR WORKSPACE (FOR EACH PERANGKAT AJAR) */}
           {isDocTypeTarget && (
             showDocumentResult && currentDoc ? (
@@ -460,7 +553,9 @@ export default function App() {
                 key={currentDoc.id}
                 document={currentDoc}
                 currentUser={currentUser}
+                school={schoolConfig}
                 modelUsed={lastModelUsed}
+                quality={lastQuality}
                 onSaveToRepository={handleSaveDocument}
                 onBackToGenerator={() => {
                   setShowDocumentResult(false);
@@ -468,13 +563,13 @@ export default function App() {
                 }}
               />
             ) : (
-              <div className="mx-auto w-full max-w-6xl">
+              <div className="mx-auto w-full max-w-[1180px]">
                 <GeneratorForm
                   currentUser={currentUser}
                   onGenerate={handleGenerate}
                   isGenerating={isGenerating}
+                  submitError={lastGenerateError}
                   activeDocType={activeTarget as DocType}
-                  onSelectDocType={(newType) => setActiveTarget(newType)}
                 />
               </div>
             )
@@ -500,6 +595,7 @@ export default function App() {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
                 setShowDocumentResult(true);
+                setLastQuality(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onCreateNew={() => {
@@ -515,10 +611,14 @@ export default function App() {
             <DocumentRepository
               documents={documents}
               currentUser={currentUser}
+              loading={initialLoading}
+              error={loadError}
+              onRetry={loadInitialData}
               onSelectDocument={(doc) => {
                 setCurrentDoc(doc);
                 setActiveTarget(doc.docType);
                 setShowDocumentResult(true);
+                setLastQuality(null);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onDeleteDocument={handleDeleteDocument}
@@ -535,17 +635,45 @@ export default function App() {
             <TeacherVerificationPanel
               users={users}
               currentUser={currentUser}
+              loading={initialLoading}
+              error={loadError}
+              onRetry={loadInitialData}
               onUpdateStatus={handleVerifyTeacher}
               onDeleteUser={handleDeleteUser}
               onUpdateUser={handleUpdateUser}
               onAddUser={async (userData) => {
-                await handleLogin({
-                  email: userData.email || '',
-                  name: userData.name,
-                  schoolName: userData.schoolName,
-                  jenjang: userData.jenjang,
-                  mataPelajaran: userData.mataPelajaran
-                });
+                try {
+                  const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                  });
+                  const data = await response.json();
+                  if (!response.ok || !data.success) {
+                    throw new Error(data?.error?.message || data?.message || 'Gagal menambahkan guru.');
+                  }
+
+                  const usersRes = await fetch('/api/users');
+                  if (usersRes.ok) {
+                    const usersData = await usersRes.json();
+                    if (Array.isArray(usersData.users)) setUsers(usersData.users);
+                  }
+                  showToast(data.message || 'Guru berhasil ditambahkan.', 'success');
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Gagal menambahkan guru.', 'error');
+                  throw error;
+                }
+              }}
+            />
+          )}
+
+          {/* VIEW 4b: IDENTITAS SEKOLAH (admin) */}
+          {activeTarget === 'school' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') && (
+            <SchoolSettingsPage
+              currentUser={currentUser}
+              onSchoolUpdated={(school) => {
+                setSchoolConfig(school);
+                showToast('Identitas sekolah diperbarui di semua dokumen.', 'success');
               }}
             />
           )}
@@ -574,21 +702,22 @@ export default function App() {
                 </div>
 
                 <div className="prose-educational space-y-4">
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                  <div className="soft-section">
                     <h3 className="text-[14.5px] font-semibold mb-1">
-                      Landasan hukum kurikulum nasional 2024
+                      Landasan hukum kurikulum nasional
                     </h3>
                     <p className="!text-[13.5px] !text-[#424245]">
-                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, dan berorientasi Profil Pelajar Pancasila.
+                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Capaian Pembelajaran mengacu <b>BSKAP 046/H/KR/2025</b> (mencabut 032/H/KR/2024); khusus mapel Agama & Budi Pekerti memakai revisi <b>BKPDM 020 Tahun 2026</b>.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="soft-section">
                       <h4 className="font-semibold text-[14px] mb-2">
                         Fase pembelajaran
                       </h4>
                       <ul className="!text-[13px] space-y-1.5 !text-[#424245]">
+                        <li><b>Fondasi</b>: PAUD (selaras 6 kemampuan fondasi ke Fase A)</li>
                         <li><b>Fase A</b>: Kelas 1–2 SD</li>
                         <li><b>Fase B</b>: Kelas 3–4 SD</li>
                         <li><b>Fase C</b>: Kelas 5–6 SD</li>
@@ -598,12 +727,12 @@ export default function App() {
                       </ul>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="soft-section">
                       <h4 className="font-semibold text-[14px] mb-2">
                         3 komponen esensial Modul Ajar
                       </h4>
                       <ol className="!text-[13px] space-y-1.5 !text-[#424245]">
-                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 032/H/KR/2024.</li>
+                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 046/H/KR/2025.</li>
                         <li>2. <b>Langkah pembelajaran</b> berdiferensiasi.</li>
                         <li>3. <b>Rencana asesmen</b> + rubrik KKTP.</li>
                       </ol>
@@ -626,8 +755,8 @@ export default function App() {
         </main>
 
         {/* Global Footer — minimal */}
-        <footer className="py-6 px-6 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d] no-print mt-auto">
-          <p><span className="font-semibold dark:text-[#f5f5f7]">Ruang Guru Merdeka</span> · Permendikbudristek No. 12 Tahun 2024 & PPA 2024</p>
+        <footer className="mt-auto px-6 py-6 text-center text-[12px] text-[var(--app-text-tertiary)] no-print">
+          <p><span className="font-semibold text-[var(--app-text-secondary)]">Ruang Guru Merdeka</span><span className="mx-2 opacity-40">·</span>Perangkat ajar berbantuan AI untuk pendidik.</p>
         </footer>
 
       </div>

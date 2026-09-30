@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DocType } from '../types';
 import {
   GraduationCap,
+  LayoutDashboard,
   FileText,
   Layers,
   HelpCircle,
@@ -12,6 +13,7 @@ import {
   BarChart3,
   Archive,
   ShieldCheck,
+  Building2,
   FileCheck,
   UserCircle2,
   ChevronLeft,
@@ -20,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export type NavigationTarget =
+  | 'dashboard'
   | 'modul_ajar'
   | 'rpp'
   | 'soal_ujian'
@@ -31,6 +34,7 @@ export type NavigationTarget =
   | 'stats'
   | 'repository'
   | 'admin'
+  | 'school'
   | 'guide';
 
 interface SidebarProps {
@@ -38,6 +42,7 @@ interface SidebarProps {
   onSelectTarget: (target: NavigationTarget) => void;
   pendingCount: number;
   docsCount: number;
+  isAdmin: boolean;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
@@ -49,20 +54,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTarget,
   pendingCount,
   docsCount,
+  isAdmin,
   isCollapsed,
   setIsCollapsed,
   mobileOpen,
   setMobileOpen,
 }) => {
-
   const docMenuItems: { type: DocType; label: string; sub: string; icon: React.ReactNode }[] = [
-    { type: 'modul_ajar', label: 'Modul Ajar', sub: 'Lengkap · PPA 2024', icon: <FileText className="w-[18px] h-[18px]" /> },
-    { type: 'rpp', label: 'RPP Ringkas', sub: '1–2 lembar', icon: <Layers className="w-[18px] h-[18px]" /> },
-    { type: 'soal_ujian', label: 'Soal & Asesmen', sub: 'AKM · HOTS', icon: <HelpCircle className="w-[18px] h-[18px]" /> },
-    { type: 'lkpd', label: 'LKPD', sub: 'Siap cetak', icon: <BookOpen className="w-[18px] h-[18px]" /> },
-    { type: 'kktp_atp', label: 'ATP & KKTP', sub: 'Matriks', icon: <Target className="w-[18px] h-[18px]" /> },
-    { type: 'prota_promes', label: 'Prota & Promes', sub: 'Tahunan', icon: <Calendar className="w-[18px] h-[18px]" /> },
-    { type: 'modul_p5', label: 'Modul P5', sub: '8 tema', icon: <Sparkles className="w-[18px] h-[18px]" /> },
+    { type: 'modul_ajar', label: 'Modul Ajar', sub: 'Lengkap · PPA', icon: <FileText className="h-[18px] w-[18px]" /> },
+    { type: 'rpp', label: 'RPP Ringkas', sub: '1–2 lembar', icon: <Layers className="h-[18px] w-[18px]" /> },
+    { type: 'soal_ujian', label: 'Soal & Asesmen', sub: 'AKM · HOTS', icon: <HelpCircle className="h-[18px] w-[18px]" /> },
+    { type: 'lkpd', label: 'LKPD', sub: 'Siap cetak', icon: <BookOpen className="h-[18px] w-[18px]" /> },
+    { type: 'kktp_atp', label: 'ATP & KKTP', sub: 'Matriks', icon: <Target className="h-[18px] w-[18px]" /> },
+    { type: 'prota_promes', label: 'Prota & Promes', sub: 'Tahunan', icon: <Calendar className="h-[18px] w-[18px]" /> },
+    { type: 'modul_p5', label: 'Modul P5', sub: 'Proyek', icon: <Sparkles className="h-[18px] w-[18px]" /> },
+  ];
+
+  const workspaceItems: { target: NavigationTarget; label: string; icon: React.ReactNode; count?: number }[] = [
+    { target: 'profile', label: 'Profil saya', icon: <UserCircle2 className="h-[18px] w-[18px]" /> },
+    { target: 'repository', label: 'Arsip dokumen', icon: <Archive className="h-[18px] w-[18px]" />, count: docsCount },
+    { target: 'stats', label: 'Statistik', icon: <BarChart3 className="h-[18px] w-[18px]" /> },
+    { target: 'guide', label: 'Panduan', icon: <FileCheck className="h-[18px] w-[18px]" /> },
   ];
 
   const handleNavClick = (target: NavigationTarget) => {
@@ -70,112 +82,142 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setMobileOpen(false);
   };
 
-  const itemCls = (active: boolean) =>
-    `w-full flex items-center gap-3 rounded-2xl text-left transition-all min-h-[52px] px-3 cursor-pointer ${
-      active
-        ? 'bg-black text-white dark:bg-white dark:text-black'
-        : 'hover:bg-black/5 dark:hover:bg-white/10'
-    }`;
+  // ESC menutup drawer mobile — navigasi predictable
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen, setMobileOpen]);
+
+  const navButton = (target: NavigationTarget, label: string, icon: React.ReactNode, count?: number) => {
+    const active = activeTarget === target;
+    return (
+      <button
+        key={target}
+        type="button"
+        onClick={() => handleNavClick(target)}
+        data-active={active}
+        aria-current={active ? 'page' : undefined}
+        title={isCollapsed ? label : undefined}
+        className="apple-sidebar-item"
+      >
+        <span className="shrink-0">{icon}</span>
+        {!isCollapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-semibold">{label}</span>
+            {typeof count === 'number' && count > 0 && (
+              <span className="rounded-full bg-[var(--app-surface-muted)] px-2 py-0.5 text-[11px] font-bold text-[var(--app-text-secondary)]">
+                {count}
+              </span>
+            )}
+          </>
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
       {mobileOpen && (
-        <div onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm lg:hidden" />
+        <button
+          type="button"
+          aria-label="Tutup menu"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/35 backdrop-blur-sm lg:hidden"
+        />
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 flex flex-col transition-all duration-300 no-print border-r border-black/10 dark:border-white/15 ${
-          mobileOpen ? 'translate-x-0 w-[300px]' : '-translate-x-full lg:translate-x-0'
-        } ${isCollapsed ? 'lg:w-[84px]' : 'lg:w-[280px]'}`}
-        style={{ background: 'var(--apple-nav)', backdropFilter: 'saturate(180%) blur(20px)' }}
+        className={[
+          'apple-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-[width,transform] duration-300 no-print',
+          mobileOpen ? 'translate-x-0 w-[292px]' : '-translate-x-full lg:translate-x-0',
+          isCollapsed ? 'lg:w-[78px]' : 'lg:w-[272px]',
+        ].join(' ')}
       >
-        {/* Brand */}
-        <div className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-black/10 dark:border-white/15">
-          <button onClick={() => handleNavClick('modul_ajar')} className="flex items-center gap-2.5 overflow-hidden text-left cursor-pointer">
-            <div className="w-8 h-8 rounded-[10px] bg-black dark:bg-white dark:text-black text-white flex items-center justify-center shrink-0">
-              <GraduationCap className="w-[18px] h-[18px]" />
-            </div>
+        <div className="flex h-[72px] shrink-0 items-center justify-between border-b border-[var(--app-border)] px-4">
+          <button
+            type="button"
+            onClick={() => handleNavClick('dashboard')}
+            className="flex min-w-0 items-center gap-3 text-left"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--app-text)] text-[var(--app-bg)] shadow-sm">
+              <GraduationCap className="h-5 w-5" />
+            </span>
             {!isCollapsed && (
-              <div className="leading-tight">
-                <p className="text-[14px] font-semibold tracking-tight">Ruang Guru</p>
-                <p className="text-[11.5px] text-[#6e6e73]">Merdeka</p>
-              </div>
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[14px] font-bold tracking-[-.02em]">Ruang Guru</span>
+                <span className="mt-0.5 block truncate text-[11.5px] font-medium text-[var(--app-text-tertiary)]">Merdeka</span>
+              </span>
             )}
           </button>
+
           <div className="flex items-center gap-1">
-            <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" title={isCollapsed ? 'Perluas' : 'Ciutkan'}>
-              {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden rounded-full p-2 text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-surface-muted)] lg:flex"
+              title={isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+              aria-label={isCollapsed ? 'Perluas sidebar' : 'Ciutkan sidebar'}
+            >
+              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
-            <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer">
-              <X className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-full p-2 text-[var(--app-text-secondary)] hover:bg-[var(--app-surface-muted)] lg:hidden"
+              aria-label="Tutup menu"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Nav */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-5">
-          <div>
-            {!isCollapsed && <p className="px-3 pb-2 text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">Buat perangkat</p>}
-            <div className="space-y-1">
-              {docMenuItems.map((item) => {
-                const active = activeTarget === item.type;
-                return (
-                  <button key={item.type} onClick={() => handleNavClick(item.type)} className={itemCls(active)} title={isCollapsed ? item.label : undefined}>
-                    <span className={`shrink-0 ${active ? 'text-white dark:text-black' : ''}`}>{item.icon}</span>
-                    {!isCollapsed && (
-                      <span className="flex-1 min-w-0">
-                        <span className={`block text-[14px] font-semibold leading-tight truncate ${active ? 'text-white dark:text-black' : ''}`}>{item.label}</span>
-                        <span className={`block text-[12px] leading-tight ${active ? 'text-white/70 dark:text-black/60' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{item.sub}</span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-5" aria-label="Navigasi utama">
+          <section>
+            {navButton('dashboard', 'Beranda', <LayoutDashboard className="h-[18px] w-[18px]" />)}
+          </section>
 
-          <div>
-            {!isCollapsed && <p className="px-3 pb-2 text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">Ruang kerja</p>}
-            <div className="space-y-1">
-              <button onClick={() => handleNavClick('profile')} className={itemCls(activeTarget === 'profile')} title={isCollapsed ? 'Profil saya' : undefined}>
-                <UserCircle2 className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Profil saya</span>}
-              </button>
-              <button onClick={() => handleNavClick('repository')} className={itemCls(activeTarget === 'repository')} title={isCollapsed ? 'Arsip' : undefined}>
-                <Archive className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && (
-                  <span className="flex-1 flex items-center justify-between text-[14px] font-semibold">
-                    Arsip
-                    {docsCount > 0 && <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/15">{docsCount}</span>}
-                  </span>
-                )}
-              </button>
-              <button onClick={() => handleNavClick('stats')} className={itemCls(activeTarget === 'stats')} title={isCollapsed ? 'Statistik' : undefined}>
-                <BarChart3 className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Statistik</span>}
-              </button>
-              <button onClick={() => handleNavClick('admin')} className={itemCls(activeTarget === 'admin')} title={isCollapsed ? 'Verifikasi' : undefined}>
-                <ShieldCheck className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && (
-                  <span className="flex-1 flex items-center justify-between text-[14px] font-semibold">
-                    Verifikasi
-                    {pendingCount > 0 && <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-[#ff9f0a] text-white">{pendingCount}</span>}
-                  </span>
-                )}
-              </button>
-              <button onClick={() => handleNavClick('guide')} className={itemCls(activeTarget === 'guide')} title={isCollapsed ? 'Panduan' : undefined}>
-                <FileCheck className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Panduan</span>}
-              </button>
-            </div>
-          </div>
-        </div>
+          <div className="my-5 h-px bg-[var(--app-border)]" />
 
-        {/* Catatan kecil — profil & keluar tersedia di bilah atas */}
-        <div className="p-3 border-t border-black/10 dark:border-white/15 shrink-0">
-          {!isCollapsed && (
-            <p className="text-[11.5px] text-center text-[#86868b]">
-              Profil & keluar via bilah atas
+          <section>
+            {!isCollapsed && <p className="section-label px-3 pb-2.5">Buat perangkat</p>}
+            <div className="space-y-1">
+              {docMenuItems.map((item) => navButton(item.type, item.label, item.icon))}
+            </div>
+          </section>
+
+          <div className="my-5 h-px bg-[var(--app-border)]" />
+
+          <section>
+            {!isCollapsed && <p className="section-label px-3 pb-2.5">Ruang kerja</p>}
+            <div className="space-y-1">
+              {workspaceItems.map((item) => navButton(item.target, item.label, item.icon, item.count))}
+              {isAdmin && navButton(
+                'admin',
+                'Verifikasi guru',
+                <ShieldCheck className="h-[18px] w-[18px]" />,
+                pendingCount
+              )}
+              {isAdmin && navButton(
+                'school',
+                'Identitas sekolah',
+                <Building2 className="h-[18px] w-[18px]" />
+              )}
+            </div>
+          </section>
+        </nav>
+
+        <div className="shrink-0 border-t border-[var(--app-border)] px-4 py-2.5">
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--app-text-tertiary)]" aria-hidden="true" />
+            </div>
+          ) : (
+            <p className="truncate text-[11px] text-[var(--app-text-tertiary)]">
+              {docsCount} dokumen di arsip
             </p>
           )}
         </div>

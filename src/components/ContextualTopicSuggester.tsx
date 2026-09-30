@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Jenjang } from '../types';
 import { getContextualTopics, CurriculumTopicItem, CURRICULUM_TOPICS } from '../data/topicCatalog';
+import { Badge } from './ui/Badge';
 import { 
   Lightbulb, 
   Sparkles, 
@@ -75,56 +76,48 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
   };
 
   return (
-    <div className="bg-gradient-to-br from-blue-50/90 via-sky-50/60 to-indigo-50/40 rounded-2xl border border-blue-200/90 shadow-2xs overflow-hidden transition-all">
-      
+    <div className="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-soft)] transition-all">
+
       {/* Suggester Header */}
-      <div className="p-4 sm:p-4.5 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5 sm:mt-0">
-            <Lightbulb className="w-4.5 h-4.5" />
+      <div className="flex flex-col justify-between gap-3 border-b border-[var(--app-border)] p-4 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-2.5 sm:items-center">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--app-accent-soft)] text-[var(--app-accent)] sm:mt-0">
+            <Lightbulb className="h-4 w-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                Inspirasi Topik & Materi Pokok Resmi (BSKAP 032/H/KR/2024)
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-xs font-bold sm:text-sm">
+                Inspirasi topik resmi (BSKAP 046/H/KR/2025)
               </h4>
-              <span className="px-2 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
-                {fase} • {tingkat} ({jenjang})
-              </span>
+              <Badge tone="info">{fase} • {tingkat} ({jenjang})</Badge>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Materi pokok terstandar untuk mata pelajaran <b>{mataPelajaran}</b>. Klik kartu topik untuk menerapkan langsung ke formulir.
+            <p className="mt-0.5 text-[12px] text-[var(--app-text-secondary)]">
+              Materi pokok terstandar untuk <b>{mataPelajaran}</b>. Pilih untuk menerapkan ke formulir.
             </p>
           </div>
         </div>
 
         {/* Toggle Collapse & Semester Filter */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <div className="flex items-center bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+          <div className="apple-segment" role="group" aria-label="Filter semester">
             <button
               type="button"
               onClick={() => setSelectedSemester('all')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              data-active={selectedSemester === 'all'}
             >
               Semua
             </button>
             <button
               type="button"
               onClick={() => setSelectedSemester(1)}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 1 ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              data-active={selectedSemester === 1}
             >
               Sem 1
             </button>
             <button
               type="button"
               onClick={() => setSelectedSemester(2)}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 2 ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              data-active={selectedSemester === 2}
             >
               Sem 2
             </button>
@@ -133,49 +126,52 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+            className="rounded-full p-2.5 text-[var(--app-text-secondary)] transition-colors hover:bg-black/5 dark:hover:bg-white/10"
             title={isExpanded ? 'Tutup Rekomendasi' : 'Buka Rekomendasi'}
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? 'Tutup rekomendasi topik' : 'Buka rekomendasi topik'}
           >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
       {/* Suggester Body */}
       {isExpanded && (
-        <div className="p-4 sm:p-5 space-y-3.5">
-          
+        <div className="space-y-3.5 p-4 sm:p-5">
+
           {/* Quick Search in topics */}
           {matchingTopics.length > 3 && (
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--app-text-tertiary)]" />
               <input
-                type="text"
+                type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={`Cari topik khusus ${mataPelajaran}...`}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={`Cari topik ${mataPelajaran}...`}
+                aria-label="Cari topik"
+                className="apple-input !pl-10"
               />
             </div>
           )}
 
           {/* Contextual Topics Grid */}
           {matchingTopics.length === 0 ? (
-            <div className="p-4 rounded-xl bg-white/80 border border-slate-200 text-center space-y-2">
-              <p className="text-xs text-slate-600">
-                Belum ada topik tersimpan untuk kata kunci pencarian. Anda dapat mengetik materi khusus atau memilih topik populer di bawah:
+            <div className="space-y-2 rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface-solid)] p-4 text-center">
+              <p className="text-[12.5px] text-[var(--app-text-secondary)]">
+                Belum ada topik tersimpan untuk kata kunci ini. Ketik materi khusus atau pilih cepat:
               </p>
               <div className="flex flex-wrap justify-center gap-2 pt-1">
                 {[
                   `Penerapan Kontekstual ${mataPelajaran} dalam Kehidupan Nyata`,
-                  `Studi Kasus & Analisis Fenomena Berbasis Masalah (${mataPelajaran})`,
+                  `Studi Kasus & Analisis Fenomena (${mataPelajaran})`,
                   `Projek Kreatif & Literasi Numerasi (${mataPelajaran})`
                 ].map((sug, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleQuickCustomSuggest(sug)}
-                    className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors cursor-pointer"
+                    className="btn-apple-secondary btn-sm"
                   >
                     + {sug}
                   </button>
@@ -183,84 +179,80 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {matchingTopics.map((item) => {
                 const isSelected = currentTopik.trim().toLowerCase() === item.topik.trim().toLowerCase();
 
                 return (
-                  <div
+                  <button
                     key={item.id}
+                    type="button"
                     onClick={() => onSelectTopic(item)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left ${
+                    aria-pressed={isSelected}
+                    className={`group flex min-h-[44px] flex-col justify-between rounded-2xl border p-3.5 text-left transition-all ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40'
-                        : 'bg-white hover:bg-blue-50/60 border-slate-200/90 hover:border-blue-300 shadow-2xs'
+                        ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                        : 'border-[var(--app-border)] bg-[var(--app-surface-solid)] hover:border-[var(--app-border-strong)]'
                     }`}
                   >
-                    <div>
+                    <span>
                       {/* Top Badges */}
-                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'
-                        }`}>
+                      <span className="mb-1.5 flex items-center justify-between gap-1.5">
+                        <Badge tone={isSelected ? 'neutral' : 'info'}>
                           Semester {item.semester} • {item.tingkat}
-                        </span>
+                        </Badge>
 
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
+                          isSelected ? 'bg-white/20 text-white dark:bg-black/10 dark:text-black' : 'bg-black/5 text-[var(--app-text-secondary)] dark:bg-white/10'
                         }`}>
                           {item.rekomendasiModel.split(' - ')[0]}
                         </span>
-                      </div>
+                      </span>
 
                       {/* Topic Title */}
-                      <h5 className={`font-bold text-xs sm:text-sm leading-snug line-clamp-2 ${
-                        isSelected ? 'text-white' : 'text-slate-900 group-hover:text-blue-700'
-                      }`}>
+                      <span className="line-clamp-2 block text-[13px] font-bold leading-snug sm:text-sm">
                         {item.topik}
-                      </h5>
+                      </span>
 
                       {/* TP Preview */}
-                      <p className={`text-[11px] mt-1.5 line-clamp-2 leading-relaxed ${
-                        isSelected ? 'text-blue-100' : 'text-slate-500'
+                      <span className={`mt-1.5 line-clamp-2 block text-[11.5px] leading-relaxed ${
+                        isSelected ? 'opacity-75' : 'text-[var(--app-text-secondary)]'
                       }`}>
                         {item.deskripsiTP}
-                      </p>
-                    </div>
+                      </span>
+                    </span>
 
                     {/* Footer Action */}
-                    <div className="mt-3 pt-2 border-t border-slate-100/50 flex items-center justify-between text-[11px]">
-                      <span className={`font-medium ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                    <span className="mt-3 flex items-center justify-between border-t border-black/10 pt-2 text-[11px] dark:border-white/10">
+                      <span className={`font-medium ${isSelected ? 'opacity-75' : 'text-[var(--app-text-tertiary)]'}`}>
                         {item.kataKunci.slice(0, 2).map(k => `#${k}`).join(' ')}
                       </span>
 
-                      <span className={`font-bold flex items-center gap-1 ${
-                        isSelected ? 'text-white' : 'text-blue-600 group-hover:translate-x-0.5 transition-transform'
-                      }`}>
+                      <span className="flex items-center gap-1 font-bold">
                         {isSelected ? (
                           <>
-                            <Check className="w-3.5 h-3.5" />
-                            Topik Terpilih
+                            <Check className="h-3.5 w-3.5" />
+                            Terpilih
                           </>
                         ) : (
                           <>
-                            Pilih Topik
-                            <ArrowRight className="w-3 h-3" />
+                            Pilih
+                            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                           </>
                         )}
                       </span>
-                    </div>
+                    </span>
 
-                  </div>
+                  </button>
                 );
               })}
             </div>
           )}
 
           {/* Quick Notice footer */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-            <span>Ditemukan <b>{matchingTopics.length}</b> inspirasi materi pokok sesuai <b>{mataPelajaran} {tingkat} ({fase})</b></span>
-            <span className="hidden sm:inline">Kurikulum Nasional Permendikbudristek 12/2024</span>
+          <div className="flex items-center justify-between pt-1 text-[11.5px] text-[var(--app-text-tertiary)]">
+            <span>Ditemukan <b>{matchingTopics.length}</b> inspirasi untuk <b>{mataPelajaran} {tingkat}</b></span>
+            <span className="hidden sm:inline">Permendikbudristek 12/2024</span>
           </div>
 
         </div>

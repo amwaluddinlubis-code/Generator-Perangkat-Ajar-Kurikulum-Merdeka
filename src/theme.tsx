@@ -5,36 +5,50 @@ export type Theme = 'light' | 'dark';
 interface ThemeCtx {
   theme: Theme;
   toggle: () => void;
-  set: (t: Theme) => void;
+  set: (theme: Theme) => void;
 }
 
-const Ctx = createContext<ThemeCtx>({ theme: 'light', toggle: () => {}, set: () => {} });
+const Ctx = createContext<ThemeCtx>({
+  theme: 'light',
+  toggle: () => {},
+  set: () => {},
+});
 
 export const useTheme = () => useContext(Ctx);
 
 const KEY = 'rgm-theme';
 
-function initial(): Theme {
+function initialTheme(): Theme {
   try {
     const saved = localStorage.getItem(KEY);
     if (saved === 'dark' || saved === 'light') return saved;
-  } catch { /* abaikan */ }
+    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
+  } catch {
+    // Browser storage / matchMedia may be unavailable during SSR or tests.
+  }
   return 'light';
 }
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>(initial);
+  const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    const root = document.documentElement;
+    root.classList.toggle('dark', theme === 'dark');
+    root.style.colorScheme = theme;
+
     try {
       localStorage.setItem(KEY, theme);
-    } catch { /* abaikan */ }
+    } catch {
+      // Preference persistence is best-effort.
+    }
   }, [theme]);
 
-  return (
-    <Ctx.Provider value={{ theme, toggle: () => setTheme((t) => (t === 'light' ? 'dark' : 'light')), set: setTheme }}>
-      {children}
-    </Ctx.Provider>
-  );
+  const value: ThemeCtx = {
+    theme,
+    toggle: () => setTheme((current) => current === 'light' ? 'dark' : 'light'),
+    set: setTheme,
+  };
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
