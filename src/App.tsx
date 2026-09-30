@@ -128,6 +128,25 @@ export default function App() {
 
   useEffect(() => {
     loadInitialData();
+    // Hasil redirect Google OAuth (?auth= / ?auth_error=) — tampilkan pesan lalu bersihkan URL.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const auth = params.get('auth');
+      const authError = params.get('auth_error');
+      if (auth === 'google_ok') showToast('Masuk dengan Google Belajar.id berhasil!', 'success');
+      else if (auth === 'pending') showToast('Akun Google Anda terhubung dan menunggu verifikasi admin.', 'info');
+      else if (authError === 'invalid_domain') showToast('Akun Google tersebut bukan email Belajar.id yang valid.', 'error');
+      else if (authError === 'account_rejected') showToast('Akun tersebut tidak memiliki akses ke aplikasi.', 'error');
+      else if (authError) showToast('Login Google gagal. Silakan coba lagi atau masuk manual.', 'error');
+      if (auth || authError) {
+        params.delete('auth');
+        params.delete('auth_error');
+        const clean = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+        window.history.replaceState(null, '', clean);
+      }
+    } catch {
+      /* abaikan — bukan browser / URL tidak valid */
+    }
     // Revalidasi tiap jendela kembali fokus (kembali dari tab admin, dsb.)
     const onFocus = () => loadInitialData();
     window.addEventListener('focus', onFocus);

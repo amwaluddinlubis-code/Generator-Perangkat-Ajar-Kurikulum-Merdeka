@@ -37,6 +37,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -90,6 +91,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       });
     } catch (err: any) {
       setErrorMessage(err.message || 'Gagal masuk dengan akun terpilih.');
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMessage('');
+    setGoogleLoading(true);
+    try {
+      const res = await fetch('/api/auth/google/url');
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.url) {
+        throw new Error(
+          data?.error?.message || 'Login Google belum dikonfigurasi. Hubungi admin sekolah.'
+        );
+      }
+      window.location.href = data.url as string;
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Gagal memulai login Google.');
+      setGoogleLoading(false);
     }
   };
 
@@ -194,7 +213,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           )}
 
           {activeTab === 'login' ? (
-            <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isLoading || googleLoading}
+                className="btn-apple-secondary w-full"
+              >
+                {googleLoading ? 'Menghubungkan ke Google…' : 'Masuk dengan Google Belajar.id'}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="mt-2 text-center text-[11.5px] text-[var(--app-text-tertiary)]">
+                Disarankan untuk akun @belajar.id — kepemilikan email diverifikasi Google.
+              </p>
+              <div className="my-4 flex items-center gap-3 text-[11px] font-semibold text-[var(--app-text-tertiary)]" aria-hidden="true">
+                <span className="h-px flex-1 bg-[var(--app-border)]" />
+                atau masuk manual
+                <span className="h-px flex-1 bg-[var(--app-border)]" />
+              </div>
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-[13px] font-semibold" htmlFor="login-email">Email profil guru</label>
                 <div className="relative">
@@ -273,6 +310,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               )}
             </form>
+            </div>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-3.5">
               <div className="rounded-[14px] bg-[var(--app-accent-soft)] px-4 py-3 text-[12.5px] leading-5">
@@ -319,7 +357,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           <div className="mt-7 flex items-start gap-2.5 border-t border-[var(--app-border)] pt-5 text-[11.5px] leading-5 text-[var(--app-text-tertiary)]">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Mode demo — koneksi Belajar.id resmi belum terhubung. Gunakan profil contoh untuk mencoba alur aplikasi.</span>
+            <span>Login Google memverifikasi kepemilikan email @belajar.id. Akun baru tetap menunggu verifikasi admin sebelum aktif penuh. Tanpa konfigurasi Google, gunakan masuk manual atau profil contoh.</span>
           </div>
         </section>
       </main>

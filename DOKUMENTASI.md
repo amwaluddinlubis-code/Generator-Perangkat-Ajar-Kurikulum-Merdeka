@@ -17,7 +17,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Isian generator tersimpan | Isian terakhir guru disimpan lokal per akun dan dapat dipulihkan untuk dokumen berikutnya; topik/format tetap dapat disesuaikan |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
 | Ekspor | `.docx` asli (Calibri 12pt, A4, margin atas 1,5 cm dan sisi lain 2 cm), `.pdf` A4, cetak langsung, salin |
-| Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
+| Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis. **Login Google resmi (OAuth2/OIDC)** tersedia bila `GOOGLE_CLIENT_ID/SECRET` dikonfigurasi — kepemilikan email diverifikasi Google, status verifikasi internal tetap berlaku |
 | Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
 | Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP) |
@@ -105,6 +105,9 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 |---|---|---|
 | `GET /api/users/current` | Profil aktif dari session cookie | Server menentukan identitas |
 | `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Cookie HttpOnly; rate limit; validasi payload; bila akun punya kata sandi maka wajib benar |
+| `GET /api/auth/google/config` | Cek apakah login Google dikonfigurasi | Mengembalikan `{configured: boolean}` |
+| `GET /api/auth/google/url` | URL otorisasi Google + state anti-CSRF sekali pakai | 503 bila env Google belum diisi; rate limit |
+| `GET /api/auth/google/callback` | Callback OAuth: tukar code → verifikasi id_token via tokeninfo → buat sesi | Validasi aud/iss/exp/email_verified + suffix Belajar.id; akun baru → `PENDING`; redirect `/?auth=` atau `/?auth_error=` |
 | `POST /api/auth/password` | Atur/ganti kata sandi sendiri (sesi) | Min. 8 karakter; wajib kata sandi lama bila sudah ada |
 | `POST /api/admin/users/:id/password` | Reset kata sandi user (admin) | Tidak untuk SUPER_ADMIN lain |
 | `GET /api/admin/schools/mine` | Identitas sekolah sendiri (semua peran login) | Kop dokumen memakai data ini |
@@ -150,6 +153,13 @@ npm run dev
 2. Isi di `.env`: `GEMINI_API_KEY="kunci-anda"`.
 3. Restart server. Tanda berhasil: badge hasil menjadi **"AI Gemini"**.
 4. Tanpa key: aplikasi tetap jalan memakai template cadangan (badge "Template cadangan").
+
+### Login Google Belajar.id (OAuth2/OIDC resmi, opsional tapi disarankan)
+1. Buka `https://console.cloud.google.com/apis/credentials` → buat **OAuth Client ID** tipe "Web application".
+2. Authorized redirect URI: `http://localhost:3000/api/auth/google/callback` (lokal) atau `<APP_URL>/api/auth/google/callback` (produksi).
+3. Isi di `.env`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (dan `GOOGLE_REDIRECT_URI` bila `APP_URL` tidak sesuai).
+4. Restart server. Tanda berhasil: tombol **"Masuk dengan Google Belajar.id"** di halaman masuk mengarah ke akun Google.
+5. Tanpa konfigurasi ini: tombol menampilkan pesan belum dikonfigurasi; login manual/simulasi tetap berfungsi. Akun baru via Google tetap berstatus `PENDING` sampai diverifikasi admin — OAuth membuktikan kepemilikan email, bukan peran/sekolah (tetap via verifikasi internal/Dapodik).
 
 ### Skrip npm
 | Skrip | Fungsi |
@@ -232,7 +242,7 @@ Primitif React (`src/components/ui/`): `Modal` (ESC + fokus + `role=dialog`), `B
 
 - Statistik bulanan memakai tren contoh (bukan murni data nyata).
 - SQLite saat ini ditujukan untuk deployment single-node. Untuk multi-instance/cloud, storage tenant/session perlu dipindahkan ke PostgreSQL atau database terkelola bersama.
-- Belajar.id pada branch ini masih merupakan simulasi domain + approval internal; OAuth/OIDC resmi belum terintegrasi.
+- Belajar.id: login Google resmi (OAuth2/OIDC) tersedia bila dikonfigurasi; tanpa konfigurasi tetap memakai validasi suffix + approval internal; sinkronisasi peran/sekolah via Dapodik belum terintegrasi.
 - Ilustrasi AI memakai kuota Gemini; tanpa `GEMINI_API_KEY`, generator teks tetap dapat memakai fallback dan generator gambar mengembalikan status konfigurasi.
 - Gambar tersisip tetap berupa data-URL sehingga dokumen besar dapat meningkatkan ukuran payload.
 
@@ -258,7 +268,7 @@ Branch `main` tetap menjadi baseline prototype lama. Branch `feat/security-basel
 | Unit/security/authorization/validation tests | PASS |
 | API integration tests | PASS |
 | Production build | PASS |
-| OAuth/OIDC Belajar.id resmi | Belum |
+| OAuth/OIDC Belajar.id resmi | Tersedia (Google OAuth + state anti-CSRF + verifikasi id_token); aktif bila `GOOGLE_CLIENT_ID/SECRET` diisi |
 | Multi-instance PostgreSQL | Belum |
 | Browser QA | **DEFERRED — menunggu user memulai pengujian** |
 | Public production readiness | Belum diklaim |
@@ -609,7 +619,7 @@ Run terakhir yang berhasil:
 
 ### Yang masih berada di luar baseline ini
 
-1. OAuth/OIDC Belajar.id resmi dan identity proofing.
+1. ~~OAuth/OIDC Belajar.id resmi dan identity proofing.~~ **SELESAI sebagian (30 September 2026):** login Google OAuth resmi membuktikan kepemilikan email @belajar.id (verifikasi id_token via tokeninfo + state anti-CSRF); verifikasi peran/sekolah tetap via approval internal. Identity proofing via Dapodik masih belum.
 2. Deployment multi-instance dengan PostgreSQL/managed database.
 3. Object storage untuk file/gambar besar.
 4. Metrics/tracing/alerting produksi.

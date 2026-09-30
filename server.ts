@@ -64,6 +64,16 @@ import {
   type PromptContext
 } from './src/server/prompts/index.js';
 import {
+  buildGoogleAuthUrl,
+  createOAuthState,
+  detectJenjangFromEmail,
+  exchangeCodeForIdToken,
+  getGoogleOAuthConfig,
+  GOOGLE_OAUTH_STATE_TTL_MS,
+  isAllowedBelajarIdEmail,
+  verifyGoogleIdToken
+} from './src/server/googleAuth.js';
+import {
   canAccessDocument,
   canChangeTenant,
   canDeleteUser,
@@ -635,23 +645,35 @@ function requireText(value: unknown, maxLength: number): string | null {
   return isNonEmptyString(value, maxLength) ? value.trim() : null;
 }
 
-// Helper to validate Belajar.id email format
+// Helper to validate Belajar.id email format (simulasi suffix + Google OAuth memakai aturan yang sama)
 function isBelajarIdEmail(email: string): boolean {
-  if (!email) return false;
-  const lower = email.toLowerCase().trim();
-  return (
-    lower.endsWith('@guru.sd.belajar.id') ||
-    lower.endsWith('@guru.smp.belajar.id') ||
-    lower.endsWith('@guru.sma.belajar.id') ||
-    lower.endsWith('@guru.smk.belajar.id') ||
-    lower.endsWith('@admin.sd.belajar.id') ||
-    lower.endsWith('@admin.smp.belajar.id') ||
-    lower.endsWith('@admin.sma.belajar.id') ||
-    lower.endsWith('@admin.belajar.id') ||
-    lower.endsWith('@guru.belajar.id') ||
-    lower.endsWith('@belajar.id') ||
-    lower === 'amwaluddin.lubis@gmail.com'
-  );
+  return isAllowedBelajarIdEmail(email);
+}
+
+// State CSRF sekali pakai untuk alur Google OAuth (single-node, in-memory + expiry)
+const googleOAuthStates = new Map<string, number>();
+
+function issueGoogleOAuthState(): string {
+  const state = createOAuthState();
+  googleOAuthStates.set(state, Date.now());
+  if (googleOAuthStates.size > 1000) {
+    const oldest = [...googleOAuthStates.entries()].sort((a, b) => a[1] - b[1])[0]?.[0];
+    if (oldest) googleOAuthStates.delete(oldest);
+  }
+  return state;
+}
+
+function consumeGoogleOAuthState(state: unknown): boolean {
+  if (typeof state !== 'string' || !state) return false;
+  const createdAt = googleOAuthStates.get(state);
+  if (!createdAt) return false;
+  googleOAuthStates.delete(state);
+  return Date.now() - createdAt <= GOOGLE_OAUTH_STATE_TTL_MS;
+}
+
+function resolveGoogleOAuthConfig(req: Request): ReturnType<typeof getGoogleOAuthConfig> {
+  const fallback = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+  return getGoogleOAuthConfig(fallback);
 }
 
 // Routes
@@ -760,6 +782,93 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   res.setHeader('Set-Cookie', buildExpiredSessionCookie(process.env.NODE_ENV === 'production'));
   recordAudit(req, 'auth.logout', 'user', user?.id, true, user?.id);
   res.json({ success: true, message: 'Berhasil keluar dari akun. Sesi telah diakhiri.' });
+});
+
+// 2b2. Google OAuth resmi untuk akun Belajar.id (Google Workspace)
+// Alur: frontend -> GET url -> redirect Google -> GET callback -> session cookie.
+// Verifikasi internal (PENDING -> VERIFIED oleh admin) tetap berlaku.
+app.get('/api/auth/google/config', (_req: Request, res: Response) => {
+  res.json({ success: true, configured: getGoogleOAuthConfig() !== null });
+});
+
+app.get('/api/auth/google/url', (req: Request, res: Response) => {
+  const config = resolveGoogleOAuthConfig(req);
+  if (!config) {
+    return res.status(503).json({
+      success: false,
+      error: {
+        code: 'GOOGLE_OAUTH_NOT_CONFIGURED',
+        message: 'Login Google belum dikonfigurasi. Isi GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, dan GOOGLE_REDIRECT_URI di .env.'
+      }
+    });
+  }
+  if (rateLimitExceeded(req, res, 'oauth-google-url:ip:' + req.ip, 20, 60_000)) return;
+  const state = issueGoogleOAuthState();
+  res.json({ success: true, url: buildGoogleAuthUrl(config, state) });
+});
+
+app.get('/api/auth/google/callback', async (req: Request, res: Response) => {
+  const config = resolveGoogleOAuthConfig(req);
+  if (!config) return res.redirect('/?auth_error=oauth_not_configured');
+  if (rateLimitExceeded(req, res, 'oauth-google-cb:ip:' + req.ip, 20, 60_000)) return;
+
+  const { code, state, error } = req.query as Record<string, string | undefined>;
+  if (error) {
+    recordAudit(req, 'auth.google.denied', 'user', undefined, false);
+    return res.redirect('/?auth_error=google_denied');
+  }
+  if (!code || !consumeGoogleOAuthState(state)) {
+    recordAudit(req, 'auth.google.invalid_state', 'user', undefined, false);
+    return res.redirect('/?auth_error=invalid_state');
+  }
+
+  try {
+    const idToken = await exchangeCodeForIdToken(config, code);
+    const profile = await verifyGoogleIdToken(config.clientId, idToken);
+
+    if (!isBelajarIdEmail(profile.email)) {
+      recordAudit(req, 'auth.google.invalid_domain', 'user', undefined, false);
+      return res.redirect('/?auth_error=invalid_domain');
+    }
+
+    const existingUser = getDbUserByEmail(profile.email);
+    if (existingUser) {
+      if (existingUser.status === 'REJECTED') {
+        recordAudit(req, 'auth.google.rejected', 'user', existingUser.id, false, existingUser.id);
+        return res.redirect('/?auth_error=account_rejected');
+      }
+      const token = createSession(existingUser.id);
+      res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
+      recordAudit(req, 'auth.google.login.success', 'user', existingUser.id, true, existingUser.id);
+      return res.redirect(existingUser.status === 'PENDING' ? '/?auth=pending' : '/?auth=google_ok');
+    }
+
+    const isSuper = profile.email === 'amwaluddin.lubis@gmail.com';
+    const status: 'VERIFIED' | 'PENDING' = isSuper ? 'VERIFIED' : 'PENDING';
+    const newUser: TeacherUser = {
+      id: 'user-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+      name: (profile.name || profile.email.split('@')[0]).slice(0, LIMITS.name),
+      email: profile.email,
+      schoolName: 'Sekolah Belum Diatur',
+      schoolId: '',
+      jenjang: detectJenjangFromEmail(profile.email),
+      mataPelajaran: 'Semua Mata Pelajaran',
+      role: isSuper ? 'SUPER_ADMIN' : 'GURU',
+      status,
+      registeredAt: new Date().toISOString(),
+      verifiedAt: status === 'VERIFIED' ? new Date().toISOString() : undefined,
+      verifiedBy: status === 'VERIFIED' ? 'Google OAuth Terverifikasi' : undefined
+    };
+    const persistedUser = createDbUser(newUser);
+    users.unshift(persistedUser as TeacherUser);
+    const token = createSession(persistedUser.id);
+    res.setHeader('Set-Cookie', buildSessionCookie(token, process.env.NODE_ENV === 'production'));
+    recordAudit(req, 'auth.google.register.success', 'user', newUser.id, true, newUser.id);
+    return res.redirect(status === 'PENDING' ? '/?auth=pending' : '/?auth=google_ok');
+  } catch (err) {
+    recordAudit(req, 'auth.google.failed', 'user', undefined, false);
+    return res.redirect('/?auth_error=google_failed');
+  }
 });
 
 // 2c. Set/change own password (session required)
