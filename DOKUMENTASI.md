@@ -10,7 +10,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Area | Isi |
 |---|---|
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
-| Bank soal terstruktur | Satu paket dapat memuat beberapa bentuk soal; opsi Pilihan Ganda dapat diatur 2–6 per nomor; kisi-kisi, kunci, pembahasan, dan penskoran dipisahkan |
+| Bank soal terstruktur | Satu paket dapat memuat beberapa bentuk soal; opsi Pilihan Ganda dapat diatur 2–6 per nomor; kisi-kisi, kunci, pembahasan, dan penskoran dipisahkan. Aturan kelengkapan keras: semua butir 1..N wajib ditulis utuh (tanpa "Dan seterusnya..."), kunci mencakup semua nomor, penskoran menampilkan perhitungan total 100, estimasi waktu tidak boleh melebihi alokasi, identitas tidak boleh dikarang |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
 | Prompt berversi | `src/server/prompts/` — 1 file per jenis + `base.ts` + builder; versi tercatat di meta/audit; test snapshot per jenis |
 | Generasi berpusat pada guru | Form menangkap cerita guru, profil/kebutuhan murid, konteks lokal, pengetahuan awal, pertimbangan emosi, niat, dan nada suara; hasil diberi `needs_review` bila konteks belum memadai |
@@ -18,7 +18,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
 | Ekspor | `.docx` asli (Calibri 12pt, A4, margin atas 1,5 cm dan sisi lain 2 cm), `.pdf` A4, cetak langsung, salin |
 | Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis. **Login Google resmi (OAuth2/OIDC)** tersedia bila `GOOGLE_CLIENT_ID/SECRET` dikonfigurasi — kepemilikan email diverifikasi Google, status verifikasi internal tetap berlaku |
-| Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output |
+| Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output. Kota pengesahan mengikuti data sekolah; bila kosong hanya tanggal yang tampil (tidak ada lagi default "Jakarta") |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
 | Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP) |
 | Tema | Terang/gelap ala Apple, tersimpan otomatis, grafik adaptif |

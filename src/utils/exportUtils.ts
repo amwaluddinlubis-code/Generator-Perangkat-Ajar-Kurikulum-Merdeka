@@ -571,7 +571,9 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `${metadata?.city || 'Jakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+                      text: metadata?.city
+                        ? `${metadata.city}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                        : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
                       size: 24,
                       font: DOC_FONT
                     })
@@ -804,7 +806,7 @@ export function downloadWordDocument(
             NIP. ${metadata?.principalNip || '................................'}
           </td>
           <td style="border: none; width: 50%; text-align: center;">
-            ${metadata?.city || 'Jakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
+            ${metadata?.city ? `${metadata.city}, ` : ''}${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
             Guru Mata Pelajaran / Kelas<br><br><br><br><br>
             <b>${metadata?.authorName || 'Bapak/Ibu Guru'}</b><br>
             NIP. ....................................................

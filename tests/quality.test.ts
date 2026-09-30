@@ -57,6 +57,28 @@ test('validator menghitung soal dan membandingkan permintaan', () => {
   assert.equal(varian.stats.questions, 3);
 });
 
+test('validator menolak soal terpotong gaya "(Dan seterusnya...)"', () => {
+  const content = '# Soal\n\nKisi-kisi\n\n**Soal 1**\n\n**Soal 2**\n\n(Dan seterusnya...)\n\nKunci jawaban dan pedoman penskoran\n\nNo 1: A\n\n' + 'x'.repeat(900);
+  const quality = validateDocumentStructure('soal_ujian', content, { expectedQuestions: 10, modelUsed: 'gemini-x' });
+  assert.equal(quality.status, 'needs_review');
+  assert.ok(quality.issues.some(i => i.includes('placeholder')), 'frasa pemotongan ditandai placeholder');
+});
+
+test('validator menuntut kunci mencakup semua nomor soal', () => {
+  const full = '# Soal\n\nKisi-kisi\n\n**Soal 1**\n\n**Soal 2**\n\n**Soal 3**\n\nKunci jawaban\n\nNo 1: A\nNo 2: B\nNo 3: C\n\nPedoman penskoran\n\n' + 'x'.repeat(900);
+  const ok = validateDocumentStructure('soal_ujian', full, { expectedQuestions: 3, modelUsed: 'gemini-x' });
+  assert.ok(!ok.issues.some(i => i.includes('Kunci jawaban')), `kunci penuh lolos: ${ok.issues.join(' | ')}`);
+
+  const partial = '# Soal\n\nKisi-kisi\n\n**Soal 1**\n\n**Soal 2**\n\n**Soal 3**\n\nKunci jawaban\n\nNo 1: A\n\nPedoman penskoran\n\n' + 'x'.repeat(900);
+  const kurang = validateDocumentStructure('soal_ujian', partial, { expectedQuestions: 3, modelUsed: 'gemini-x' });
+  assert.equal(kurang.status, 'needs_review');
+  assert.ok(kurang.issues.some(i => i.includes('hanya mencakup 1 dari 3')), 'cakupan kunci parsial ditandai');
+
+  const ranged = '# Soal\n\nKisi-kisi\n\n**Soal 1**\n\n**Soal 2**\n\n**Soal 3**\n\nKunci jawaban\n\nNo 1-3: A, B, C\n\nPedoman penskoran\n\n' + 'x'.repeat(900);
+  const rentang = validateDocumentStructure('soal_ujian', ranged, { expectedQuestions: 3, modelUsed: 'gemini-x' });
+  assert.ok(!rentang.issues.some(i => i.includes('Kunci jawaban')), `kunci rentang lolos: ${rentang.issues.join(' | ')}`);
+});
+
 test('dokumen AI lengkap berstatus AI', () => {
   const content = [
     '# Modul',

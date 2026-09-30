@@ -287,7 +287,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     npsn: school?.npsn || currentUser.npsn || '',
     accreditation: school?.accreditation || '',
     address: school?.address || '',
-    city: school?.city || 'Jakarta',
+    city: school?.city || '',
     logoUrl: school?.logoUrl || '',
     principalName: school?.principalName || '',
     principalNip: school?.principalNip || ''

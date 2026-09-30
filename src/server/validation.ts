@@ -363,7 +363,11 @@ const PLACEHOLDER_PATTERNS = [
   /\[tulis[^\]]*\]/i,
   /\blorem ipsum\b/i,
   /\bTBD\b/,
-  /TODO:\s*isi/i
+  /TODO:\s*isi/i,
+  /\(dan seterusnya/i,
+  /contoh untuk nomor/i,
+  /\(nomor \d+\s*[-–]/i,
+  /disesuaikan dengan variasi/i
 ];
 
 /** Penanda struktur minimum per jenis dokumen (case-insensitive). */
@@ -463,6 +467,34 @@ export function validateDocumentStructure(
     }
     if (stats.questions === 0) {
       issues.push('Tidak terdeteksi penomoran soal — periksa format butir soal.');
+    }
+    // Cakupan kunci: setiap nomor 1..N wajib muncul di seksi kunci (format "No 1:",
+    // "Nomor 3-5:", atau baris tabel "| 1 | ..."). Menangkap dokumen yang hanya
+    // memberi kunci contoh (mis. No 1, 11, 41 dari 50 soal).
+    const kunciIdx = text.search(/kunci jawaban/i);
+    if (kunciIdx >= 0) {
+      const kunciText = text.slice(kunciIdx);
+      const covered = new Set<number>();
+      const collect = (pattern: RegExp) => {
+        for (const m of kunciText.matchAll(pattern)) {
+          const groups = m.slice(1).map(Number).filter(n => n >= 1 && n <= (opts.expectedQuestions as number));
+          if (groups.length >= 2) {
+            const a = Math.min(groups[0], groups[1]);
+            const b = Math.max(groups[0], groups[1]);
+            for (let n = a; n <= b; n++) covered.add(n);
+          } else if (groups.length === 1) {
+            covered.add(groups[0]);
+          }
+        }
+      };
+      collect(/(?:no|nomor)\.?\s*(\d+)\s*[-–]\s*(\d+)/gi);
+      collect(/(?:no|nomor)\.?\s*(\d+)/gi);
+      collect(/^\s*\|\s*(\d+)\s*\|/gim);
+      if (covered.size === 0) {
+        issues.push('Kunci jawaban tidak memuat nomor soal yang jelas — gunakan format "No 1:", "No 2:", dst.');
+      } else if (covered.size < (opts.expectedQuestions as number)) {
+        issues.push(`Kunci jawaban hanya mencakup ${covered.size} dari ${opts.expectedQuestions} soal — lengkapi kunci untuk semua nomor.`);
+      }
     }
   }
 
