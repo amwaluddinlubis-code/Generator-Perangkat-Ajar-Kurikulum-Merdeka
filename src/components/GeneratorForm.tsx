@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Jenjang, 
   DocType, 
   GeneratorParams, 
-  TeacherUser 
+  TeacherUser,
+  Paket
 } from '../types';
 import {
   JENJANG_CONFIGS,
@@ -30,7 +31,10 @@ import {
   Lightbulb,
   Building2,
   UserCheck,
-  Check
+  Check,
+  Lock,
+  XCircle,
+  X
 } from 'lucide-react';
 
 interface GeneratorFormProps {
@@ -39,6 +43,14 @@ interface GeneratorFormProps {
   isGenerating: boolean;
   activeDocType?: DocType;
   onSelectDocType?: (type: DocType) => void;
+  // GEL2: mode paket — generator terhubung paket. Bila diisi, konteks
+  // (paket + docType) terkunci, hasil generate disimpan sebagai versi baru,
+  // dan onSelesai dipanggil setelah versi tersimpan.
+  paketMode?: {
+    paket: Paket;
+    docType: DocType;
+    onSelesai: () => void;
+  };
 }
 
 export const GeneratorForm: React.FC<GeneratorFormProps> = ({
@@ -46,19 +58,28 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   onGenerate,
   isGenerating,
   activeDocType,
-  onSelectDocType
+  onSelectDocType,
+  paketMode
 }) => {
-  const [docType, setDocType] = useState<DocType>(activeDocType || 'modul_ajar');
+  // GEL2: docType dikunci mengikuti kartu yang diklik bila paketMode ada.
+  const [docType, setDocType] = useState<DocType>(paketMode?.docType || activeDocType || 'modul_ajar');
 
   useEffect(() => {
+    if (paketMode) {
+      // GEL2: pemilih jenis dokumen disembunyikan — docType selalu terkunci.
+      if (docType !== paketMode.docType) setDocType(paketMode.docType);
+      return;
+    }
     if (activeDocType && activeDocType !== docType) {
       setDocType(activeDocType);
     }
-  }, [activeDocType]);
+  }, [activeDocType, paketMode, docType]);
 
   // Sinkronkan form bila akun berganti (mis. demo SD -> SMP) agar
   // fase/kelas/mapel selalu valid untuk jenjang pengguna aktif.
+  // GEL2: mode paket — konteks berasal dari paket, bukan dari akun; jangan reset.
   useEffect(() => {
+    if (paketMode) return;
     const cfg = JENJANG_CONFIGS[currentUser.jenjang] || JENJANG_CONFIGS['SD'];
     const j = currentUser.jenjang || 'SD';
     setJenjang(j);
@@ -71,7 +92,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setAuthorName(currentUser.name || '');
     setNip(currentUser.nip || '');
     setFormStep(0);
-  }, [currentUser.id]);
+  }, [currentUser.id, paketMode]);
 
   const handleDocTypeChange = (newType: DocType) => {
     setDocType(newType);
@@ -83,15 +104,22 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     j === 'SMP' ? '2 JP (2 x 40 Menit) - 1 Pertemuan' :
     '2 JP (2 x 45 Menit) - 1 Pertemuan';
 
-  const initialCfg = JENJANG_CONFIGS[currentUser.jenjang || 'SD'] || JENJANG_CONFIGS['SD'];
+  const initialCfg = (() => {
+    // GEL2: mode paket — jenjang awal mengikuti paket, bukan akun/default.
+    const j: Jenjang = paketMode?.paket.jenjang || currentUser.jenjang || 'SD';
+    return JENJANG_CONFIGS[j] || JENJANG_CONFIGS['SD'];
+  })();
 
-  const [jenjang, setJenjang] = useState<Jenjang>(currentUser.jenjang || 'SD');
-  const [fase, setFase] = useState<string>(initialCfg.fases[0]?.fase || 'Fase B');
-  const [tingkat, setTingkat] = useState<string>(initialCfg.fases[0]?.kelas[0] || 'Kelas 4');
-  const [mataPelajaran, setMataPelajaran] = useState<string>(initialCfg.defaultMapel[0] || 'IPAS (Ilmu Pengetahuan Alam & Sosial)');
+  const [jenjang, setJenjang] = useState<Jenjang>(paketMode?.paket.jenjang || currentUser.jenjang || 'SD');
+  const [fase, setFase] = useState<string>(paketMode?.paket.fase || initialCfg.fases[0]?.fase || 'Fase B');
+  const [tingkat, setTingkat] = useState<string>(paketMode?.paket.tingkat || initialCfg.fases[0]?.kelas[0] || 'Kelas 4');
+  const [mataPelajaran, setMataPelajaran] = useState<string>(paketMode?.paket.mataPelajaran || initialCfg.defaultMapel[0] || 'IPAS (Ilmu Pengetahuan Alam & Sosial)');
   const [customMapel, setCustomMapel] = useState<string>('');
-  const [topik, setTopik] = useState<string>('Bagian Tubuh Tumbuhan dan Fungsinya');
-  const [alokasiWaktu, setAlokasiWaktu] = useState<string>(() => defaultAlokasi(currentUser.jenjang || 'SD'));
+  // UX: topik dikosongkan — default "Bagian Tubuh Tumbuhan..." membingungkan guru non-IPA
+  // dan berisiko terkirim tanpa disadari. Placeholder + validasi inline memandu pengisian.
+  // GEL2: mode paket — topik awal mengikuti topik paket.
+  const [topik, setTopik] = useState<string>(paketMode?.paket.topik || '');
+  const [alokasiWaktu, setAlokasiWaktu] = useState<string>(() => defaultAlokasi(paketMode?.paket.jenjang || currentUser.jenjang || 'SD'));
   const [modelPembelajaran, setModelPembelajaran] = useState<string>('Problem Based Learning (PBL)');
   const [targetPeserta, setTargetPeserta] = useState<string>('Peserta didik reguler/tipikal dengan diferensiasi gaya belajar');
   const [dimensiProfilLulusan, setDimensiProfilLulusan] = useState<string[]>([
@@ -108,12 +136,43 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [temaP5, setTemaP5] = useState<string>('Gaya Hidup Berkelanjutan');
 
   // Identitas kop
-  const [schoolName, setSchoolName] = useState<string>(currentUser.schoolName || 'SD Negeri 01 Menteng Pagi');
+  // UX: tanpa default "SD Negeri 01 Menteng Pagi" yang salah jenjang untuk guru SMP;
+  // placeholder memandu pengisian dan konsisten dengan reset saat ganti akun.
+  const [schoolName, setSchoolName] = useState<string>(currentUser.schoolName || '');
   const [authorName, setAuthorName] = useState<string>(currentUser.name || 'Guru Mata Pelajaran');
   const [nip, setNip] = useState<string>(currentUser.nip || '');
 
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [formStep, setFormStep] = useState<number>(0);
+
+  // UX: pesan error inline per field — menggantikan tooltip generik reportValidity()
+  const [fieldErrors, setFieldErrors] = useState<{ topik?: string; customMapel?: string; alokasiWaktu?: string }>({});
+  // UX: notifikasi sementara saat saran topik ikut mengubah model/alokasi waktu
+  const [saranNotice, setSaranNotice] = useState<string | null>(null);
+
+  // UX: notifikasi saran hilang otomatis setelah 5 detik agar tidak menumpuk
+  useEffect(() => {
+    if (!saranNotice) return;
+    const t = setTimeout(() => setSaranNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [saranNotice]);
+
+  // GEL2: toast lokal mengikuti pola DocumentRepository/PaketWorkspace —
+  // dipakai mode paket untuk kabar sukses/gagal generate & simpan versi.
+  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const showToast = useCallback((message: string, kind: 'success' | 'error' = 'success') => {
+    setToast({ message, kind });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
+  }, []);
+  useEffect(() => () => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+  }, []);
+
+  // GEL2: kunci double-submit khusus mode paket (isGenerating milik parent
+  // mungkin tidak diset saat generate dari dalam mode paket).
+  const [sedangSimpan, setSedangSimpan] = useState<boolean>(false);
 
   // Toggle dimensi Profil Lulusan
   const toggleDimensiProfil = (dim: string) => {
@@ -126,22 +185,42 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     }
   };
 
-  // Apply contextual topic from Suggester (tetap dalam jenjang profil)
+  // UX: saran topik yang ikut mengubah model/alokasi waktu kini diberi tahu ke pengguna
+  // (sebelumnya ditimpa diam-diam), dan error topik ikut dibersihkan saat topik dipilih.
   const handleSelectContextualTopic = (item: CurriculumTopicItem) => {
     setTopik(item.topik);
-    if (item.rekomendasiModel) {
+    setFieldErrors((prev) => ({ ...prev, topik: undefined }));
+    const disesuaikan: string[] = [];
+    if (item.rekomendasiModel && item.rekomendasiModel !== modelPembelajaran) {
       setModelPembelajaran(item.rekomendasiModel);
+      disesuaikan.push('model pembelajaran');
     }
-    if (item.alokasiWaktuDefault) {
+    if (item.alokasiWaktuDefault && item.alokasiWaktuDefault !== alokasiWaktu) {
       setAlokasiWaktu(item.alokasiWaktuDefault);
+      disesuaikan.push('alokasi waktu');
     }
+    setSaranNotice(
+      disesuaikan.length > 0
+        ? `Topik “${item.topik}” diterapkan — ${disesuaikan.join(' dan ')} disesuaikan mengikuti saran.`
+        : `Topik “${item.topik}” diterapkan.`
+    );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
+  // UX: validasi langkah "Materi" dengan pesan di dekat field masing-masing
+  const validateMateriStep = (): boolean => {
+    const errors: { topik?: string; customMapel?: string; alokasiWaktu?: string } = {};
+    if (!topik.trim()) errors.topik = 'Isi topik/materi pokok dulu — contoh: Pecahan, Siklus Air.';
+    if (mataPelajaran === 'custom' && !customMapel.trim()) errors.customMapel = 'Ketik nama mata pelajaran dulu.';
+    if (!alokasiWaktu.trim()) errors.alokasiWaktu = 'Isi alokasi waktu — contoh: 2 JP (2 x 35 Menit).';
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
-    onGenerate({
+  // GEL2: rakit body GeneratorParams sekali — dipakai mode lepas maupun
+  // mode paket agar isi request ke /api/generate identik.
+  const bangunParams = (): GeneratorParams => {
+    const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
+    return {
       authorId: currentUser.id,
       docType,
       jenjang,
@@ -164,14 +243,77 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       catatanTambahan: {
         temaP5
       }
-    });
+    };
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // UX: validasi ulang sebelum generate agar dokumen tak terkirim dengan field kosong
+    if (!validateMateriStep()) {
+      setFormStep(1);
+      return;
+    }
+
+    onGenerate(bangunParams());
+  };
+
+  // GEL2: submit mode paket — generate via AI (body sama persis seperti mode
+  // lepas), simpan hasilnya sebagai versi baru lewat kontrak API paket,
+  // tampilkan toast, lalu panggil onSelesai().
+  const handleSubmitPaket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paketMode) return;
+    // GEL2: cegah double-submit saat generate/simpan sedang berjalan.
+    if (sedangSimpan || isGenerating) return;
+    // GEL2: validasi sama seperti mode lepas; tanpa pindah langkah karena
+    // mode paket memakai satu tampilan bertumpuk.
+    if (!validateMateriStep()) return;
+
+    const params = bangunParams();
+    setSedangSimpan(true);
+    try {
+      // GEL2: langkah 1 — panggil AI, tiru body App.tsx handleGenerate.
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menghasilkan perangkat ajar');
+      }
+
+      // GEL2: langkah 2 — simpan {title, content} sebagai versi baru.
+      const res2 = await fetch(
+        `/api/pakets/${encodeURIComponent(paketMode.paket.id)}/dokumen/${paketMode.docType}/generate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: data.title, content: data.content })
+        }
+      );
+      let data2: { success?: boolean; message?: string } | null = null;
+      try {
+        data2 = await res2.json();
+      } catch {
+        /* GEL2: respons non-JSON tetap diperlakukan sebagai gagal di bawah */
+      }
+      if (!res2.ok || (data2 && data2.success === false)) {
+        throw new Error(data2?.message || `Dokumen berhasil dibuat AI, tetapi gagal disimpan sebagai versi baru (HTTP ${res2.status})`);
+      }
+
+      showToast(`Versi baru ${DOC_TYPE_INFO[paketMode.docType].label} tersimpan ke paket`, 'success');
+      paketMode.onSelesai();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal generate & menyimpan versi baru', 'error');
+    } finally {
+      setSedangSimpan(false);
+    }
   };
 
   const handleNextStep = () => {
-    if (formStep === 1) {
-      const form = document.querySelector('form');
-      if (!form?.reportValidity()) return;
-    }
+    // UX: ganti reportValidity() generik dengan validasi inline per field
+    if (formStep === 1 && !validateMateriStep()) return;
     setFormStep((step) => Math.min(step + 1, 2));
   };
 
@@ -212,7 +354,47 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-5 sm:p-8">
+      {/* GEL2: mode paket — konteks terkunci tampil sebagai chip/badge DaisyUI di atas form */}
+      {paketMode && (
+        <div className="px-5 sm:px-8 pt-5">
+          <div className="alert alert-info">
+            <Lock className="w-5 h-5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-sm">Mode Paket — konteks terkunci</p>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                <span className="badge badge-neutral badge-sm">{paketMode.paket.topik}</span>
+                <span className="badge badge-outline badge-sm">{paketMode.paket.mataPelajaran}</span>
+                <span className="badge badge-outline badge-sm">{paketMode.paket.jenjang}</span>
+                <span className="badge badge-outline badge-sm">{paketMode.paket.fase}</span>
+                <span className="badge badge-outline badge-sm">{paketMode.paket.tingkat}</span>
+                <span className="badge badge-primary badge-sm">{DOC_TYPE_INFO[paketMode.docType].label}</span>
+              </div>
+            </div>
+            <span className="badge badge-ghost shrink-0">Terkunci</span>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={paketMode ? handleSubmitPaket : handleSubmit} className="p-5 sm:p-8" aria-busy={isGenerating}>
+        {/* UX: banner progres saat generate — beri tahu durasi & larangan tutup/ubah halaman */}
+        {isGenerating && (
+          <div role="status" className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+            <Clock className="h-5 w-5 shrink-0 mt-0.5 animate-spin text-blue-700" />
+            <div>
+              <p className="text-[14px] font-semibold text-blue-900">
+                AI sedang menyusun {DOC_TYPE_INFO[docType].label}…
+              </p>
+              <p className="mt-0.5 text-[12.5px] text-blue-800">
+                Jangan tutup atau mengubah halaman ini — biasanya selesai dalam 30–60 detik.
+              </p>
+            </div>
+          </div>
+        )}
+        {/* UX: kunci seluruh form saat generate agar parameter tak berubah di tengah proses (cegah double-submit tak sengaja) */}
+        {/* GEL2: mode paket juga dikunci saat menyimpan versi (sedangSimpan) */}
+        <fieldset disabled={isGenerating || sedangSimpan} className="contents">
+        {/* GEL2: mode paket memakai satu tampilan bertumpuk — wizard langkah disembunyikan */}
+        {!paketMode && (
         <ol className="flex items-center justify-center gap-2 mb-8" aria-label="Tahapan penyusunan dokumen">
           {[
             { title: 'Format & kelas' },
@@ -241,7 +423,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </li>
           ))}
         </ol>
+        )}
 
+        {!paketMode && (
         <div className="mb-6 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 px-5 py-4 text-center">
           <h3 className="text-[15px] font-semibold">
             {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Isi kebutuhan pembelajaran' : 'Periksa sebelum menyusun'}
@@ -252,9 +436,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 'Dokumen dibuat atas nama Anda — sesuaikan bila perlu.'}
           </p>
         </div>
+        )}
 
-        {/* 1. Pilih Jenis Perangkat Ajar */}
-        {formStep === 0 && <>
+        {/* 1. Pilih Jenis Perangkat Ajar — GEL2: disembunyikan di mode paket (docType terkunci) */}
+        {formStep === 0 && !paketMode && <>
         <div>
           <p className="text-[14px] font-semibold mb-3">
             Jenis dokumen
@@ -372,7 +557,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
         </>}
 
-        {formStep === 1 && <>
+        {/* GEL2: mode paket menampilkan langkah materi + tinjau bertumpuk (tanpa wizard) */}
+        {(formStep === 1 || paketMode) && <>
         {/* 3. Mata Pelajaran & Topik */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div>
@@ -401,10 +587,21 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   type="text"
                   placeholder="Contoh: Muatan Lokal, Robotika…"
                   value={customMapel}
-                  onChange={(e) => setCustomMapel(e.target.value)}
-                  required
-                  className="apple-input"
+                  onChange={(e) => {
+                    setCustomMapel(e.target.value);
+                    // UX: bersihkan error begitu pengguna mulai mengetik
+                    if (fieldErrors.customMapel) setFieldErrors((prev) => ({ ...prev, customMapel: undefined }));
+                  }}
+                  aria-invalid={!!fieldErrors.customMapel}
+                  aria-describedby={fieldErrors.customMapel ? 'customMapel-error' : undefined}
+                  className={`apple-input ${fieldErrors.customMapel ? '!border-red-500' : ''}`}
                 />
+              )}
+              {/* UX: pesan error inline tepat di bawah field, bukan tooltip generik browser */}
+              {fieldErrors.customMapel && (
+                <p id="customMapel-error" role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-600">
+                  {fieldErrors.customMapel}
+                </p>
               )}
             </div>
           </div>
@@ -416,11 +613,22 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <input
               type="text"
               value={topik}
-              onChange={(e) => setTopik(e.target.value)}
+              onChange={(e) => {
+                setTopik(e.target.value);
+                // UX: bersihkan error begitu pengguna mulai mengetik
+                if (fieldErrors.topik) setFieldErrors((prev) => ({ ...prev, topik: undefined }));
+              }}
               placeholder="Contoh: Pecahan, Siklus Air, Hukum Newton…"
-              required
-              className="apple-input"
+              aria-invalid={!!fieldErrors.topik}
+              aria-describedby={fieldErrors.topik ? 'topik-error' : undefined}
+              className={`apple-input ${fieldErrors.topik ? '!border-red-500' : ''}`}
             />
+            {/* UX: pesan error inline tepat di bawah field, bukan tooltip generik browser */}
+            {fieldErrors.topik && (
+              <p id="topik-error" role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-600">
+                {fieldErrors.topik}
+              </p>
+            )}
           </div>
         </div>
 
@@ -433,6 +641,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           currentTopik={topik}
           onSelectTopic={handleSelectContextualTopic}
         />
+        {/* UX: konfirmasi terlihat saat saran topik diterapkan (termasuk bila model/alokasi ikut berubah) */}
+        {saranNotice && (
+          <p role="status" className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-[12.5px] font-medium text-emerald-800">
+            {saranNotice}
+          </p>
+        )}
 
         {/* 5. Alokasi Waktu & Model Pembelajaran */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -444,11 +658,23 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               <input
                 type="text"
                 value={alokasiWaktu}
-                onChange={(e) => setAlokasiWaktu(e.target.value)}
+                onChange={(e) => {
+                  setAlokasiWaktu(e.target.value);
+                  // UX: bersihkan error begitu pengguna mulai mengetik
+                  if (fieldErrors.alokasiWaktu) setFieldErrors((prev) => ({ ...prev, alokasiWaktu: undefined }));
+                }}
                 placeholder="2 JP (2 x 35 Menit)"
-                className="apple-input"
+                aria-invalid={!!fieldErrors.alokasiWaktu}
+                aria-describedby={fieldErrors.alokasiWaktu ? 'alokasiWaktu-error' : undefined}
+                className={`apple-input ${fieldErrors.alokasiWaktu ? '!border-red-500' : ''}`}
               />
             </div>
+            {/* UX: pesan error inline tepat di bawah field, bukan tooltip generik browser */}
+            {fieldErrors.alokasiWaktu && (
+              <p id="alokasiWaktu-error" role="alert" className="mt-1.5 text-[12.5px] font-medium text-red-600">
+                {fieldErrors.alokasiWaktu}
+              </p>
+            )}
           </div>
 
           <div>
@@ -684,29 +910,76 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
         </>}
 
-        {formStep === 2 && <>
-        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
-          <h4 className="mb-3 text-xs font-bold uppercase text-slate-500">Ringkasan dokumen</h4>
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-[11px] text-slate-500">Format</dt>
-              <dd className="text-sm font-semibold text-slate-900">{DOC_TYPE_INFO[docType].label}</dd>
+        {(formStep === 2 || paketMode) && <>
+        {/* UX: ringkasan tinjau yang lengkap (format, materi, kebutuhan) + tombol Ubah ke langkah terkait */}
+        {/* GEL2: tombol Ubah disembunyikan di mode paket — semua parameter sudah tampil bertumpuk */}
+        <div className="mb-5 space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase text-slate-500">Format & kelas</h4>
+              {!paketMode && (
+              <button type="button" onClick={() => setFormStep(0)} className="cursor-pointer text-xs font-semibold text-blue-600 hover:text-blue-800">
+                Ubah
+              </button>
+              )}
             </div>
-            <div>
-              <dt className="text-[11px] text-slate-500">Kelas</dt>
-              <dd className="text-sm font-semibold text-slate-900">{jenjang} · {tingkat} · {fase}</dd>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-[11px] text-slate-500">Format</dt>
+                <dd className="text-sm font-semibold text-slate-900">{DOC_TYPE_INFO[docType].label}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] text-slate-500">Kelas</dt>
+                <dd className="text-sm font-semibold text-slate-900">{jenjang} · {tingkat} · {fase}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase text-slate-500">Materi & kebutuhan</h4>
+              {!paketMode && (
+              <button type="button" onClick={() => setFormStep(1)} className="cursor-pointer text-xs font-semibold text-blue-600 hover:text-blue-800">
+                Ubah
+              </button>
+              )}
             </div>
-            <div>
-              <dt className="text-[11px] text-slate-500">Mata pelajaran</dt>
-              <dd className="text-sm font-semibold text-slate-900">{customMapel.trim() || mataPelajaran}</dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-slate-500">Topik</dt>
-              <dd className="text-sm font-semibold text-slate-900">{topik}</dd>
-            </div>
-          </dl>
-          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-600">
-            Dokumen dibuat atas nama <b>{authorName}</b> · {schoolName}. Anda masih dapat mengubah identitas di pengaturan tambahan.
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-[11px] text-slate-500">Mata pelajaran</dt>
+                <dd className="text-sm font-semibold text-slate-900">{customMapel.trim() || mataPelajaran}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] text-slate-500">Topik</dt>
+                <dd className="text-sm font-semibold text-slate-900">{topik || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] text-slate-500">Model pembelajaran</dt>
+                <dd className="text-sm font-semibold text-slate-900">{modelPembelajaran}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] text-slate-500">Alokasi waktu</dt>
+                <dd className="text-sm font-semibold text-slate-900">{alokasiWaktu}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-[11px] text-slate-500">Dimensi Profil Lulusan ({dimensiProfilLulusan.length})</dt>
+                <dd className="text-sm font-semibold text-slate-900">{dimensiProfilLulusan.join(', ')}</dd>
+              </div>
+              {docType === 'modul_p5' && (
+                <div>
+                  <dt className="text-[11px] text-slate-500">Tema projek</dt>
+                  <dd className="text-sm font-semibold text-slate-900">{temaP5}</dd>
+                </div>
+              )}
+              <div className="sm:col-span-2">
+                <dt className="text-[11px] text-slate-500">Target peserta didik</dt>
+                <dd className="text-sm font-semibold text-slate-900">{targetPeserta}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <p className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
+            Dokumen dibuat atas nama <b>{authorName || '—'}</b>{schoolName ? <> · {schoolName}</> : null}. Anda masih dapat mengubah identitas di pengaturan tambahan.
           </p>
         </div>
 
@@ -849,7 +1122,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         </div>
         </>}
 
-        {/* Bar navigasi — selalu tampil di langkah 1, 2, 3 */}
+        {/* Bar navigasi — selalu tampil di langkah 1, 2, 3 (mode lepas saja) */}
+        {/* GEL2: mode paket memakai tombol "Generate & Simpan sebagai Versi Baru" di bawah */}
+        {!paketMode && (
         <div className="mt-8 sticky bottom-4 flex flex-col-reverse gap-2.5 rounded-2xl border border-black/10 dark:border-white/15 bg-white/85 dark:bg-[#1c1c1e]/85 p-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
@@ -878,8 +1153,55 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </button>
           )}
         </div>
+        )}
+
+        {/* GEL2: bilah aksi mode paket — cegah double-submit saat isGenerating/sedangSimpan */}
+        {paketMode && (
+          <div className="mt-8">
+            <button
+              type="submit"
+              disabled={isGenerating || sedangSimpan}
+              className="btn btn-primary btn-lg w-full"
+            >
+              {isGenerating || sedangSimpan ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                <Sparkles className="h-5 w-5" />
+              )}
+              {isGenerating || sedangSimpan ? 'Menyusun & menyimpan…' : 'Generate & Simpan sebagai Versi Baru'}
+            </button>
+            <p className="mt-2 text-center text-xs opacity-60">
+              Hasil AI otomatis tersimpan sebagai versi baru {DOC_TYPE_INFO[docType].label}.
+            </p>
+          </div>
+        )}
+        </fieldset>
 
       </form>
+
+      {/* GEL2: toast lokal sukses/gagal (pola DocumentRepository/PaketWorkspace) */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-2xl shadow-xl text-[13.5px] font-medium max-w-[calc(100vw-2rem)] bg-[#1c1c1e] text-white dark:bg-white dark:text-black"
+        >
+          {toast.kind === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#30d158]" />
+          ) : (
+            <XCircle className="w-4 h-4 shrink-0 text-[#ff9d97]" />
+          )}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            aria-label="Tutup notifikasi"
+            className="ml-1 rounded-full p-1 hover:bg-white/10 dark:hover:bg-black/10"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };
