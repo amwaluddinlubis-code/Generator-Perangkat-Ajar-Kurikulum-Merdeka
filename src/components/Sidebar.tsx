@@ -1,25 +1,28 @@
-import React from 'react';
-import { DocType } from '../types';
+import React, { useEffect, useRef } from 'react';
+import { TeacherUser } from '../types';
 import {
   GraduationCap,
-  FileText,
-  Layers,
-  HelpCircle,
+  Home,
+  Package,
+  Library,
   BookOpen,
-  Target,
-  Calendar,
-  Sparkles,
+  User,
   BarChart3,
-  Archive,
   ShieldCheck,
-  FileCheck,
-  UserCircle2,
+  LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   X,
 } from 'lucide-react';
 
+// REDESIGN: NavigationTarget diperluas dengan 3 target utama baru.
+// Target lama (7 docType + profile + stats + repository + admin) TIDAK dihapus dari
+// tipe — view gelombang 1 tetap dirender App; item lama kini diakses via menu pengguna.
 export type NavigationTarget =
+  | 'beranda'
+  | 'paket'
+  | 'perpustakaan'
   | 'modul_ajar'
   | 'rpp'
   | 'soal_ujian'
@@ -42,33 +45,141 @@ interface SidebarProps {
   setIsCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  // REDESIGN: menu pengguna membutuhkan info user & aksi keluar
+  currentUser?: TeacherUser | null;
+  onLogout?: () => void;
 }
+
+// REDESIGN: Menu pengguna — avatar di kaki sidebar membuka dropdown DaisyUI
+// berisi Profil, Statistik Saya, Admin (bila admin), dan Keluar.
+const UserMenu: React.FC<{
+  currentUser: TeacherUser | null | undefined;
+  isCollapsed: boolean;
+  pendingCount: number;
+  onNavigate: (target: NavigationTarget) => void;
+  onLogout?: () => void;
+}> = ({ currentUser, isCollapsed, pendingCount, onNavigate, onLogout }) => {
+  const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+  const initial = (currentUser?.name || '?').trim().charAt(0).toUpperCase() || '?';
+
+  return (
+    <div className="dropdown dropdown-top dropdown-start w-full">
+      <button
+        tabIndex={0}
+        role="button"
+        onClick={(e) => e.currentTarget.focus()}
+        className={`w-full flex items-center gap-2.5 rounded-2xl p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+        aria-label={`Menu pengguna ${currentUser?.name ?? ''}`}
+        aria-haspopup="menu"
+      >
+        <span className="relative shrink-0">
+          <span className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px]">
+            {initial}
+          </span>
+          {/* UX: badge antrean verifikasi tetap terlihat untuk admin */}
+          {isAdmin && pendingCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#ff9f0a] text-white text-[10px] font-bold flex items-center justify-center">
+              {pendingCount > 99 ? '99+' : pendingCount}
+            </span>
+          )}
+        </span>
+        {!isCollapsed && (
+          <>
+            <span className="flex-1 min-w-0 text-left">
+              <span className="block text-[13.5px] font-semibold truncate leading-tight">
+                {currentUser?.name ?? 'Guru'}
+              </span>
+              <span className="block text-[11.5px] text-[#6e6e73] dark:text-[#98989d] truncate leading-tight">
+                {isAdmin ? 'Admin' : 'Guru'}
+              </span>
+            </span>
+            <ChevronUp className="w-4 h-4 text-[#6e6e73] dark:text-[#98989d] shrink-0" />
+          </>
+        )}
+      </button>
+      <ul
+        tabIndex={0}
+        className="dropdown-content menu bg-base-100 rounded-2xl z-[60] w-56 p-2 shadow-xl border border-black/10 dark:border-white/15 mb-2"
+        role="menu"
+        aria-label="Menu pengguna"
+      >
+        <li role="none">
+          <button role="menuitem" onClick={() => onNavigate('profile')} className="flex items-center gap-2.5">
+            <User className="w-4 h-4" /> Profil
+          </button>
+        </li>
+        <li role="none">
+          <button role="menuitem" onClick={() => onNavigate('stats')} className="flex items-center gap-2.5">
+            <BarChart3 className="w-4 h-4" /> Statistik Saya
+          </button>
+        </li>
+        {isAdmin && (
+          <li role="none">
+            <button role="menuitem" onClick={() => onNavigate('admin')} className="flex items-center gap-2.5">
+              <ShieldCheck className="w-4 h-4" /> Admin
+              {pendingCount > 0 && (
+                <span className="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#ff9f0a] text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          </li>
+        )}
+        <li role="none" aria-hidden="true" className="border-t border-black/10 dark:border-white/10 my-1" />
+        <li role="none">
+          <button role="menuitem" onClick={onLogout} className="flex items-center gap-2.5 text-error">
+            <LogOut className="w-4 h-4" /> Keluar
+          </button>
+        </li>
+      </ul>
+    </div>
+  );
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTarget,
   onSelectTarget,
   pendingCount,
-  docsCount,
   isCollapsed,
   setIsCollapsed,
   mobileOpen,
   setMobileOpen,
+  currentUser,
+  onLogout,
 }) => {
 
-  const docMenuItems: { type: DocType; label: string; sub: string; icon: React.ReactNode }[] = [
-    { type: 'modul_ajar', label: 'Modul Ajar', sub: 'Lengkap · PPA', icon: <FileText className="w-[18px] h-[18px]" /> },
-    { type: 'rpp', label: 'RPP Ringkas', sub: '1–2 lembar', icon: <Layers className="w-[18px] h-[18px]" /> },
-    { type: 'soal_ujian', label: 'Soal & Asesmen', sub: 'AKM · HOTS', icon: <HelpCircle className="w-[18px] h-[18px]" /> },
-    { type: 'lkpd', label: 'LKPD', sub: 'Siap cetak', icon: <BookOpen className="w-[18px] h-[18px]" /> },
-    { type: 'kktp_atp', label: 'ATP & KKTP', sub: 'Matriks', icon: <Target className="w-[18px] h-[18px]" /> },
-    { type: 'prota_promes', label: 'Prota & Promes', sub: 'Tahunan', icon: <Calendar className="w-[18px] h-[18px]" /> },
-    { type: 'modul_p5', label: 'Modul Projek', sub: '8 tema', icon: <Sparkles className="w-[18px] h-[18px]" /> },
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  // UX: drawer mobile tertutup dengan tombol Escape (pengguna keyboard)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen, setMobileOpen]);
+
+  // UX: pindahkan fokus ke dalam drawer saat dibuka (screen reader & keyboard)
+  useEffect(() => {
+    if (mobileOpen) closeBtnRef.current?.focus();
+  }, [mobileOpen]);
+
+  // REDESIGN: navigasi ramping — 4 item utama saja (ikon lucide + label)
+  const mainMenuItems: { target: NavigationTarget; label: string; sub: string; icon: React.ReactNode }[] = [
+    { target: 'beranda', label: 'Beranda', sub: 'Ringkasan & mulai', icon: <Home className="w-[18px] h-[18px]" /> },
+    { target: 'paket', label: 'Paket Saya', sub: 'Perangkat per kelas', icon: <Package className="w-[18px] h-[18px]" /> },
+    { target: 'perpustakaan', label: 'Perpustakaan', sub: 'Bank perangkat sekolah', icon: <Library className="w-[18px] h-[18px]" /> },
+    { target: 'guide', label: 'Panduan', sub: 'Kurikulum Merdeka', icon: <BookOpen className="w-[18px] h-[18px]" /> },
   ];
 
   const handleNavClick = (target: NavigationTarget) => {
     onSelectTarget(target);
     setMobileOpen(false);
   };
+
+  // UX: tandai item navigasi yang aktif untuk pembaca layar
+  const ariaCurrent = (active: boolean) => (active ? { 'aria-current': 'page' as const } : {});
 
   const itemCls = (active: boolean) =>
     `w-full flex items-center gap-3 rounded-2xl text-left transition-all min-h-[52px] px-3 cursor-pointer ${
@@ -84,6 +195,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
+        // UX: perlakukan drawer mobile sebagai dialog modal aksesibel
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen ? true : undefined}
+        aria-label="Navigasi utama"
         className={`fixed top-0 bottom-0 left-0 z-40 flex flex-col transition-all duration-300 no-print border-r border-black/10 dark:border-white/15 ${
           mobileOpen ? 'translate-x-0 w-[300px]' : '-translate-x-full lg:translate-x-0'
         } ${isCollapsed ? 'lg:w-[84px]' : 'lg:w-[280px]'}`}
@@ -91,7 +206,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         {/* Brand */}
         <div className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-black/10 dark:border-white/15">
-          <button onClick={() => handleNavClick('modul_ajar')} className="flex items-center gap-2.5 overflow-hidden text-left cursor-pointer">
+          {/* UX: beri nama tombol brand untuk screen reader */}
+          <button onClick={() => handleNavClick('beranda')} className="flex items-center gap-2.5 overflow-hidden text-left cursor-pointer" aria-label="Ruang Guru Merdeka — ke Beranda">
             <div className="w-8 h-8 rounded-[10px] bg-black dark:bg-white dark:text-black text-white flex items-center justify-center shrink-0">
               <GraduationCap className="w-[18px] h-[18px]" />
             </div>
@@ -103,81 +219,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </button>
           <div className="flex items-center gap-1">
-            <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" title={isCollapsed ? 'Perluas' : 'Ciutkan'}>
+            {/* UX: umumkan status ciut/perluas sidebar ke pembaca layar */}
+            <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" title={isCollapsed ? 'Perluas' : 'Ciutkan'} aria-label={isCollapsed ? 'Perluas bilah navigasi' : 'Ciutkan bilah navigasi'} aria-expanded={!isCollapsed}>
               {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
-            <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer">
+            {/* UX: tombol tutup drawer mobile punya label aksesibel + menerima fokus awal */}
+            <button ref={closeBtnRef} onClick={() => setMobileOpen(false)} className="lg:hidden p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer" aria-label="Tutup menu navigasi">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Nav */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-5">
-          <div>
-            {!isCollapsed && <p className="px-3 pb-2 text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">Buat perangkat</p>}
-            <div className="space-y-1">
-              {docMenuItems.map((item) => {
-                const active = activeTarget === item.type;
-                return (
-                  <button key={item.type} onClick={() => handleNavClick(item.type)} className={itemCls(active)} title={isCollapsed ? item.label : undefined}>
-                    <span className={`shrink-0 ${active ? 'text-white dark:text-black' : ''}`}>{item.icon}</span>
-                    {!isCollapsed && (
-                      <span className="flex-1 min-w-0">
-                        <span className={`block text-[14px] font-semibold leading-tight truncate ${active ? 'text-white dark:text-black' : ''}`}>{item.label}</span>
-                        <span className={`block text-[12px] leading-tight ${active ? 'text-white/70 dark:text-black/60' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{item.sub}</span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            {!isCollapsed && <p className="px-3 pb-2 text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">Ruang kerja</p>}
-            <div className="space-y-1">
-              <button onClick={() => handleNavClick('profile')} className={itemCls(activeTarget === 'profile')} title={isCollapsed ? 'Profil saya' : undefined}>
-                <UserCircle2 className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Profil saya</span>}
-              </button>
-              <button onClick={() => handleNavClick('repository')} className={itemCls(activeTarget === 'repository')} title={isCollapsed ? 'Arsip' : undefined}>
-                <Archive className="w-[18px] h-[18px] shrink-0" />
+        {/* Nav — REDESIGN: 4 item utama */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1" aria-label="Menu utama">
+          {mainMenuItems.map((item) => {
+            const active = activeTarget === item.target;
+            return (
+              <button key={item.target} onClick={() => handleNavClick(item.target)} className={itemCls(active)} title={isCollapsed ? item.label : undefined} {...ariaCurrent(active)}>
+                <span className={`shrink-0 ${active ? 'text-white dark:text-black' : ''}`}>{item.icon}</span>
                 {!isCollapsed && (
-                  <span className="flex-1 flex items-center justify-between text-[14px] font-semibold">
-                    Arsip
-                    {docsCount > 0 && <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/15">{docsCount}</span>}
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-[14px] font-semibold leading-tight truncate ${active ? 'text-white dark:text-black' : ''}`}>{item.label}</span>
+                    <span className={`block text-[12px] leading-tight ${active ? 'text-white/70 dark:text-black/60' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{item.sub}</span>
                   </span>
                 )}
               </button>
-              <button onClick={() => handleNavClick('stats')} className={itemCls(activeTarget === 'stats')} title={isCollapsed ? 'Statistik' : undefined}>
-                <BarChart3 className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Statistik</span>}
-              </button>
-              <button onClick={() => handleNavClick('admin')} className={itemCls(activeTarget === 'admin')} title={isCollapsed ? 'Verifikasi' : undefined}>
-                <ShieldCheck className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && (
-                  <span className="flex-1 flex items-center justify-between text-[14px] font-semibold">
-                    Verifikasi
-                    {pendingCount > 0 && <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full bg-[#ff9f0a] text-white">{pendingCount}</span>}
-                  </span>
-                )}
-              </button>
-              <button onClick={() => handleNavClick('guide')} className={itemCls(activeTarget === 'guide')} title={isCollapsed ? 'Panduan' : undefined}>
-                <FileCheck className="w-[18px] h-[18px] shrink-0" />
-                {!isCollapsed && <span className="text-[14px] font-semibold">Panduan</span>}
-              </button>
-            </div>
-          </div>
-        </div>
+            );
+          })}
+        </nav>
 
-        {/* Catatan kecil — profil & keluar tersedia di bilah atas */}
+        {/* REDESIGN: menu pengguna (avatar) — dropdown DaisyUI */}
         <div className="p-3 border-t border-black/10 dark:border-white/15 shrink-0">
-          {!isCollapsed && (
-            <p className="text-[11.5px] text-center text-[#86868b]">
-              Profil & keluar via bilah atas
-            </p>
-          )}
+          <UserMenu
+            currentUser={currentUser}
+            isCollapsed={isCollapsed}
+            pendingCount={pendingCount}
+            onNavigate={handleNavClick}
+            onLogout={onLogout}
+          />
         </div>
       </aside>
     </>

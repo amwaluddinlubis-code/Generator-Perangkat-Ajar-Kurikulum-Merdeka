@@ -187,11 +187,14 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
               {matchingTopics.map((item) => {
                 const isSelected = currentTopik.trim().toLowerCase() === item.topik.trim().toLowerCase();
 
+                // UX: kartu sebagai <button> agar bisa diakses keyboard & screen reader (sebelumnya div onClick)
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={item.id}
                     onClick={() => onSelectTopic(item)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left ${
+                    aria-pressed={isSelected}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left w-full ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40'
                         : 'bg-white hover:bg-blue-50/60 border-slate-200/90 hover:border-blue-300 shadow-2xs'
@@ -251,7 +254,7 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
                       </span>
                     </div>
 
-                  </div>
+                  </button>
                 );
               })}
             </div>

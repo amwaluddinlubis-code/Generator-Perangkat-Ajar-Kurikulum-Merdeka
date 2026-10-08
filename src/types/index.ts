@@ -44,6 +44,8 @@ export interface EducationalDocument {
   schoolName: string;
   isPublic?: boolean;
   durationMinutes?: number;
+  /** REDESIGN — penanda hasil migrasi dokumen lama ke struktur paket. */
+  paketId?: string;
 }
 
 export interface MonthlyProductivityData {
@@ -84,4 +86,42 @@ export interface GeneratorParams {
     temaP5?: string;
     instruksiKhusus?: string;
   };
+}
+
+// REDESIGN — data layer paket perangkat ajar (menggantikan pola satu-dokumen-lepas).
+// Satu Paket = satu topik pelajaran yang memuat 7 jenis dokumen perangkat ajar
+// (satu per DocType), masing-masing dengan riwayat versi (VersiDokumen).
+export interface Paket {
+  id: string;
+  topik: string;
+  mataPelajaran: string;
+  jenjang: Jenjang;
+  fase: string;
+  tingkat: string;
+  pemilikId: string;
+  sekolahId?: string;
+  status: 'aktif' | 'arsip';
+  dibuatPada: string;
+  dibukaTerakhir: string;
+  /** GEL2 — tandai paket untuk ditampilkan di Perpustakaan Sekolah. */
+  publikasiSekolah?: boolean;
+}
+
+export interface DokumenPaket {
+  id: string;
+  paketId: string;
+  docType: DocType;
+  status: 'belum' | 'draf' | 'final';
+  versiAktif: number;
+  diperbaruiPada: string;
+}
+
+export interface VersiDokumen {
+  id: string;
+  dokumenPaketId: string;
+  nomorVersi: number;
+  content: string;
+  title: string;
+  dibuatPada: string;
+  dibuatOleh: string;
 }

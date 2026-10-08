@@ -27,6 +27,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const isVerified = currentUser.status === 'VERIFIED';
 
   const getTitle = (): { kicker: string; title: string } => {
+    // REDESIGN: judul untuk target navigasi baru Gelombang 1
+    if (activeTarget === 'beranda') return { kicker: 'Ruang Guru Merdeka', title: 'Beranda' };
+    if (activeTarget === 'paket') return { kicker: 'Ruang kerja', title: 'Paket Saya' };
+    if (activeTarget === 'perpustakaan') return { kicker: 'Ruang kerja', title: 'Perpustakaan' };
     if (activeTarget === 'profile') return { kicker: 'Ruang kerja', title: 'Profil saya' };
     if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
     if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
@@ -69,13 +73,15 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px] text-[#424245] dark:text-[#f5f5f7]" />}
           </button>
 
-          <button onClick={onOpenAuthModal} className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Profil">
+          {/* UX: label aksesibel eksplisit (title saja tak selalu dibaca screen reader) */}
+          <button onClick={onOpenAuthModal} className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Profil" aria-label={`Profil ${currentUser.name} — buka pengaturan akun`}>
             <div className="w-8 h-8 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[13px]">
               {currentUser.name.charAt(0)}
             </div>
             <span className="hidden sm:block text-[13.5px] font-semibold max-w-[140px] truncate">{currentUser.name}</span>
           </button>
-          <button onClick={onLogout} className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Keluar">
+          {/* UX: label aksesibel eksplisit untuk tombol keluar */}
+          <button onClick={onLogout} className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Keluar" aria-label="Keluar dari akun">
             <LogOut className="w-[18px] h-[18px]" />
           </button>
         </div>

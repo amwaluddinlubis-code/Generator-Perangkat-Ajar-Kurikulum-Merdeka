@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TeacherUser, Jenjang } from '../types';
 import {
   GraduationCap,
@@ -40,6 +40,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [regJenjang, setRegJenjang] = useState<Jenjang>('SD');
   const [regMapel, setRegMapel] = useState<string>('Guru Kelas / IPAS');
   const [regNip, setRegNip] = useState<string>('');
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // UX: pindahkan fokus ke kotak error saat muncul agar tak terlewat pengguna keyboard/SR
+  useEffect(() => {
+    if (errorMessage) errorRef.current?.focus();
+  }, [errorMessage]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,13 +131,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <div className="apple-card mt-10 max-w-xl mx-auto p-6 sm:p-8">
           <div className="flex justify-center">
             <div className="apple-segment" role="tablist" aria-label="Masuk atau daftar">
-              <button type="button" data-active={activeTab === 'login'} onClick={() => { setActiveTab('login'); setErrorMessage(''); }}>Masuk</button>
-              <button type="button" data-active={activeTab === 'register'} onClick={() => { setActiveTab('register'); setErrorMessage(''); }}>Daftar Guru</button>
+              {/* UX: tandai tab aktif untuk pembaca layar */}
+              <button type="button" role="tab" aria-selected={activeTab === 'login'} data-active={activeTab === 'login'} onClick={() => { setActiveTab('login'); setErrorMessage(''); }}>Masuk</button>
+              <button type="button" role="tab" aria-selected={activeTab === 'register'} data-active={activeTab === 'register'} onClick={() => { setActiveTab('register'); setErrorMessage(''); }}>Daftar Guru</button>
             </div>
           </div>
 
           {errorMessage && (
-            <div className="mt-5 rounded-xl bg-[#fff1f1] border border-[#ffcfcf] text-[#b3261e] text-[13.5px] font-medium px-4 py-3" role="alert">
+            // UX: kotak error bisa difokuskan + konsisten di dark mode
+            <div ref={errorRef} tabIndex={-1} className="mt-5 rounded-xl bg-[#fff1f1] dark:bg-[#3a1f1f] border border-[#ffcfcf] dark:border-[#7a3b3b] text-[#b3261e] dark:text-[#ffb4ab] text-[13.5px] font-medium px-4 py-3 focus:outline-none" role="alert">
               {errorMessage}
             </div>
           )}
@@ -171,8 +179,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <p className="text-[13px] font-semibold text-[#424245] mb-2.5">Coba sekali ketuk</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {demoUsers.slice(0, 4).map((user) => (
-                    <button key={user.id} type="button" onClick={() => handleQuickLogin(user)}
-                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#0071e3] hover:bg-[#f5f9ff] dark:hover:bg-white/5 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px]">
+                    // UX: nonaktifkan saat proses login berjalan agar tak terkirim ganda
+                    <button key={user.id} type="button" disabled={isLoading} onClick={() => handleQuickLogin(user)}
+                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#0071e3] hover:bg-[#f5f9ff] dark:hover:bg-white/5 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px] disabled:opacity-60 disabled:cursor-not-allowed">
                       <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
                         {user.name.charAt(0)}
                       </div>
@@ -191,17 +200,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 Profil baru berstatus <b>menunggu verifikasi</b> administrator sebelum aktif penuh.
               </p>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Nama lengkap & gelar *</label>
-                <input value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Contoh: Rahmadani, S.Pd." className="apple-input" required />
+                {/* UX: label terhubung ke input agar bisa diklik & dibaca screen reader */}
+                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-name">Nama lengkap & gelar *</label>
+                <input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Contoh: Rahmadani, S.Pd." className="apple-input" required autoComplete="name" />
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Email Belajar.id *</label>
-                <input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required />
+                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-email">Email Belajar.id *</label>
+                <input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required autoComplete="email" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5">Jenjang</label>
-                  <select value={regJenjang} onChange={(e) => setRegJenjang(e.target.value as Jenjang)} className="apple-input">
+                  <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-jenjang">Jenjang</label>
+                  <select id="reg-jenjang" value={regJenjang} onChange={(e) => setRegJenjang(e.target.value as Jenjang)} className="apple-input">
                     <option value="SD">SD</option>
                     <option value="SMP">SMP</option>
                     <option value="SMA">SMA</option>
@@ -209,17 +219,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5">NIP <span className="font-normal text-[#86868b]">(opsional)</span></label>
-                  <input value={regNip} onChange={(e) => setRegNip(e.target.value)} placeholder="19890412…" className="apple-input" />
+                  <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-nip">NIP <span className="font-normal text-[#86868b]">(opsional)</span></label>
+                  <input id="reg-nip" value={regNip} onChange={(e) => setRegNip(e.target.value)} placeholder="19890412…" className="apple-input" inputMode="numeric" />
                 </div>
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Sekolah *</label>
-                <input value={regSchool} onChange={(e) => setRegSchool(e.target.value)} placeholder="SMP Negeri 1 Padang" className="apple-input" required />
+                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-school">Sekolah *</label>
+                <input id="reg-school" value={regSchool} onChange={(e) => setRegSchool(e.target.value)} placeholder="SMP Negeri 1 Padang" className="apple-input" required autoComplete="organization" />
               </div>
               <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5">Mata pelajaran</label>
-                <input value={regMapel} onChange={(e) => setRegMapel(e.target.value)} placeholder="Matematika / IPA" className="apple-input" />
+                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-mapel">Mata pelajaran</label>
+                <input id="reg-mapel" value={regMapel} onChange={(e) => setRegMapel(e.target.value)} placeholder="Matematika / IPA" className="apple-input" />
               </div>
               <button type="submit" disabled={isLoading} className="btn-apple w-full">
                 Daftarkan & ajukan verifikasi <ArrowRight className="w-4 h-4" />
