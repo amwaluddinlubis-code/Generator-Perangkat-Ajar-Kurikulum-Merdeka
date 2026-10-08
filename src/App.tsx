@@ -8,6 +8,12 @@ import {
 } from './types';
 import { Sidebar, NavigationTarget } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
+// REDESIGN: view gelombang 2 — komponen dibuat worker lain, App hanya mengintegrasikan
+import { Beranda } from './components/Beranda';
+import { DaftarPaket } from './components/DaftarPaket';
+import { PaketWorkspace } from './components/PaketWorkspace';
+// GEL2: view perpustakaan (Worker D) — bank perangkat sekolah
+import { Perpustakaan } from './components/Perpustakaan';
 import { GeneratorForm } from './components/GeneratorForm';
 import { DocumentViewer } from './components/DocumentViewer';
 import { TeacherVerificationPanel } from './components/TeacherVerificationPanel';
@@ -31,7 +37,7 @@ import {
   Layers,
   Target,
   Calendar,
-  LogOut
+  LogOut,
 } from 'lucide-react';
 
 export default function App() {
@@ -53,7 +59,10 @@ export default function App() {
   const [showDocumentResult, setShowDocumentResult] = useState<boolean>(false);
   
   // Navigation State with dedicated sidebar targets
-  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('modul_ajar');
+  // REDESIGN: view default setelah login = 'beranda'
+  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('beranda');
+  // REDESIGN: state paket aktif — bila di-set, render <PaketWorkspace/>
+  const [paketAktifId, setPaketAktifId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
@@ -184,6 +193,8 @@ export default function App() {
     localStorage.setItem('ruang_guru_logged_out', 'true');
     localStorage.removeItem('ruang_guru_current_user');
     setCurrentUser(null);
+    // REDESIGN: keluar juga menutup workspace paket
+    setPaketAktifId(null);
     setLogoutModalOpen(false);
     setAuthModalOpen(false);
     showToast('Anda telah berhasil keluar dari akun Ruang Guru Merdeka', 'info');
@@ -359,8 +370,9 @@ export default function App() {
     return (
       <>
         {/* Toast Notification — Apple pill */}
+        {/* UX: umumkan toast ke screen reader; jangan ikut tercetak */}
         {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
             <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md">
               {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158]" />}
               {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961]" />}
@@ -407,8 +419,9 @@ export default function App() {
     <div className="min-h-screen text-[#1d1d1f] dark:text-[#f5f5f7] flex">
       
       {/* Toast Notification — Apple pill */}
+      {/* UX: umumkan toast ke screen reader */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
           <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md max-w-[92vw]">
             {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158] shrink-0" />}
             {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961] shrink-0" />}
@@ -423,6 +436,8 @@ export default function App() {
         activeTarget={activeTarget}
         onSelectTarget={(target) => {
           setActiveTarget(target);
+          // REDESIGN: memilih menu navigasi selalu keluar dari workspace paket
+          setPaketAktifId(null);
           setShowDocumentResult(false);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
@@ -432,6 +447,8 @@ export default function App() {
         setIsCollapsed={setIsSidebarCollapsed}
         mobileOpen={mobileSidebarOpen}
         setMobileOpen={setMobileSidebarOpen}
+        currentUser={currentUser}
+        onLogout={() => setLogoutModalOpen(true)}
       />
 
       {/* Main App Layout Area — offset mengikuti lebar sidebar Apple */}
@@ -452,10 +469,58 @@ export default function App() {
 
         {/* Content View Container — lega ala Apple */}
         <main className="flex-1 px-4 sm:px-8 lg:px-12 py-6 sm:py-10 max-w-[1400px] w-full mx-auto">
-          
+
+          {/* REDESIGN: bila ada paket aktif, tampilkan workspace paket */}
+          {paketAktifId ? (
+            <div className="ux-view-enter">
+              <PaketWorkspace
+                paketId={paketAktifId}
+                onKembali={() => setPaketAktifId(null)}
+              />
+            </div>
+          ) : (
+            <>
+
+          {/* REDESIGN: VIEW 0a — BERANDA (default setelah login) */}
+          {activeTarget === 'beranda' && (
+            <div className="ux-view-enter">
+              <Beranda
+                currentUser={currentUser}
+                onBukaPaket={(id) => setPaketAktifId(id)}
+                onBuatPaket={() => {
+                  setActiveTarget('paket');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            </div>
+          )}
+
+          {/* REDESIGN: VIEW 0b — PAKET SAYA */}
+          {activeTarget === 'paket' && (
+            <div className="ux-view-enter">
+              <DaftarPaket
+                currentUser={currentUser}
+                onBukaPaket={(id) => setPaketAktifId(id)}
+              />
+            </div>
+          )}
+
+          {/* GEL2: VIEW 0c — PERPUSTAKAAN (Worker D): bank perangkat sekolah */}
+          {activeTarget === 'perpustakaan' && (
+            <div className="ux-view-enter">
+              <Perpustakaan
+                currentUser={currentUser}
+                onBukaPaket={(id) => setPaketAktifId(id)}
+                notify={(msg, kind) => showToast(msg, kind)}
+              />
+            </div>
+          )}
+
           {/* VIEW 1: DEDICATED GENERATOR WORKSPACE (FOR EACH PERANGKAT AJAR) */}
           {isDocTypeTarget && (
             showDocumentResult && currentDoc ? (
+              // UX: animasi masuk halus setiap ganti tab / hasil dokumen
+              <div className="ux-view-enter">
               <DocumentViewer
                 key={currentDoc.id}
                 document={currentDoc}
@@ -467,8 +532,9 @@ export default function App() {
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
+              </div>
             ) : (
-              <div className="mx-auto w-full max-w-6xl">
+              <div className="mx-auto w-full max-w-6xl ux-view-enter">
                 <GeneratorForm
                   currentUser={currentUser}
                   onGenerate={handleGenerate}
@@ -482,16 +548,19 @@ export default function App() {
 
           {/* VIEW 2: PROFIL SAYA (semua peran) */}
           {activeTarget === 'profile' && (
+            <div className="ux-view-enter">
             <ProfilePage
               currentUser={currentUser}
               documents={documents}
               onUpdateSelf={(fields) => handleUpdateUser(currentUser.id, fields)}
               onOpenAuthModal={() => setAuthModalOpen(true)}
             />
+            </div>
           )}
 
           {/* VIEW 2b: STATISTIK & PROFIL GURU (D3.JS) */}
           {activeTarget === 'stats' && (
+            <div className="ux-view-enter">
             <UserProfileStatsDashboard
               currentUser={currentUser}
               documents={documents}
@@ -508,10 +577,12 @@ export default function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             />
+            </div>
           )}
 
           {/* VIEW 3: BANK ARSIP DOKUMEN */}
           {activeTarget === 'repository' && (
+            <div className="ux-view-enter">
             <DocumentRepository
               documents={documents}
               currentUser={currentUser}
@@ -528,10 +599,12 @@ export default function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             />
+            </div>
           )}
 
           {/* VIEW 4: ADMIN VERIFICATION PANEL */}
           {activeTarget === 'admin' && (
+            <div className="ux-view-enter">
             <TeacherVerificationPanel
               users={users}
               currentUser={currentUser}
@@ -548,11 +621,12 @@ export default function App() {
                 });
               }}
             />
+            </div>
           )}
 
           {/* VIEW 5: PANDUAN KURIKULUM MERDEKA */}
           {activeTarget === 'guide' && (
-            <div className="space-y-4">
+            <div className="space-y-4 ux-view-enter">
               <div className="text-center max-w-xl mx-auto mb-2">
                 <p className="apple-eyebrow">Regulasi resmi</p>
                 <h2 className="apple-headline !text-[28px] sm:!text-[34px] mt-1">Panduan Kurikulum Merdeka.</h2>
@@ -574,21 +648,22 @@ export default function App() {
                 </div>
 
                 <div className="prose-educational space-y-4">
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                  {/* UX: panel ikut dark mode agar konsisten */}
+                  <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
                     <h3 className="text-[14.5px] font-semibold mb-1">
                       Landasan hukum kurikulum nasional 2024
                     </h3>
-                    <p className="!text-[13.5px] !text-[#424245]">
+                    <p className="!text-[13.5px] !text-[#424245] dark:!text-[#e8e8ed]">
                       Berdasarkan <b>Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, mendalam (berkesadaran, bermakna, menggembirakan), dan berorientasi Profil Lulusan 8 dimensi.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
                       <h4 className="font-semibold text-[14px] mb-2">
                         Fase pembelajaran
                       </h4>
-                      <ul className="!text-[13px] space-y-1.5 !text-[#424245]">
+                      <ul className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
                         <li><b>Fase A</b>: Kelas 1–2 SD</li>
                         <li><b>Fase B</b>: Kelas 3–4 SD</li>
                         <li><b>Fase C</b>: Kelas 5–6 SD</li>
@@ -598,11 +673,11 @@ export default function App() {
                       </ul>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                    <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
                       <h4 className="font-semibold text-[14px] mb-2">
                         3 komponen esensial Modul Ajar
                       </h4>
-                      <ol className="!text-[13px] space-y-1.5 !text-[#424245]">
+                      <ol className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
                         <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 032/H/KR/2024.</li>
                         <li>2. <b>Langkah pembelajaran</b> berdiferensiasi.</li>
                         <li>3. <b>Rencana asesmen</b> + rubrik KKTP.</li>
@@ -610,11 +685,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7]">
+                  <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
                     <h4 className="font-semibold text-[14px] mb-1.5">
                       Alur verifikasi guru
                     </h4>
-                    <p className="!text-[13px] !text-[#424245] leading-relaxed">
+                    <p className="!text-[13px] !text-[#424245] dark:!text-[#e8e8ed] leading-relaxed">
                       Guru dengan akun <code>@guru.sd/smp/sma.belajar.id</code> terdaftar otomatis, lalu divalidasi verifikator kurikulum sebelum mendapat akses penuh pembuatan perangkat.
                     </p>
                   </div>
@@ -623,6 +698,8 @@ export default function App() {
             </div>
           )}
 
+            </>
+          )}
         </main>
 
         {/* Global Footer — minimal */}

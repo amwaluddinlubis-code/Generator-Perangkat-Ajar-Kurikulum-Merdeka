@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { EducationalDocument, TeacherUser } from '../types';
+import React, { useEffect, useRef, useState } from 'react';
+import { DocType, EducationalDocument, TeacherUser, VersiDokumen } from '../types';
 import { 
   renderMarkdownToHtml, 
   downloadWordDocument, 
@@ -22,7 +22,11 @@ import {
   FileDown,
   Loader2,
   ImagePlus,
-  X
+  ChevronDown,
+  X,
+  CheckCircle2,
+  XCircle,
+  Info
 } from 'lucide-react';
 
 interface DocumentViewerProps {
@@ -32,22 +36,159 @@ interface DocumentViewerProps {
   onSaveToRepository?: (doc: EducationalDocument) => void;
   onBackToGenerator?: () => void;
   isSaved?: boolean;
+  // GEL2 — mode paket: viewer menampilkan riwayat versi dokumen dalam satu paket.
+  paketMode?: {
+    paketId: string;
+    docType: DocType;
+    onTutup?: () => void;
+  };
 }
 
 export const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  document,
+  document: documentProp,
   currentUser,
   modelUsed = '',
   onSaveToRepository,
   onBackToGenerator,
-  isSaved = false
+  isSaved = false,
+  paketMode
 }) => {
+  // GEL2 — penanda mode paket; tanpa prop ini seluruh perilaku legacy tidak berubah.
+  const isPaketMode = !!paketMode;
+  const paketId = paketMode?.paketId;
+  const docTypeMode = paketMode?.docType;
+
+  // GEL2 — state riwayat versi (mode paket saja)
+  const [versis, setVersis] = useState<VersiDokumen[]>([]);
+  const [versiAktifServer, setVersiAktifServer] = useState<number>(0);
+  const [statusDokumen, setStatusDokumen] = useState<string>('');
+  const [nomorTerpilih, setNomorTerpilih] = useState<number | null>(null);
+  const [loadingVersi, setLoadingVersi] = useState<boolean>(false);
+  const [aksiVersi, setAksiVersi] = useState<boolean>(false);
+  const [errorVersi, setErrorVersi] = useState<string | null>(null);
+
+  // GEL2 — ambil riwayat versi dari server (GET /api/pakets/:id/dokumen/:docType/versi)
+  const muatVersi = async (pilihNomor?: number) => {
+    if (!paketId || !docTypeMode) return;
+    setLoadingVersi(true);
+    setErrorVersi(null);
+    try {
+      const res = await fetch(
+        `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/versi`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal memuat riwayat versi');
+      const daftar: VersiDokumen[] = data.versis ?? [];
+      setVersis(daftar);
+      setStatusDokumen(data.status ?? '');
+      const aktif: number = typeof data.versiAktif === 'number' ? data.versiAktif : 0;
+      setVersiAktifServer(aktif);
+      const tersedia = (n?: number | null) => n != null && daftar.some((v) => v.nomorVersi === n);
+      setNomorTerpilih(tersedia(pilihNomor) ? pilihNomor! : tersedia(aktif) ? aktif : (daftar[0]?.nomorVersi ?? null));
+    } catch (err) {
+      setErrorVersi(err instanceof Error ? err.message : 'Gagal memuat riwayat versi');
+    } finally {
+      setLoadingVersi(false);
+    }
+  };
+
+  // GEL2 — muat versi saat mount / berganti docType dalam mode paket
+  useEffect(() => {
+    if (!isPaketMode) return;
+    muatVersi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaketMode, paketId, docTypeMode]);
+
+  // GEL2 — versi yang sedang dilihat; konten yang dirender selalu dari sini, bukan prop document
+  const versiTerpilih: VersiDokumen | null =
+    nomorTerpilih != null ? (versis.find((v) => v.nomorVersi === nomorTerpilih) ?? null) : null;
+
+  // GEL2 — dokumen efektif: mode paket menimpa title/content dengan versi terpilih
+  // (metadata jenjang/tingkat/dst tetap dari prop agar kop & ekspor tetap utuh).
+  const document: EducationalDocument | null = !isPaketMode
+    ? documentProp
+    : (documentProp
+        ? { ...documentProp, title: versiTerpilih?.title ?? documentProp.title, content: versiTerpilih?.content ?? documentProp.content }
+        : versiTerpilih
+          ? {
+              id: `paket-${paketId}-${docTypeMode}`,
+              title: versiTerpilih.title,
+              docType: docTypeMode as DocType,
+              jenjang: currentUser.jenjang,
+              tingkat: '',
+              fase: '',
+              mataPelajaran: currentUser.mataPelajaran,
+              topik: '',
+              content: versiTerpilih.content,
+              createdAt: new Date().toISOString(),
+              authorId: currentUser.id,
+              authorName: currentUser.name,
+              schoolName: currentUser.schoolName
+            }
+          : null);
+
+  // GEL2 — jadikan versi terpilih sebagai versi aktif: POST /generate dengan
+  // {title, content} versi lama → tercatat sebagai versi BARU (riwayat tetap utuh).
+  const handleJadikanVersiAktif = async () => {
+    if (!paketId || !docTypeMode || !versiTerpilih || aksiVersi) return;
+    setAksiVersi(true);
+    try {
+      const res = await fetch(
+        `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/generate`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: versiTerpilih.title, content: versiTerpilih.content })
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menjadikan versi aktif');
+      const nomorBaru: number | undefined = data.versi?.nomorVersi ?? data.dokumen?.versiAktif;
+      setVersiAktifServer(typeof nomorBaru === 'number' ? nomorBaru : versiAktifServer);
+      showToast(`v${versiTerpilih.nomorVersi} disimpan sebagai versi aktif${nomorBaru != null ? ` (v${nomorBaru})` : ''}`, 'success');
+      await muatVersi(nomorBaru);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menjadikan versi aktif', 'error');
+    } finally {
+      setAksiVersi(false);
+    }
+  };
+
+  // GEL2 — tandai dokumen sebagai final (PATCH /final), perbarui badge status
+  const handleTandaiFinal = async () => {
+    if (!paketId || !docTypeMode || aksiVersi) return;
+    setAksiVersi(true);
+    try {
+      const res = await fetch(
+        `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/final`,
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' } }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menandai final');
+      setStatusDokumen(data.dokumen?.status ?? 'final');
+      showToast('Dokumen ditandai sebagai Final', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menandai final', 'error');
+    } finally {
+      setAksiVersi(false);
+    }
+  };
+
   const [activeView, setActiveView] = useState<'preview' | 'raw' | 'edit'>('preview');
   const [editableContent, setEditableContent] = useState<string>(document?.content || '');
   const [copied, setCopied] = useState<boolean>(false);
   const [justSaved, setJustSaved] = useState<boolean>(isSaved);
   const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  // UX: toast lokal untuk umpan balik salin / unduh / simpan
+  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' | 'info' } | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const showToast = (message: string, kind: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, kind });
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
+  };
+  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
 
   useEffect(() => {
     if (!document) return;
@@ -57,6 +198,15 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   }, [document?.id, document?.content, isSaved]);
 
   if (!document) {
+    // GEL2: mode paket masih memuat riwayat versi
+    if (isPaketMode && loadingVersi) {
+      return (
+        <div className="apple-card p-12 text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-[14.5px] text-[#6e6e73]">Memuat riwayat versi dokumen...</p>
+        </div>
+      );
+    }
     return (
       <div className="apple-card p-12 text-center">
         <div className="w-16 h-16 rounded-2xl bg-[#f5f5f7] flex items-center justify-center mx-auto mb-4">
@@ -68,15 +218,35 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <p className="text-[14.5px] text-[#6e6e73] max-w-md mx-auto mb-6">
           Pilih format, tentukan kelas dan materi, lalu susun dokumen untuk ditinjau dan diekspor.
         </p>
+        {/* UX: beri jalan keluar yang jelas — kembali ke generator untuk menyusun dokumen */}
+        {onBackToGenerator && (
+          <button onClick={onBackToGenerator} className="btn-apple">
+            <Sparkles className="w-4 h-4" />
+            Susun perangkat baru
+          </button>
+        )}
+        {/* GEL2: dalam mode paket, tombol tutup memanggil onTutup */}
+        {isPaketMode && paketMode?.onTutup && (
+          <button onClick={paketMode.onTutup} className="btn btn-ghost ml-2">
+            Tutup
+          </button>
+        )}
       </div>
     );
   }
 
+  // UX: beri tahu pengguna saat salin gagal (sebelumnya kegagalan terjadi diam-diam)
   const handleCopy = async () => {
-    const success = await copyToClipboard(editableContent);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+    try {
+      const success = await copyToClipboard(editableContent);
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } else {
+        showToast('Gagal menyalin teks. Coba lagi.', 'error');
+      }
+    } catch {
+      showToast('Gagal menyalin teks. Coba lagi.', 'error');
     }
   };
 
@@ -96,6 +266,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         mapel: document.mataPelajaran,
         nip: currentUser.nip
       });
+      // UX: konfirmasi keberhasilan unduh agar pengguna tidak menebak-nebak
+      showToast('File .docx berhasil diunduh', 'success');
     } catch (err) {
       console.error('Docx export failed, falling back to html doc:', err);
       downloadWordDocument(document.title, editableContent, {
@@ -106,6 +278,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         fase: document.fase,
         mapel: document.mataPelajaran
       });
+      // UX: beri tahu pengguna bahwa format cadangan yang diunduh (bukan .docx)
+      showToast('Format .docx gagal, mengunduh format cadangan (.doc)', 'info');
     } finally {
       setIsExportingDocx(false);
     }
@@ -123,23 +297,33 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       const success = await exportToPdf('printable-document-content', document.title);
       if (!success) {
         window.print();
+        // UX: jelaskan bahwa yang terbuka adalah dialog cetak browser
+        showToast('Membuka dialog cetak browser', 'info');
+      } else {
+        // UX: konfirmasi keberhasilan unduh
+        showToast('File .pdf berhasil diunduh', 'success');
       }
     } catch (err) {
       console.error('PDF export failed, opening print dialog:', err);
       window.print();
+      showToast('PDF gagal dibuat, membuka dialog cetak browser', 'error');
     } finally {
       setIsExportingPdf(false);
     }
   };
 
   const handleSave = () => {
-    if (onSaveToRepository) {
+    if (!onSaveToRepository) return;
+    try {
       onSaveToRepository({
         ...document,
         content: editableContent
       });
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 3000);
+    } catch {
+      // UX: jangan tampilkan "Tersimpan!" jika penyimpanan gagal
+      showToast('Gagal menyimpan ke arsip. Coba lagi.', 'error');
     }
   };
 
@@ -235,6 +419,78 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             </h1>
           </div>
         </div>
+
+        {/* GEL2: bilah versi — hanya dalam mode paket */}
+        {isPaketMode && (
+          <div className="flex items-center gap-2 flex-wrap no-print">
+            {/* Pemilih versi (dropdown DaisyUI, terbaru dulu, versi aktif ditandai) */}
+            <div className="dropdown">
+              <div tabIndex={0} role="button" className="btn btn-sm btn-outline gap-1" aria-label="Pilih versi dokumen">
+                {loadingVersi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
+                {nomorTerpilih != null ? `v${nomorTerpilih}` : 'Pilih versi'}
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
+              <ul
+                tabIndex={0}
+                className="dropdown-content menu bg-base-100 rounded-box z-20 w-72 p-2 shadow-lg border border-base-300 max-h-72 overflow-y-auto"
+              >
+                {versis.length === 0 && !loadingVersi && (
+                  <li><span className="text-sm opacity-60">Belum ada versi tersimpan</span></li>
+                )}
+                {versis.map((v) => (
+                  <li key={v.id}>
+                    <button
+                      onClick={() => setNomorTerpilih(v.nomorVersi)}
+                      className={`flex items-center gap-2 ${v.nomorVersi === nomorTerpilih ? 'active' : ''}`}
+                    >
+                      <span className="font-semibold shrink-0">v{v.nomorVersi}</span>
+                      <span className="flex-1 truncate text-xs opacity-70">{v.title}</span>
+                      {v.nomorVersi === versiAktifServer && (
+                        <span className="badge badge-primary badge-sm shrink-0">Aktif</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Badge status dokumen */}
+            {statusDokumen === 'final' ? (
+              <span className="badge badge-success gap-1"><Check className="w-3 h-3" /> Final</span>
+            ) : statusDokumen === 'draf' ? (
+              <span className="badge badge-warning">Draf</span>
+            ) : statusDokumen ? (
+              <span className="badge badge-ghost">{statusDokumen}</span>
+            ) : null}
+
+            {/* Aksi versi */}
+            <button
+              onClick={handleJadikanVersiAktif}
+              disabled={aksiVersi || !versiTerpilih || versiTerpilih.nomorVersi === versiAktifServer}
+              className="btn btn-sm btn-primary"
+              title="Simpan versi yang sedang dilihat sebagai versi aktif yang baru"
+            >
+              {aksiVersi && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Jadikan versi aktif
+            </button>
+            {statusDokumen !== 'final' && (
+              <button
+                onClick={handleTandaiFinal}
+                disabled={aksiVersi || versis.length === 0}
+                className="btn btn-sm btn-success"
+                title="Tandai dokumen ini sebagai final"
+              >
+                {aksiVersi && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Tandai Final
+              </button>
+            )}
+            {paketMode?.onTutup && (
+              <button onClick={paketMode.onTutup} className="btn btn-sm btn-ghost">
+                Tutup
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -343,6 +599,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
         </div>
       </div>
+
+      {/* GEL2: peringatan bila riwayat versi gagal dimuat (mode paket) */}
+      {isPaketMode && errorVersi && (
+        <div role="alert" className="alert alert-error no-print">
+          <XCircle className="w-5 h-5 shrink-0" />
+          <span className="text-sm flex-1">{errorVersi}</span>
+          <button onClick={() => muatVersi()} className="btn btn-sm btn-ghost">
+            Coba lagi
+          </button>
+        </div>
+      )}
 
       {/* Main Document Paper Display */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden print-container">
@@ -528,6 +795,30 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               )}
             </div>
           </div>
+        </div>
+      )}
+      {/* UX: toast lokal — umpan balik salin / unduh / simpan */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] no-print flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-2xl shadow-xl text-[13.5px] font-medium max-w-[calc(100vw-2rem)] bg-[#1c1c1e] text-white dark:bg-white dark:text-black"
+        >
+          {toast.kind === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#30d158]" />
+          ) : toast.kind === 'error' ? (
+            <XCircle className="w-4 h-4 shrink-0 text-[#ff9d97]" />
+          ) : (
+            <Info className="w-4 h-4 shrink-0" />
+          )}
+          <span className="truncate">{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            aria-label="Tutup notifikasi"
+            className="p-1.5 rounded-full hover:bg-white/10 dark:hover:bg-black/10 shrink-0 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
     </div>
