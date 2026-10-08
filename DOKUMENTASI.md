@@ -86,6 +86,49 @@ PerangkatAjar/
 
 Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa & susun → tinjau/edit → simpan/ekspor.
 
+### 4.1a Navigasi baru — Redesign Gelombang 1 (DaisyUI)
+
+Satuan kerja baru adalah **PAKET**: satu topik berisi 7 dokumen (modul_ajar, rpp, soal_ujian, lkpd, kktp_atp, prota_promes, modul_p5). Lifecycle tanpa reviewer: **Draf → Final**. Bahasa desain: DaisyUI (class semantik).
+
+| Target | Fungsi |
+|---|---|
+| `beranda` | Beranda (default setelah login): hero sapaan + "Buat Paket Baru", 3 paket terakhir, 5 dokumen terbaru, stats |
+| `paket` | Daftar Paket Saya: search, filter Aktif/Arsip, kartu progres, aksi Buka/Arsipkan/Duplikat/Hapus |
+| `perpustakaan` | Placeholder "Segera hadir — Gelombang 2" |
+| `guide` | Panduan regulasi (tetap) |
+
+Menu pengguna (avatar kanan atas): Profil, Statistik Saya, Admin, Keluar. View lama (7 generator, repository, viewer) tetap ada dan tidak diubah — diintegrasikan Gelombang 2.
+
+**Halaman Paket** (`PaketWorkspace`): header topik + chip konteks, pipeline 7 kartu dokumen (badge status belum/draf/final + versi), aksi Generate (simpan versi baru) / Buka / Tandai Final / Unduh, timeline aktivitas, tab Dokumen | Versi.
+
+### 4.2b API Paket (`http://localhost:3000`)
+
+| Method & Path | Fungsi | Catatan |
+|---|---|---|
+| `GET /api/pakets?status=aktif\|arsip` | Daftar paket milik user (+ progress) | admin: semua |
+| `POST /api/pakets` | Buat paket + 7 DokumenPaket `belum` | butuh verifikasi |
+| `GET /api/pakets/:id` | Detail + 7 dokumen | update `dibukaTerakhir` |
+| `PATCH /api/pakets/:id` | Ubah metadata paket | pemilik/admin |
+| `DELETE /api/pakets/:id` | Hapus paket + dokumen + versi | pemilik/admin |
+| `POST /api/pakets/:id/arsip` | `{arsip:boolean}` aktif/arsip | — |
+| `POST /api/pakets/:id/duplikat` | Duplikat bersih (dokumen `belum`) | butuh verifikasi |
+| `GET /api/pakets/:id/dokumen` | 7 DokumenPaket + info versi aktif | — |
+| `POST /api/pakets/:id/dokumen/:docType/generate` | Simpan versi baru → status `draf` | Wave 1: content jadi, tanpa AI |
+| `PATCH /api/pakets/:id/dokumen/:docType/final` | Tandai `final` | 400 bila belum ada versi |
+| `GET /api/pakets/:id/dokumen/:docType/versi` | Riwayat versi (desc) | — |
+| `GET /api/pakets/:id/bundle` | Unduh .docx gabungan versi aktif (draf/final) | GEL2: halaman judul + daftar isi + page break |
+| `POST /api/pakets/:id/publikasi` | `{publikasi:boolean}` toggle publikasi sekolah | GEL2: pemilik/admin |
+| `GET /api/perpustakaan` | Paket terpublikasi satu sekolah | GEL2: ringkas + pemilikNama + jumlahDokumen |
+
+**Migrasi otomatis:** saat server start, tiap `EducationalDocument` lama tanpa `paketId` dibungkus menjadi Paket `"Arsip — <judul>"` berisi 1 DokumenPaket `final` v1 (idempoten via `paketId`).
+
+### 4.2c Redesign Gelombang 2 — alur paket penuh
+
+- **Generator terhubung paket:** tombol Generate di kartu workspace membuka `GeneratorForm` dalam `paketMode` — konteks (topik, mapel, jenjang, fase, tingkat) terkunci sebagai chip, docType terkunci; submit → `POST /api/generate` (AI) → `POST .../dokumen/:docType/generate` (versi baru, status draf) → toast + kembali ke workspace.
+- **Viewer berversi:** `DocumentViewer` dengan `paketMode={paketId, docType}` menampilkan pemilih versi (badge v1/v2/v3), "Jadikan versi aktif" (duplikat konten jadi versi baru — riwayat utuh), "Tandai Final". Mode dokumen lepas tidak berubah.
+- **Bundle:** satu .docx berisi semua dokumen paket (versi aktif) — unduh dari tombol "Unduh Bundle" di workspace.
+- **Perpustakaan Sekolah:** view `Perpustakaan` — grid paket terpublikasi satu sekolah + "Duplikat ke Paket Saya". Publikasi di-toggle per paket (endpoint `/publikasi`); placeholder "Segera hadir" dihapus.
+
 ### 4.2 API (`http://localhost:3000`)
 
 | Method & Path | Fungsi | Catatan |
@@ -145,6 +188,7 @@ npm run dev
 - Toggle bulan/matahari di header; pilihan tersimpan (`rgm-theme`); anti-kedip via skrip `index.html`.
 - Kertas dokumen (`.doc-paper`): lebar 210mm, serif formal, kop + ornamen + pengesahan; cetak via `@page A4`.
 - Standar naskah dinas di `.docx`: Times New Roman 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
+- Sprint UI/UX (Okt 2026): validasi inline per field di form generator (pesan dekat field, `aria-invalid`), form terkunci + banner progres saat AI menyusun, ringkasan tinjau dengan tombol "Ubah" per seksi, empty state arsip yang ramah + dialog hapus bergaya aplikasi + toast sukses/gagal unduh/salin/simpan, drawer sidebar mobile aksesibel keyboard (Escape, `aria-modal`), `aria-label`/`aria-current` di navigasi, fokus `:focus-visible` global, transisi antar tab, dan pesan error login yang jelas dengan label terasosiasi.
 
 ---
 
