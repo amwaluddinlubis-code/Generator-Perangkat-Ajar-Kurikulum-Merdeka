@@ -352,7 +352,7 @@ let documents: EducationalDocument[] = [
     status: 'APPROVED',
     version: 1,
     content: `# MODUL AJAR KURIKULUM MERDEKA
-## Sesuai Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen (PPA) 2024
+## Sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen (PPA) 2024
 
 ---
 
@@ -373,7 +373,7 @@ let documents: EducationalDocument[] = [
 
 ---
 
-### II. PROFIL PELAJAR PANCASILA
+### II. PROFIL LULUSAN
 1. **Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia**: Menyadari kebesaran ciptaan Tuhan melalui keteraturan struktur tumbuhan bagi kelangsungan hidup bumi.
 2. **Bernalar Kritis**: Mengidentifikasi keterkaitan fungsi setiap organ tumbuhan terhadap fotosintesis dan daya hidup tanaman.
 3. **Bergotong Royong**: Berkolaborasi dalam kelompok kecil untuk mengamati spesimen dan menyajikan hasil pengamatan.
@@ -465,7 +465,7 @@ Tumbuhan adalah produsen utama kehidupan di bumi. Setiap bagian tubuh tumbuhan b
     status: 'APPROVED',
     version: 1,
     content: `# MODUL AJAR MATEMATIKA KURIKULUM MERDEKA
-## Sesuai Permendikbudristek No. 12 Tahun 2024 & PPA 2024
+## Sesuai Permendikdasmen No. 13 Tahun 2025 & PPA
 
 ### I. INFORMASI UMUM
 * **Nama Penyusun**: Amwaluddin Lubis, M.Pd.
@@ -541,7 +541,7 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
     jenjang: 'SMA',
     tingkat: 'Kelas 10',
     fase: 'Fase E',
-    mataPelajaran: 'Projek Penguatan Profil Pelajar Pancasila',
+    mataPelajaran: 'Projek Penguatan Profil Lulusan',
     topik: 'Ekonomi Sirkular dan Pengolahan Sampah Plastik',
     createdAt: '2026-02-28T14:20:00.000Z',
     authorId: 'user-admin-1',
@@ -552,7 +552,7 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
     durationMinutes: 4.2,
     status: 'APPROVED',
     version: 1,
-    content: `# MODUL PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)
+    content: `# MODUL PROJEK PENGUATAN PROFIL LULUSAN (P5)
 ## Tema: Gaya Hidup Berkelanjutan (BSKAP Kemendikbudristek 2024)
 
 * **Dimensi**: Beriman Bertakwa kepada Tuhan YME (Akhlak kepada Alam), Bernalar Kritis, Kreatif.
@@ -1407,11 +1407,12 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       alokasiWaktu,
       modelPembelajaran,
       targetPeserta,
-      dimensiP5,
+      dimensiProfilLulusan,
       soalConfig,
       catatanTambahan,
       classroomContext
     } = generatorValidation.value as Record<string, any>;
+    const dimensiProfilLulusanNorm = (dimensiProfilLulusan ?? (generatorValidation.value as Record<string, any>).dimensiP5) as string[] | undefined;
 
     const jenjang = requester.role === 'GURU'
       ? requester.jenjang
@@ -1428,7 +1429,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
     const promptCtx: PromptContext = {
       docType, jenjang, tingkat, fase: calculatedFase,
       mataPelajaran, topik, alokasiWaktu, modelPembelajaran, targetPeserta,
-      dimensiP5, authorName, schoolName, soalConfig, catatanTambahan
+      dimensiProfilLulusan: dimensiProfilLulusanNorm, authorName, schoolName, soalConfig, catatanTambahan
       , classroomContext
     };
     const fullPrompt = buildGeneratorPrompt(promptCtx);
@@ -1443,10 +1444,10 @@ app.post('/api/generate', async (req: Request, res: Response) => {
 
     // Generate with multi-model fallback & transient 503 resiliency
     const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-flash-latest',
-      'gemini-3.1-pro-preview'
+      'gemini-2.5-flash',
+      'gemini-2.5-flash-lite',
+      'gemini-3-flash-preview',
+      'gemini-2.5-pro'
     ];
 
     let generatedText = '';
@@ -1496,7 +1497,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
         alokasiWaktu,
         modelPembelajaran,
         targetPeserta,
-        dimensiP5,
+        dimensiProfilLulusan: dimensiProfilLulusanNorm,
         authorName,
         schoolName,
         soalConfig,
@@ -1594,7 +1595,7 @@ app.post('/api/regenerate-section', async (req: Request, res: Response) => {
 
     let sectionText = '';
     let lastError: any = null;
-    for (const m of ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.1-pro-preview']) {
+    for (const m of ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3-flash-preview', 'gemini-2.5-pro']) {
       try {
         const response = await ai.models.generateContent({ model: m, contents: prompt } as never);
         if ((response as any)?.text) {

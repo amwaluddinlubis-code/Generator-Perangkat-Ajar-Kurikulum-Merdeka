@@ -10,6 +10,8 @@ export interface PromptContext {
   alokasiWaktu?: string;
   modelPembelajaran?: string;
   targetPeserta?: string;
+  dimensiProfilLulusan?: string[];
+  /** Alias lama (deprecated): dipakai fallback bila dimensiProfilLulusan kosong. */
   dimensiP5?: string[];
   authorName?: string;
   schoolName?: string;

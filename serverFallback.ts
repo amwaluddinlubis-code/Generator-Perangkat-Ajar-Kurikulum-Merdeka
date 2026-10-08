@@ -19,7 +19,7 @@ export interface FallbackParams {
   alokasiWaktu?: string;
   modelPembelajaran?: string;
   targetPeserta?: string;
-  dimensiP5?: string[];
+  dimensiProfilLulusan?: string[];
   soalConfig?: {
     jumlahSoal?: number;
     bentukSoal?: string[];
@@ -46,14 +46,14 @@ export function generateFallbackDocument(params: FallbackParams): string {
     alokasiWaktu = '2 JP (2 x 40 Menit) - 1 Pertemuan',
     modelPembelajaran = 'Problem Based Learning (PBL)',
     targetPeserta = 'Peserta Didik Reguler / Tipikal dengan Diferensiasi Gaya Belajar',
-    dimensiP5 = ['Bernalar Kritis', 'Gotong Royong', 'Mandiri'],
+    dimensiProfilLulusan = ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian'],
     authorName = 'Bapak/Ibu Guru Mata Pelajaran',
     schoolName = 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'
   } = params;
 
-  const dimensiList = Array.isArray(dimensiP5) && dimensiP5.length
-    ? dimensiP5.join(', ')
-    : 'Bernalar Kritis, Gotong Royong, Mandiri';
+  const dimensiList = Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length
+    ? dimensiProfilLulusan.join(', ')
+    : 'Penalaran Kritis, Kolaborasi, Kemandirian';
 
   const cpRef = cpReference(mataPelajaran);
   const agamaNote = isAgamaMapel(mataPelajaran)
@@ -107,9 +107,9 @@ Ringkasan materi esensial **${topik}** (${mataPelajaran}, ${tingkat}): pahami ko
   const ppaBibliographyNumber = isAgamaMapel(mataPelajaran) ? 3 : 2;
 
   if (docType === 'modul_ajar') {
-    return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA 2024)
+    return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA)
 ## Satuan Pendidikan: ${schoolName}
-**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikbudristek No. 12 Tahun 2024 & ${cpRef}**
+**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikdasmen No. 13 Tahun 2025 & ${cpRef}**
 
 ---
 
@@ -464,7 +464,7 @@ Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${t
 | 91 – 100 | Melampaui ketuntasan | Pengayaan: proyek mini / soal HOTS lanjutan |` : ''
     ].filter(Boolean).join('\n\n');
     return `# ALUR TUJUAN PEMBELAJARAN (ATP) & KRITERIA KETERCAPAIAN (KKTP)
-## ${mataPelajaran} • ${tingkat} (${fase}) — PPA 2024
+## ${mataPelajaran} • ${tingkat} (${fase}) — PPA
 **Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
 
 ---
@@ -480,7 +480,7 @@ Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik 
 | 2 | Pendalaman **${topik}** | Peserta didik menganalisis keterkaitan konsep dengan fenomena nyata. | Melalui penyelidikan kelompok (**${modelPembelajaran}**), siswa mampu menganalisis persoalan kontekstual **${topik}**. | Pertemuan 3–5 (6 JP) | ${dimensiList} |
 | 3 | Penerapan & Kreasi | Peserta didik menyajikan solusi/karya berbasis pemahaman konsep. | Melalui proyek mini, siswa mampu menyajikan karya dan merefleksikan pemahaman **${topik}**. | Pertemuan 6–7 (4 JP) + Asesmen Sumatif (2 JP) | ${dimensiList} |
 
-### III. PENETAPAN KKTP — PENDEKATAN RESMI PPA 2024 (dipakai: ${pendekatan})
+### III. PENETAPAN KKTP — PENDEKATAN RESMI PPA (dipakai: ${pendekatan})
 
 ${pendekatanSections}
 
@@ -551,7 +551,7 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
   }
 
   if (docType === 'modul_p5') {
-    return `# MODUL PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)
+    return `# MODUL PROJEK PENGUATAN PROFIL LULUSAN (P5)
 ## Tema: ${temaP5} • Topik: ${topik}
 **Jenjang / Fase: ${jenjang} / ${fase} • Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
 
@@ -564,7 +564,7 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 * **Alokasi waktu**: ${alokasiWaktu} (dapat direntang beberapa pertemuan)
 * **Model fasilitasi**: ${modelPembelajaran}
 
-### II. DIMENSI, ELEMEN & SUBELEMEN PROFIL PELAJAR PANCASILA
+### II. DIMENSI, ELEMEN & SUBELEMEN PROFIL LULUSAN
 
 | Dimensi | Elemen yang Dikembangkan | Target Akhir Fase |
 | :--- | :--- | :--- |
@@ -622,7 +622,7 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 ---
 
 ### II. URAIAN CAPAIAN & TUJUAN PEMBELAJARAN
-Berdasarkan ${cpRef} dan PPA 2024, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.${agamaNote}
+Berdasarkan ${cpRef} dan PPA, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.${agamaNote}
 
 ### III. SINTAKS & AKTIVITAS PEMBELAJARAN
 1. **Kegiatan Awal**: Apersepsi, pengenalan tujuan, dan asesmen awal kesiapan siswa.

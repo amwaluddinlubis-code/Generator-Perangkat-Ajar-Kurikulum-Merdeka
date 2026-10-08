@@ -1,0 +1,9 @@
+node_modules
+dist
+data/db.json
+data/audit.log
+.env
+.git
+.gitignore
+*.log
+.DS_Store

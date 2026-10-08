@@ -8,7 +8,7 @@ import {
 } from '../types';
 import {
   JENJANG_CONFIGS,
-  DIMENSI_P5,
+  DIMENSI_PROFIL_LULUSAN,
   MODEL_PEMBELAJARAN_PER_JENJANG,
   TEMA_P5,
   BENTUK_SOAL_OPTIONS,
@@ -56,7 +56,9 @@ interface StoredGeneratorInputs {
   jumlahPertemuan: string;
   modelPembelajaran: string;
   targetPeserta: string;
-  dimensiP5: string[];
+  dimensiProfilLulusan: string[];
+  /** Alias lama untuk memuat simpanan sebelum rename. */
+  dimensiP5?: string[];
   teacherStory: string;
   studentProfile: string;
   learningNeeds: string;
@@ -112,7 +114,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setAlokasiJP('');
     setDurasiJP('');
     setJumlahPertemuan('');
-    setDimensiP5([]);
+    setDimensiProfilLulusan([]);
     setDimensiError(false);
     setLampiran([]);
     setFokusRpp('');
@@ -176,7 +178,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const modelHint = (modelSelectOptions.find(m => m.value === modelPembelajaran)?.label.split(' - ')[1])
     || 'Sintaks model dipakai menyusun kegiatan inti.';
   const [targetPeserta, setTargetPeserta] = useState<string>('Peserta didik reguler/tipikal dengan diferensiasi gaya belajar');
-  const [dimensiP5, setDimensiP5] = useState<string[]>([]);
+  const [dimensiProfilLulusan, setDimensiProfilLulusan] = useState<string[]>([]);
   const [dimensiError, setDimensiError] = useState<boolean>(false);
 
   // Konteks ini menjaga agar hasil tetap berakar pada pengalaman guru dan kelas nyata.
@@ -240,7 +242,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setJumlahPertemuan(saved.jumlahPertemuan);
     setModelPembelajaran(saved.modelPembelajaran);
     setTargetPeserta(saved.targetPeserta);
-    setDimensiP5(saved.dimensiP5);
+    setDimensiProfilLulusan(saved.dimensiProfilLulusan ?? (saved as any).dimensiP5 ?? []);
     setTeacherStory(saved.teacherStory);
     setStudentProfile(saved.studentProfile);
     setLearningNeeds(saved.learningNeeds);
@@ -331,14 +333,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   }, [isGenerating]);
 
   // Toggle P5 Dimensi
-  const toggleDimensi = (dim: string) => {
+  const toggleDimensiProfil = (dim: string) => {
     setDimensiError(false);
-    if (dimensiP5.includes(dim)) {
-      if (dimensiP5.length > 1) {
-        setDimensiP5(dimensiP5.filter(d => d !== dim));
+    if (dimensiProfilLulusan.includes(dim)) {
+      if (dimensiProfilLulusan.length > 1) {
+        setDimensiProfilLulusan(dimensiProfilLulusan.filter(d => d !== dim));
       }
     } else {
-      setDimensiP5([...dimensiP5, dim]);
+      setDimensiProfilLulusan([...dimensiProfilLulusan, dim]);
     }
   };
 
@@ -355,7 +357,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (dimensiP5.length === 0) {
+    if (dimensiProfilLulusan.length === 0) {
       setDimensiError(true);
       setFormStep(1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -379,7 +381,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
     const savedInputs: StoredGeneratorInputs = {
       jenjang, fase, tingkat, mataPelajaran, customMapel, topik: topik.trim(),
-      alokasiJP, durasiJP, jumlahPertemuan, modelPembelajaran, targetPeserta, dimensiP5,
+      alokasiJP, durasiJP, jumlahPertemuan, modelPembelajaran, targetPeserta, dimensiProfilLulusan,
       teacherStory: teacherStory.trim(), studentProfile: studentProfile.trim(), learningNeeds: learningNeeds.trim(),
       localContext: localContext.trim(), priorKnowledge: priorKnowledge.trim(), emotionalConsiderations: emotionalConsiderations.trim(),
       teacherIntent: teacherIntent.trim(), teacherVoice, temaP5, lampiran, fokusRpp, jumlahAktivitas,
@@ -403,7 +405,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       alokasiWaktu,
       modelPembelajaran,
       targetPeserta,
-      dimensiP5,
+      dimensiProfilLulusan,
       ...(docType === 'soal_ujian'
         ? {
             soalConfig: {
@@ -445,7 +447,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   };
 
   const handleNextStep = () => {
-    if (formStep === 1 && dimensiP5.length === 0) {
+    if (formStep === 1 && dimensiProfilLulusan.length === 0) {
       setDimensiError(true);
       document.getElementById('dimensi-label')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -837,28 +839,28 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
         </section>
 
-        {/* Dimensi Profil Pelajar Pancasila */}
-        <section aria-label="Dimensi Profil Pelajar Pancasila" className="mt-5">
+        {/* Dimensi Profil Lulusan */}
+        <section aria-label="Dimensi Profil Lulusan" className="mt-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[14px] font-semibold" id="dimensi-label">
-              Dimensi Profil Pelajar Pancasila
+              Dimensi Profil Lulusan
             </p>
             <span className="text-[12.5px] text-[#6e6e73]">
-              {dimensiP5.length} dipilih
+              {dimensiProfilLulusan.length} dipilih
             </span>
           </div>
           <p className="field-hint !mt-0 mb-2">Pilih 2–4 dimensi yang paling dikuatkan kegiatan ini.</p>
           {dimensiError && (
-            <p role="alert" className="field-error !mt-0 mb-2">Pilih minimal 1 dimensi Profil Pelajar Pancasila.</p>
+            <p role="alert" className="field-error !mt-0 mb-2">Pilih minimal 1 dimensi Profil Lulusan.</p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {DIMENSI_P5.map((dim) => {
-              const checked = dimensiP5.includes(dim);
+            {DIMENSI_PROFIL_LULUSAN.map((dim) => {
+              const checked = dimensiProfilLulusan.includes(dim);
               return (
                 <button
                   key={dim}
                   type="button"
-                  onClick={() => toggleDimensi(dim)}
+                  onClick={() => toggleDimensiProfil(dim)}
                   aria-pressed={checked}
                   className={`p-3 rounded-2xl text-left text-[13.5px] font-medium flex items-center justify-between transition-all cursor-pointer min-h-[48px] ${
                     checked

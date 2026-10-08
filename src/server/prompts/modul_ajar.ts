@@ -13,7 +13,7 @@ function lampiranLine(ctx: PromptContext): string {
 export const modulAjarSpec: PromptSpec = {
   docType: 'modul_ajar',
   render(ctx: PromptContext): string {
-    return `TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikbudristek No. 12 Tahun 2024** dan **Panduan Pembelajaran dan Asesmen (PPA) 2024**.
+    return `TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen (PPA)**.
 Modul ajar ini harus siap digunakan di kelas nyata, komprehensif, kaya akan diferensiasi pembelajaran, dan terstruktur rapi.
 
 PANDUAN GAYA PENULISAN (CRITICAL - WAJIB DIPATUHI):
@@ -26,7 +26,7 @@ STRUKTUR RESMI YANG WAJIB ADA:
 1. **INFORMASI UMUM**:
    - Identitas: Nama Guru (${ctx.authorName || 'Guru Mata Pelajaran'}), Satuan Pendidikan (${ctx.schoolName || 'Satuan Pendidikan'}), Jenjang (${ctx.jenjang}), Tingkat/Kelas (${ctx.tingkat}), ${ctx.fase}, Semester, Alokasi Waktu (${ctx.alokasiWaktu || '2 x 40 menit / 1 Pertemuan'}).
    - Kompetensi Awal / Prasyarat Belajar.
-   - Profil Lulusan (fokuskan pada dimensi: ${dimensiText(ctx.dimensiP5)}).
+    - Profil Lulusan (fokuskan pada dimensi: ${dimensiText(ctx.dimensiProfilLulusan ?? ctx.dimensiP5)}).
    - Sarana dan Prasarana (alat, media, teknologi kontekstual).
    - Target Peserta Didik (${ctx.targetPeserta || 'Reguler/tipikal, dengan diferensiasi kebutuhan belajar'}).
    - Model Pembelajaran: ${ctx.modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda Tatap Muka.

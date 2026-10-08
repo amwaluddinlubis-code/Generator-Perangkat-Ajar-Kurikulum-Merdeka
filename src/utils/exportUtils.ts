@@ -791,7 +791,7 @@ export function downloadWordDocument(
       <div class="kop-kementerian">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA</div>
       <div class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</div>
       <div class="kop-sekolah">${metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}</div>
-      <div class="kop-alamat">${metadata?.address ? metadata.address + ' • ' : ''}NPSN: ${metadata?.npsn || '............'}${metadata?.accreditation ? ' • Akreditasi ' + metadata.accreditation : ''} — Implementasi Kurikulum Merdeka Permendikbudristek No. 12 Tahun 2024</div>
+      <div class="kop-alamat">${metadata?.address ? metadata.address + ' • ' : ''}NPSN: ${metadata?.npsn || '............'}${metadata?.accreditation ? ' • Akreditasi ' + metadata.accreditation : ''} — Implementasi Kurikulum Merdeka Permendikdasmen No. 13 Tahun 2025</div>
     </div>
 
     ${htmlBody}

@@ -126,12 +126,13 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
     }
   }
 
-  if (input.dimensiP5 !== undefined && (
-    !Array.isArray(input.dimensiP5) ||
-    input.dimensiP5.length > 12 ||
-    input.dimensiP5.some(value => typeof value !== 'string' || value.length > 200)
+  const dimensi = (input.dimensiProfilLulusan ?? input.dimensiP5) as unknown;
+  if (dimensi !== undefined && (
+    !Array.isArray(dimensi) ||
+    (dimensi as unknown[]).length > 12 ||
+    (dimensi as unknown[]).some(value => typeof value !== 'string' || (value as string).length > 200)
   )) {
-    errors.push('Dimensi P5 tidak valid.');
+    errors.push('Dimensi Profil Lulusan tidak valid.');
   }
 
   if (input.soalConfig !== undefined && input.docType === 'soal_ujian') {
@@ -228,7 +229,7 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
     input.alokasiWaktu,
     input.modelPembelajaran,
     input.targetPeserta,
-    Array.isArray(input.dimensiP5) ? input.dimensiP5.join(',') : '',
+    Array.isArray(input.dimensiProfilLulusan) ? (input.dimensiProfilLulusan as string[]).join(',') : Array.isArray(input.dimensiP5) ? (input.dimensiP5 as string[]).join(',') : '',
     JSON.stringify(input.soalConfig || {}),
     JSON.stringify(input.catatanTambahan || {}),
     JSON.stringify(input.classroomContext || {})

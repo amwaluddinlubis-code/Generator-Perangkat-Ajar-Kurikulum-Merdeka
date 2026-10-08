@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { type: 'lkpd', label: 'LKPD', sub: 'Siap cetak', icon: <BookOpen className="h-[18px] w-[18px]" /> },
     { type: 'kktp_atp', label: 'ATP & KKTP', sub: 'Matriks', icon: <Target className="h-[18px] w-[18px]" /> },
     { type: 'prota_promes', label: 'Prota & Promes', sub: 'Tahunan', icon: <Calendar className="h-[18px] w-[18px]" /> },
-    { type: 'modul_p5', label: 'Modul P5', sub: 'Proyek', icon: <Sparkles className="h-[18px] w-[18px]" /> },
+    { type: 'modul_p5', label: 'Modul Projek', sub: 'Proyek', icon: <Sparkles className="h-[18px] w-[18px]" /> },
   ];
 
   const workspaceItems: { target: NavigationTarget; label: string; icon: React.ReactNode; count?: number }[] = [

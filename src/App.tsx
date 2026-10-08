@@ -707,7 +707,7 @@ export default function App() {
                       Landasan hukum kurikulum nasional
                     </h3>
                     <p className="!text-[13.5px] !text-[#424245]">
-                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Capaian Pembelajaran mengacu <b>BSKAP 046/H/KR/2025</b> (mencabut 032/H/KR/2024); khusus mapel Agama & Budi Pekerti memakai revisi <b>BKPDM 020 Tahun 2026</b>.
+                      Berdasarkan <b>Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Capaian Pembelajaran mengacu <b>BSKAP 046/H/KR/2025</b> (mencabut 032/H/KR/2024); khusus mapel Agama & Budi Pekerti memakai revisi <b>BKPDM 020 Tahun 2026</b>.
                     </p>
                   </div>
 

@@ -604,7 +604,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
             {/* Kop resmi — dari konfigurasi sekolah */}
             <div className="doc-kop print-kop">
-              <div className="kop-eyebrow">Kurikulum Merdeka • Permendikbudristek No. 12 Tahun 2024</div>
+              <div className="kop-eyebrow">Kurikulum Merdeka • Permendikdasmen No. 13 Tahun 2025</div>
               {kop.logoUrl ? (
                 <div className="flex items-center justify-center gap-4">
                   <img src={kop.logoUrl} alt="Logo sekolah" className="w-16 h-16 object-contain shrink-0" />

@@ -132,7 +132,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
                 <option value="lkpd">LKPD</option>
                 <option value="kktp_atp">ATP & KKTP</option>
                 <option value="prota_promes">Prota & Promes</option>
-                <option value="modul_p5">Modul P5</option>
+                <option value="modul_p5">Modul Projek</option>
               </select>
             </label>
 
