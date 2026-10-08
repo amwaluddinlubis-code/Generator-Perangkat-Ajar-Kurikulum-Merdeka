@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { generateFallbackDocument } from './serverFallback.js';
+// GEL2 — docx dipakai server-side untuk unduh bundle paket sebagai satu .docx.
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } from 'docx';
 import {
   hashPassword,
   verifyPassword,
@@ -77,6 +79,45 @@ interface EducationalDocument {
   schoolName: string;
   isPublic?: boolean;
   durationMinutes?: number;
+  /** REDESIGN — penanda hasil migrasi dokumen lama ke struktur paket. */
+  paketId?: string;
+}
+
+// REDESIGN — data layer paket perangkat ajar. Definisi lokal mengikuti pola
+// server.ts yang memang mendefinisikan tipe sendiri (bukan import dari src/types).
+interface Paket {
+  id: string;
+  topik: string;
+  mataPelajaran: string;
+  jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK';
+  fase: string;
+  tingkat: string;
+  pemilikId: string;
+  sekolahId?: string;
+  status: 'aktif' | 'arsip';
+  dibuatPada: string;
+  dibukaTerakhir: string;
+  /** GEL2 — tandai paket untuk ditampilkan di Perpustakaan Sekolah (publik internal satu sekolah). */
+  publikasiSekolah?: boolean;
+}
+
+interface DokumenPaket {
+  id: string;
+  paketId: string;
+  docType: 'modul_ajar' | 'rpp' | 'soal_ujian' | 'kktp_atp' | 'lkpd' | 'prota_promes' | 'modul_p5';
+  status: 'belum' | 'draf' | 'final';
+  versiAktif: number;
+  diperbaruiPada: string;
+}
+
+interface VersiDokumen {
+  id: string;
+  dokumenPaketId: string;
+  nomorVersi: number;
+  content: string;
+  title: string;
+  dibuatPada: string;
+  dibuatOleh: string;
 }
 
 // Initial mock data
@@ -405,13 +446,18 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
   }
 ];
 
+// REDESIGN — array in-memory paket & versi (di-persist bersama users/documents).
+let pakets: Paket[] = [];
+let dokumenPaket: DokumenPaket[] = [];
+let versiDokumen: VersiDokumen[] = [];
+
 // ---- Persistensi file JSON (data/db.json) ----
 const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
 
 function saveDBNow() {
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, sessions: getSessions() }, null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, sessions: getSessions() }, null, 2));
   } catch (err) {
     console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
   }
@@ -432,15 +478,73 @@ function loadDB() {
     const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
     if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
     if (Array.isArray(raw.documents)) documents = raw.documents;
+    if (Array.isArray(raw.pakets)) pakets = raw.pakets; // REDESIGN
+    if (Array.isArray(raw.dokumenPaket)) dokumenPaket = raw.dokumenPaket; // REDESIGN
+    if (Array.isArray(raw.versiDokumen)) versiDokumen = raw.versiDokumen; // REDESIGN
     if (Array.isArray(raw.sessions)) setSessions(raw.sessions);
     const pruned = pruneExpiredSessions();
     if (pruned > 0) console.log(`[Auth] ${pruned} session kedaluwarsa dibersihkan saat start`);
-    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents, ${getSessions().length} sessions from db.json`);
+    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents, ${pakets.length} pakets, ${dokumenPaket.length} dokumenPaket, ${versiDokumen.length} versiDokumen, ${getSessions().length} sessions from db.json`);
   } catch (err) {
     console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
   }
 }
 loadDB();
+
+// REDESIGN — migrasi otomatis satu-kali: tiap EducationalDocument lama yang belum
+// punya paket dibungkus menjadi Paket ("Arsip — <judul>") berisi 1 DokumenPaket
+// status 'final' + 1 VersiDokumen dari konten lama. Field doc.paketId menandai
+// dokumen yang sudah dimigrasi agar tidak dobel saat restart.
+function newRedesignId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+}
+
+function migrasiDokumenLama(): void {
+  let dimigrasi = 0;
+  for (const doc of documents) {
+    if (doc.paketId) continue;
+    const now = new Date().toISOString();
+    const paket: Paket = {
+      id: newRedesignId('paket'),
+      topik: `Arsip — ${doc.title}`,
+      mataPelajaran: doc.mataPelajaran,
+      jenjang: doc.jenjang,
+      fase: doc.fase,
+      tingkat: doc.tingkat,
+      pemilikId: doc.authorId,
+      status: 'aktif',
+      dibuatPada: now,
+      dibukaTerakhir: now
+    };
+    const dp: DokumenPaket = {
+      id: newRedesignId('dpaket'),
+      paketId: paket.id,
+      docType: doc.docType,
+      status: 'final',
+      versiAktif: 1,
+      diperbaruiPada: now
+    };
+    const versi: VersiDokumen = {
+      id: newRedesignId('versi'),
+      dokumenPaketId: dp.id,
+      nomorVersi: 1,
+      content: doc.content,
+      title: doc.title,
+      dibuatPada: now,
+      dibuatOleh: doc.authorName
+    };
+    pakets.push(paket);
+    dokumenPaket.push(dp);
+    versiDokumen.push(versi);
+    doc.paketId = paket.id;
+    dimigrasi++;
+  }
+  if (dimigrasi > 0) {
+    saveDBNow();
+    console.log(`[DB] Migrasi ${dimigrasi} dokumen lama menjadi paket`);
+  }
+}
+migrasiDokumenLama();
 
 // ---------------------------------------------------------------------------
 // KREDENSIAL DEMO — PENTING:
@@ -856,6 +960,454 @@ app.delete('/api/documents/:id', requireAuth, (req: Request, res: Response) => {
   saveDB();
   auditLog('document_delete', me.id, { docId: id, title: doc.title });
   res.json({ success: true, message: 'Dokumen berhasil dihapus dari arsip' });
+});
+
+// ---------------------------------------------------------------------------
+// 6b. REDESIGN — Paket perangkat ajar.
+// Satu Paket = satu topik, memuat 7 DokumenPaket (satu per DocType), masing-masing
+// menyimpan riwayat VersiDokumen. Semua rute requireAuth; pemilik hanya bisa
+// mengakses paket miliknya, ADMIN/SUPER_ADMIN boleh semua.
+
+function isPaketAdmin(role: string | undefined): boolean {
+  return role === 'ADMIN' || role === 'SUPER_ADMIN';
+}
+
+function aksesPaket(me: { id: string; role: string }, paket: Paket): boolean {
+  return isPaketAdmin(me.role) || paket.pemilikId === me.id;
+}
+
+/** Ringkasan progress 7 dokumen dalam satu paket. */
+function progressPaket(paketId: string): { totalDokumen: number; selesai: number } {
+  const list = dokumenPaket.filter(d => d.paketId === paketId);
+  const selesai = list.filter(d => d.status === 'draf' || d.status === 'final').length;
+  return { totalDokumen: 7, selesai };
+}
+
+function validDocTypePaket(value: unknown): value is DokumenPaket['docType'] {
+  return (DOC_TYPES as readonly string[]).includes(String(value));
+}
+
+// GET /api/pakets — daftar paket milik user login (admin: semua), filter ?status.
+app.get('/api/pakets', requireAuth, (req: Request, res: Response) => {
+  const me = req.user!;
+  const statusFilter = String(req.query.status || 'aktif');
+  let list = pakets.filter(p => isPaketAdmin(me.role) || p.pemilikId === me.id);
+  if (statusFilter === 'aktif' || statusFilter === 'arsip') {
+    list = list.filter(p => p.status === statusFilter);
+  }
+  list.sort((a, b) => b.dibukaTerakhir.localeCompare(a.dibukaTerakhir));
+  res.json({
+    success: true,
+    pakets: list.map(p => ({ ...p, progress: progressPaket(p.id) }))
+  });
+});
+
+// POST /api/pakets — buat paket baru + otomatis 7 DokumenPaket status 'belum'.
+app.post('/api/pakets', requireAuth, requireVerified, (req: Request, res: Response) => {
+  const { topik, mataPelajaran, jenjang, fase, tingkat, sekolahId } = (req.body || {}) as Record<string, unknown>;
+  const me = currentDbUser(req)!;
+
+  if (!topik || !String(topik).trim()) {
+    return res.status(400).json({ success: false, message: 'Topik paket wajib diisi' });
+  }
+  if (jenjang && !(JENJANGS as readonly string[]).includes(String(jenjang))) {
+    return res.status(400).json({ success: false, message: 'Jenjang tidak valid' });
+  }
+
+  const now = new Date().toISOString();
+  const paket: Paket = {
+    id: newRedesignId('paket'),
+    topik: String(topik).trim(),
+    mataPelajaran: String(mataPelajaran || me.mataPelajaran || ''),
+    jenjang: (jenjang ? String(jenjang) : me.jenjang) as Paket['jenjang'],
+    fase: String(fase || ''),
+    tingkat: String(tingkat || ''),
+    pemilikId: me.id,
+    sekolahId: sekolahId ? String(sekolahId) : undefined,
+    status: 'aktif',
+    dibuatPada: now,
+    dibukaTerakhir: now
+  };
+  pakets.push(paket);
+  for (const docType of DOC_TYPES) {
+    dokumenPaket.push({
+      id: newRedesignId('dpaket'),
+      paketId: paket.id,
+      docType,
+      status: 'belum',
+      versiAktif: 0,
+      diperbaruiPada: now
+    });
+  }
+  saveDB();
+  auditLog('paket_create', me.id, { paketId: paket.id, topik: paket.topik });
+  res.json({ success: true, message: 'Paket perangkat ajar berhasil dibuat', paket });
+});
+
+// Helper: ambil paket + cek kepemilikan, kirim 404/403 bila gagal.
+function paketAkses(req: Request, res: Response): Paket | null {
+  const me = req.user!;
+  const paket = pakets.find(p => p.id === req.params.id);
+  if (!paket) {
+    res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
+    return null;
+  }
+  if (!aksesPaket(me, paket)) {
+    res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'Anda hanya dapat mengakses paket milik sendiri.' }
+    });
+    return null;
+  }
+  return paket;
+}
+
+// GET /api/pakets/:id — detail + 7 DokumenPaket; update dibukaTerakhir.
+app.get('/api/pakets/:id', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  paket.dibukaTerakhir = new Date().toISOString();
+  saveDB();
+  const dokumen = dokumenPaket
+    .filter(d => d.paketId === paket.id)
+    .sort((a, b) => DOC_TYPES.indexOf(a.docType) - DOC_TYPES.indexOf(b.docType));
+  res.json({ success: true, paket, dokumen });
+});
+
+// PATCH /api/pakets/:id — ubah metadata paket.
+app.patch('/api/pakets/:id', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const { topik, mataPelajaran, jenjang, fase, tingkat, sekolahId } = (req.body || {}) as Record<string, unknown>;
+
+  if (jenjang !== undefined && jenjang !== '' && !(JENJANGS as readonly string[]).includes(String(jenjang))) {
+    return res.status(400).json({ success: false, message: 'Jenjang tidak valid' });
+  }
+  if (topik !== undefined) {
+    if (!String(topik).trim()) return res.status(400).json({ success: false, message: 'Topik tidak boleh kosong' });
+    paket.topik = String(topik).trim();
+  }
+  if (mataPelajaran !== undefined) paket.mataPelajaran = String(mataPelajaran);
+  if (jenjang !== undefined && jenjang !== '') paket.jenjang = String(jenjang) as Paket['jenjang'];
+  if (fase !== undefined) paket.fase = String(fase);
+  if (tingkat !== undefined) paket.tingkat = String(tingkat);
+  if (sekolahId !== undefined) paket.sekolahId = sekolahId ? String(sekolahId) : undefined;
+  paket.dibukaTerakhir = new Date().toISOString();
+  saveDB();
+  auditLog('paket_update', req.user!.id, { paketId: paket.id });
+  res.json({ success: true, message: 'Paket berhasil diperbarui', paket });
+});
+
+// DELETE /api/pakets/:id — hapus paket + dokumen + versinya.
+app.delete('/api/pakets/:id', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const dpIds = new Set(dokumenPaket.filter(d => d.paketId === paket.id).map(d => d.id));
+  versiDokumen = versiDokumen.filter(v => !dpIds.has(v.dokumenPaketId));
+  dokumenPaket = dokumenPaket.filter(d => d.paketId !== paket.id);
+  pakets = pakets.filter(p => p.id !== paket.id);
+  saveDB();
+  auditLog('paket_delete', req.user!.id, { paketId: paket.id, topik: paket.topik });
+  res.json({ success: true, message: 'Paket beserta seluruh dokumennya berhasil dihapus' });
+});
+
+// POST /api/pakets/:id/arsip — aktif <-> arsip.
+app.post('/api/pakets/:id/arsip', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const { arsip } = (req.body || {}) as { arsip?: boolean };
+  paket.status = arsip === true ? 'arsip' : 'aktif';
+  paket.dibukaTerakhir = new Date().toISOString();
+  saveDB();
+  auditLog('paket_arsip', req.user!.id, { paketId: paket.id, status: paket.status });
+  res.json({ success: true, message: paket.status === 'arsip' ? 'Paket diarsipkan' : 'Paket diaktifkan kembali', paket });
+});
+
+// POST /api/pakets/:id/duplikat — salin paket, dokumen mulai bersih (tanpa versi).
+app.post('/api/pakets/:id/duplikat', requireAuth, requireVerified, (req: Request, res: Response) => {
+  const sumber = paketAkses(req, res);
+  if (!sumber) return;
+  const me = req.user!;
+  const now = new Date().toISOString();
+  const paket: Paket = {
+    id: newRedesignId('paket'),
+    topik: `${sumber.topik} (salinan)`,
+    mataPelajaran: sumber.mataPelajaran,
+    jenjang: sumber.jenjang,
+    fase: sumber.fase,
+    tingkat: sumber.tingkat,
+    pemilikId: me.id,
+    sekolahId: sumber.sekolahId,
+    status: 'aktif',
+    dibuatPada: now,
+    dibukaTerakhir: now
+  };
+  pakets.push(paket);
+  for (const docType of DOC_TYPES) {
+    dokumenPaket.push({
+      id: newRedesignId('dpaket'),
+      paketId: paket.id,
+      docType,
+      status: 'belum',
+      versiAktif: 0,
+      diperbaruiPada: now
+    });
+  }
+  saveDB();
+  auditLog('paket_duplicate', me.id, { paketId: paket.id, dariPaketId: sumber.id });
+  res.json({ success: true, message: 'Paket berhasil diduplikasi', paket });
+});
+
+// GET /api/pakets/:id/dokumen — 7 DokumenPaket + info versi aktif.
+app.get('/api/pakets/:id/dokumen', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const dokumen = dokumenPaket
+    .filter(d => d.paketId === paket.id)
+    .sort((a, b) => DOC_TYPES.indexOf(a.docType) - DOC_TYPES.indexOf(b.docType))
+    .map(d => {
+      const versi = versiDokumen.find(v => v.dokumenPaketId === d.id && v.nomorVersi === d.versiAktif);
+      return { ...d, versiAktifTitle: versi ? versi.title : null, versiAktifPada: versi ? versi.dibuatPada : null };
+    });
+  res.json({ success: true, dokumen });
+});
+
+// POST /api/pakets/:id/dokumen/:docType/generate — simpan versi baru (Wave 1: content jadi, AI di gelombang 2).
+app.post('/api/pakets/:id/dokumen/:docType/generate', requireAuth, requireVerified, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const docType = String(req.params.docType);
+  if (!validDocTypePaket(docType)) {
+    return res.status(400).json({ success: false, message: 'Jenis dokumen tidak valid' });
+  }
+  const dp = dokumenPaket.find(d => d.paketId === paket.id && d.docType === docType);
+  if (!dp) {
+    return res.status(404).json({ success: false, message: 'Dokumen dalam paket tidak ditemukan' });
+  }
+  const { content, title } = (req.body || {}) as { content?: string; title?: string };
+  if (!content || !String(content).trim()) {
+    return res.status(400).json({ success: false, message: 'Konten dokumen wajib diisi' });
+  }
+  const now = new Date().toISOString();
+  const nomorVersi = dp.versiAktif + 1;
+  const versi: VersiDokumen = {
+    id: newRedesignId('versi'),
+    dokumenPaketId: dp.id,
+    nomorVersi,
+    content: String(content),
+    title: String(title || '').trim() || `${dp.docType} v${nomorVersi} — ${paket.topik}`,
+    dibuatPada: now,
+    dibuatOleh: currentDbUser(req)?.name || req.user!.id
+  };
+  versiDokumen.push(versi);
+  dp.versiAktif = nomorVersi;
+  dp.status = 'draf';
+  dp.diperbaruiPada = now;
+  paket.dibukaTerakhir = now;
+  saveDB();
+  auditLog('paket_doc_generate', req.user!.id, { paketId: paket.id, docType, nomorVersi });
+  res.json({ success: true, message: 'Versi dokumen berhasil disimpan', versi, dokumen: dp });
+});
+
+// PATCH /api/pakets/:id/dokumen/:docType/final — tandai dokumen sebagai final.
+app.patch('/api/pakets/:id/dokumen/:docType/final', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const docType = String(req.params.docType);
+  if (!validDocTypePaket(docType)) {
+    return res.status(400).json({ success: false, message: 'Jenis dokumen tidak valid' });
+  }
+  const dp = dokumenPaket.find(d => d.paketId === paket.id && d.docType === docType);
+  if (!dp) {
+    return res.status(404).json({ success: false, message: 'Dokumen dalam paket tidak ditemukan' });
+  }
+  if (dp.versiAktif < 1) {
+    return res.status(400).json({ success: false, message: 'Dokumen belum memiliki versi untuk difinalkan' });
+  }
+  dp.status = 'final';
+  dp.diperbaruiPada = new Date().toISOString();
+  saveDB();
+  auditLog('paket_doc_final', req.user!.id, { paketId: paket.id, docType });
+  res.json({ success: true, message: 'Dokumen ditandai sebagai final', dokumen: dp });
+});
+
+// GET /api/pakets/:id/dokumen/:docType/versi — riwayat versi (terbaru dulu).
+app.get('/api/pakets/:id/dokumen/:docType/versi', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const docType = String(req.params.docType);
+  if (!validDocTypePaket(docType)) {
+    return res.status(400).json({ success: false, message: 'Jenis dokumen tidak valid' });
+  }
+  const dp = dokumenPaket.find(d => d.paketId === paket.id && d.docType === docType);
+  if (!dp) {
+    return res.status(404).json({ success: false, message: 'Dokumen dalam paket tidak ditemukan' });
+  }
+  const daftar = versiDokumen
+    .filter(v => v.dokumenPaketId === dp.id)
+    .sort((a, b) => b.nomorVersi - a.nomorVersi);
+  res.json({ success: true, versiAktif: dp.versiAktif, status: dp.status, versis: daftar });
+});
+
+// GEL2 — label tampilan jenis dokumen untuk bundle & perpustakaan.
+const LABEL_DOC_PAKET: Record<DokumenPaket['docType'], string> = {
+  modul_ajar: 'Modul Ajar',
+  rpp: 'RPP',
+  soal_ujian: 'Bank Soal & Kisi-Kisi',
+  lkpd: 'LKPD',
+  kktp_atp: 'KKTP / ATP',
+  prota_promes: 'Prota & Promes',
+  modul_p5: 'Modul P5'
+};
+
+/** GEL2 — konversi markdown sederhana (konten dokumen paket adalah markdown, lihat /api/generate & template cadangan) menjadi paragraf docx. */
+function markdownKeParagraf(markdown: string): Paragraph[] {
+  const hasil: Paragraph[] = [];
+  const barisBold = (teks: string, ukuran: number, opsi?: { bold?: boolean; italics?: boolean }): TextRun[] => {
+    const runs: TextRun[] = [];
+    for (const potong of teks.split(/(\*\*[^*]+\*\*)/g)) {
+      if (!potong) continue;
+      const tebal = potong.startsWith('**') && potong.endsWith('**');
+      runs.push(new TextRun({
+        text: tebal ? potong.slice(2, -2) : potong,
+        bold: tebal || opsi?.bold,
+        italics: opsi?.italics,
+        size: ukuran,
+        font: 'Times New Roman'
+      }));
+    }
+    return runs.length > 0 ? runs : [new TextRun({ text: teks, size: ukuran, font: 'Times New Roman' })];
+  };
+  for (const mentah of String(markdown || '').split('\n')) {
+    const baris = mentah.trim();
+    if (!baris) continue;
+    if (baris.startsWith('### ')) {
+      hasil.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: barisBold(baris.slice(4), 24, { bold: true }) }));
+    } else if (baris.startsWith('## ')) {
+      hasil.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: barisBold(baris.slice(3), 28, { bold: true }) }));
+    } else if (baris.startsWith('# ')) {
+      hasil.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: barisBold(baris.slice(2), 32, { bold: true }) }));
+    } else if (baris.startsWith('- ') || baris.startsWith('* ')) {
+      hasil.push(new Paragraph({ bullet: { level: 0 }, children: barisBold(baris.slice(2), 24) }));
+    } else if (/^\d+\.\s/.test(baris)) {
+      hasil.push(new Paragraph({ children: barisBold(baris, 24) }));
+    } else {
+      hasil.push(new Paragraph({ children: barisBold(baris, 24) }));
+    }
+  }
+  return hasil;
+}
+
+// GEL2 — GET /api/pakets/:id/bundle — gabung semua dokumen paket (draf/final
+// dengan versi aktif) menjadi SATU file .docx: halaman judul, daftar isi
+// sederhana, lalu tiap dokumen diawali page break + heading.
+app.get('/api/pakets/:id/bundle', requireAuth, async (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const entri = dokumenPaket
+    .filter(d => d.paketId === paket.id && (d.status === 'draf' || d.status === 'final') && d.versiAktif > 0)
+    .sort((a, b) => DOC_TYPES.indexOf(a.docType) - DOC_TYPES.indexOf(b.docType));
+  const items: { doc: DokumenPaket; versi: VersiDokumen }[] = [];
+  for (const d of entri) {
+    const v = versiDokumen.find(x => x.dokumenPaketId === d.id && x.nomorVersi === d.versiAktif);
+    if (v) items.push({ doc: d, versi: v });
+  }
+  if (items.length === 0) {
+    return res.status(400).json({ success: false, message: 'Paket belum memiliki dokumen (draf/final) yang bisa dibundel' });
+  }
+
+  const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  const anak: Paragraph[] = [];
+  // Halaman judul
+  anak.push(
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: 'BUNDEL PERANGKAT AJAR', bold: true, size: 36, font: 'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: paket.topik, bold: true, size: 32, font: 'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: [paket.mataPelajaran, paket.jenjang, paket.tingkat, paket.fase].filter(Boolean).join(' • '), size: 24, font: 'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: `Dibuat: ${tanggal}`, italics: true, size: 22, font: 'Times New Roman' })] }),
+    // Daftar isi sederhana — tiap dokumen 1 baris
+    new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 120 }, children: [new TextRun({ text: 'Daftar Isi', bold: true, size: 28, font: 'Times New Roman' })] }),
+    ...items.map((it, i) => new Paragraph({
+      children: [new TextRun({ text: `${i + 1}. ${LABEL_DOC_PAKET[it.doc.docType]} — v${it.versi.nomorVersi} (${it.doc.status})`, size: 24, font: 'Times New Roman' })]
+    }))
+  );
+  // Isi dokumen, tiap dokumen diawali page break + heading
+  for (const it of items) {
+    anak.push(
+      new Paragraph({ children: [new PageBreak()] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 120 }, children: [new TextRun({ text: LABEL_DOC_PAKET[it.doc.docType], bold: true, size: 32, font: 'Times New Roman' })] }),
+      new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `${it.versi.title} — v${it.versi.nomorVersi}`, italics: true, size: 22, color: '555555', font: 'Times New Roman' })] }),
+      ...markdownKeParagraf(it.versi.content)
+    );
+  }
+  const doc = new Document({ sections: [{ children: anak }] });
+  try {
+    const buffer = await Packer.toBuffer(doc);
+    const bersih = paket.topik.replace(/[^\p{L}\p{N}\-_ ]/gu, '').trim().replace(/\s+/g, '_') || 'paket';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="bundle-${bersih}.docx"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('[Bundle] Gagal merakit .docx:', (err as Error).message);
+    res.status(500).json({ success: false, message: 'Gagal merakit berkas bundle' });
+  }
+});
+
+// GEL2 — POST /api/pakets/:id/publikasi — set flag publikasiSekolah (hanya pemilik/admin).
+app.post('/api/pakets/:id/publikasi', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const { publikasi } = (req.body || {}) as { publikasi?: unknown };
+  paket.publikasiSekolah = publikasi === true;
+  paket.dibukaTerakhir = new Date().toISOString();
+  saveDB();
+  auditLog('paket_publikasi', req.user!.id, { paketId: paket.id, publikasi: paket.publikasiSekolah });
+  res.json({
+    success: true,
+    message: paket.publikasiSekolah ? 'Paket dipublikasikan ke Perpustakaan Sekolah' : 'Publikasi paket dibatalkan',
+    paket
+  });
+});
+
+/** GEL2 — normalisasi kunci sekolah untuk perbandingan (teks bebas dari input user). */
+function normKunciSekolah(s: string | undefined): string {
+  return String(s || '').trim().toLowerCase();
+}
+
+// GEL2 — GET /api/perpustakaan — daftar paket terpublikasi milik SATU sekolah dengan requester.
+// Keputusan desain: TeacherUser tidak punya ID sekolah kanonik (hanya schoolName
+// teks bebas + npsn opsional), dan paket.sekolahId bersifat opsional serta belum
+// pernah diisi klien mana pun (per Gelombang 1). Maka penyaringan memakai
+// schoolName PEMILIK paket yang dinormalisasi (trim + lowercase) dibandingkan
+// dengan schoolName requester. Bila paket.sekolahId kelak terisi ID kanonik,
+// endpoint ini perlu dibandingkan dengan npsn/sekolahId requester.
+app.get('/api/perpustakaan', requireAuth, (req: Request, res: Response) => {
+  const me = currentDbUser(req);
+  const kunciSaya = normKunciSekolah(me?.schoolName);
+  const daftar = pakets
+    .filter(p => {
+      if (p.publikasiSekolah !== true) return false;
+      if (!kunciSaya) return false;
+      const pemilik = users.find(u => u.id === p.pemilikId);
+      return normKunciSekolah(pemilik?.schoolName) === kunciSaya;
+    })
+    .sort((a, b) => b.dibukaTerakhir.localeCompare(a.dibukaTerakhir))
+    .map(p => {
+      const pemilik = users.find(u => u.id === p.pemilikId);
+      const jumlahDokumen = dokumenPaket.filter(
+        d => d.paketId === p.id && (d.status === 'draf' || d.status === 'final') && d.versiAktif > 0
+      ).length;
+      return {
+        id: p.id,
+        topik: p.topik,
+        mataPelajaran: p.mataPelajaran,
+        jenjang: p.jenjang,
+        tingkat: p.tingkat,
+        pemilikNama: pemilik?.name || 'Guru',
+        jumlahDokumen,
+        diperbaruiPada: p.dibukaTerakhir
+      };
+    });
+  res.json({ success: true, perpustakaan: daftar });
 });
 
 // 7. AI Perangkat Ajar Generator — requireAuth + rate limit + validasi input.
