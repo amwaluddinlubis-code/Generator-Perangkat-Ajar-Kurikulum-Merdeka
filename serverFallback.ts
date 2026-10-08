@@ -14,7 +14,7 @@ export interface FallbackParams {
   alokasiWaktu?: string;
   modelPembelajaran?: string;
   targetPeserta?: string;
-  dimensiP5?: string[];
+  dimensiProfilLulusan?: string[];
   authorName?: string;
   schoolName?: string;
   catatanTambahan?: any;
@@ -31,19 +31,19 @@ export function generateFallbackDocument(params: FallbackParams): string {
     alokasiWaktu = '2 JP (2 x 40 Menit) - 1 Pertemuan',
     modelPembelajaran = 'Problem Based Learning (PBL)',
     targetPeserta = 'Peserta Didik Reguler / Tipikal dengan Diferensiasi Gaya Belajar',
-    dimensiP5 = ['Bernalar Kritis', 'Gotong Royong', 'Mandiri'],
+    dimensiProfilLulusan = ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian'],
     authorName = 'Bapak/Ibu Guru Mata Pelajaran',
     schoolName = 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'
   } = params;
 
-  const dimensiList = Array.isArray(dimensiP5) && dimensiP5.length 
-    ? dimensiP5.join(', ') 
+  const dimensiList = Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length 
+    ? dimensiProfilLulusan.join(', ') 
     : 'Bernalar Kritis, Gotong Royong, Mandiri';
 
   if (docType === 'modul_ajar') {
-    return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA 2024)
+    return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA)
 ## Satuan Pendidikan: ${schoolName}
-**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikbudristek No. 12 Tahun 2024 & BSKAP 032/H/KR/2024**
+**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikdasmen No. 13 Tahun 2025 & Keputusan Kepala BSKAP tentang Capaian Pembelajaran**
 
 ---
 
@@ -57,7 +57,7 @@ export function generateFallbackDocument(params: FallbackParams): string {
 * **Alokasi Waktu**: ${alokasiWaktu}
 * **Model Pembelajaran**: ${modelPembelajaran}
 * **Target Peserta Didik**: ${targetPeserta}
-* **Profil Pelajar Pancasila**: ${dimensiList}
+* **Profil Lulusan (8 Dimensi)**: ${dimensiList}
 * **Sarana & Prasarana**: Modul pegangan guru, LKPD terstruktur, media visual/video pembelajaran kontekstual, perangkat proyektor/papan tulis, dan benda konkret di lingkungan sekitar.
 
 ---
@@ -116,7 +116,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 
 #### 1. Jenis Asesmen
 * **Asesmen Awal (Diagnostik)**: Tanya jawab lisan di awal pembelajaran untuk memetakan kesiapan belajar.
-* **Asesmen Formatif**: Observasi keaktifan diskusi kelompok, lembar observasi Profil Pelajar Pancasila, dan penilaian kinerja LKPD.
+* **Asesmen Formatif**: Observasi keaktifan diskusi kelompok, lembar observasi Profil Lulusan, dan penilaian kinerja LKPD.
 * **Asesmen Sumatif**: Tes tertulis lingkup materi **${topik}** pada akhir bab/unit.
 
 #### 2. Tabel Rubrik Penilaian KKTP (4 Kategori Pencapaian)
@@ -351,7 +351,7 @@ Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
 
   if (docType === 'kktp_atp') {
     return `# ALUR TUJUAN PEMBELAJARAN (ATP) & KRITERIA KETERCAPAIAN (KKTP)
-## ${mataPelajaran} • ${tingkat} (${fase}) — PPA 2024
+## ${mataPelajaran} • ${tingkat} (${fase}) — PPA
 **Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
 
 ---
@@ -361,13 +361,13 @@ Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik 
 
 ### II. MATRIKS ALUR TUJUAN PEMBELAJARAN (ATP)
 
-| No | Elemen / Materi | Capaian Pembelajaran | Tujuan Pembelajaran (TP) | Alur & Alokasi (JP) | Profil Pelajar Pancasila |
+| No | Elemen / Materi | Capaian Pembelajaran | Tujuan Pembelajaran (TP) | Alur & Alokasi (JP) | Profil Lulusan (8 Dimensi) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | Pengenalan **${topik}** | Peserta didik memahami konsep dasar dan karakteristik utama materi. | Melalui pengamatan dan diskusi, siswa mampu mengidentifikasi konsep dasar **${topik}** dengan tepat. | Pertemuan 1–2 (4 JP) | ${dimensiList} |
 | 2 | Pendalaman **${topik}** | Peserta didik menganalisis keterkaitan konsep dengan fenomena nyata. | Melalui penyelidikan kelompok (**${modelPembelajaran}**), siswa mampu menganalisis persoalan kontekstual **${topik}**. | Pertemuan 3–5 (6 JP) | ${dimensiList} |
 | 3 | Penerapan & Kreasi | Peserta didik menyajikan solusi/karya berbasis pemahaman konsep. | Melalui proyek mini, siswa mampu menyajikan karya dan merefleksikan pemahaman **${topik}**. | Pertemuan 6–7 (4 JP) + Asesmen Sumatif (2 JP) | ${dimensiList} |
 
-### III. PENETAPAN KKTP — 3 PENDEKATAN RESMI PPA 2024
+### III. PENETAPAN KKTP — 3 PENDEKATAN RESMI PPA
 
 #### Pendekatan 1: Deskripsi Kriteria
 Peserta didik dinyatakan tuntas apabila mampu: (a) menjelaskan konsep inti **${topik}** tanpa miskonsepsi berarti; (b) menerapkan konsep dalam tugas/asesmen kontekstual; (c) menunjukkan partisipasi aktif dan tanggung jawab belajar.
@@ -510,12 +510,12 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 * **Fase / Kelas**: ${fase} / ${tingkat}
 * **Alokasi Waktu**: ${alokasiWaktu}
 * **Model Pembelajaran**: ${modelPembelajaran}
-* **Profil Pelajar Pancasila**: ${dimensiList}
+* **Profil Lulusan (8 Dimensi)**: ${dimensiList}
 
 ---
 
 ### II. URAIAN CAPAIAN & TUJUAN PEMBELAJARAN
-Berdasarkan Keputusan Kepala BSKAP No. 032/H/KR/2024 dan PPA 2024, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.
+Berdasarkan Keputusan Kepala BSKAP tentang Capaian Pembelajaran dan Panduan Pembelajaran dan Asesmen, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.
 
 ### III. SINTAKS & AKTIVITAS PEMBELAJARAN
 1. **Kegiatan Awal**: Apersepsi, pengenalan tujuan, dan asesmen awal kesiapan siswa.

@@ -7,7 +7,7 @@ import {
 } from '../types';
 import {
   JENJANG_CONFIGS,
-  DIMENSI_P5,
+  DIMENSI_PROFIL_LULUSAN,
   MODEL_PEMBELAJARAN,
   TEMA_P5,
   DOC_TYPE_INFO,
@@ -94,17 +94,17 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [alokasiWaktu, setAlokasiWaktu] = useState<string>(() => defaultAlokasi(currentUser.jenjang || 'SD'));
   const [modelPembelajaran, setModelPembelajaran] = useState<string>('Problem Based Learning (PBL)');
   const [targetPeserta, setTargetPeserta] = useState<string>('Peserta didik reguler/tipikal dengan diferensiasi gaya belajar');
-  const [dimensiP5, setDimensiP5] = useState<string[]>([
-    'Bernalar Kritis',
-    'Gotong Royong',
-    'Mandiri'
+  const [dimensiProfilLulusan, setDimensiProfilLulusan] = useState<string[]>([
+    'Penalaran Kritis',
+    'Kolaborasi',
+    'Kemandirian'
   ]);
   
   // Soal config
   const [jumlahSoal, setJumlahSoal] = useState<number>(15);
   const [levelKognitif, setLevelKognitif] = useState<string>('Kombinasi MOTS & HOTS (C3-C5)');
 
-  // P5 config
+  // Konfigurasi tema projek
   const [temaP5, setTemaP5] = useState<string>('Gaya Hidup Berkelanjutan');
 
   // Identitas kop
@@ -115,14 +115,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [formStep, setFormStep] = useState<number>(0);
 
-  // Toggle P5 Dimensi
-  const toggleDimensi = (dim: string) => {
-    if (dimensiP5.includes(dim)) {
-      if (dimensiP5.length > 1) {
-        setDimensiP5(dimensiP5.filter(d => d !== dim));
+  // Toggle dimensi Profil Lulusan
+  const toggleDimensiProfil = (dim: string) => {
+    if (dimensiProfilLulusan.includes(dim)) {
+      if (dimensiProfilLulusan.length > 1) {
+        setDimensiProfilLulusan(dimensiProfilLulusan.filter(d => d !== dim));
       }
     } else {
-      setDimensiP5([...dimensiP5, dim]);
+      setDimensiProfilLulusan([...dimensiProfilLulusan, dim]);
     }
   };
 
@@ -152,7 +152,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       alokasiWaktu,
       modelPembelajaran,
       targetPeserta,
-      dimensiP5,
+      dimensiProfilLulusan,
       soalConfig: {
         jumlahSoal,
         bentukSoal: ['Pilihan Ganda', 'Pilihan Ganda Kompleks (AKM)', 'Menjodohkan', 'Isian Singkat', 'Uraian HOTS'],
@@ -469,24 +469,24 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
         </div>
 
-        {/* 6. Dimensi Profil Pelajar Pancasila */}
+        {/* 6. Dimensi Profil Lulusan */}
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <label className="block text-[14px] font-semibold">
-              Dimensi Profil Pelajar Pancasila
+              Dimensi Profil Lulusan (8 Dimensi)
             </label>
             <span className="text-[12.5px] text-[#6e6e73]">
-              {dimensiP5.length} dipilih
+              {dimensiProfilLulusan.length} dipilih
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {DIMENSI_P5.map((dim) => {
-              const checked = dimensiP5.includes(dim);
+            {DIMENSI_PROFIL_LULUSAN.map((dim) => {
+              const checked = dimensiProfilLulusan.includes(dim);
               return (
                 <button
                   key={dim}
                   type="button"
-                  onClick={() => toggleDimensi(dim)}
+                  onClick={() => toggleDimensiProfil(dim)}
                   aria-pressed={checked}
                   className={`p-3 rounded-2xl text-left text-[13.5px] font-medium flex items-center justify-between transition-all cursor-pointer min-h-[48px] ${
                     checked
@@ -554,7 +554,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                   onChange={(e) => setLevelKognitif(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-xs sm:text-sm bg-white font-medium text-slate-800 focus:ring-2 focus:ring-amber-500"
                 >
-                  <option value="Kombinasi MOTS & HOTS (C3-C5)">Kombinasi MOTS & HOTS (C3-C5) - Rekomendasi PPA 2024</option>
+                  <option value="Kombinasi MOTS & HOTS (C3-C5)">Kombinasi MOTS & HOTS (C3-C5) - Rekomendasi PPA</option>
                   <option value="Dominan HOTS (C4-C6)">Dominan HOTS & AKM Penalaran Kritis Tinggi (C4-C6)</option>
                   <option value="Dasar ke Menengah (C1-C3)">Dasar ke Menengah (C1-C3) - Fase A / Diagnostik Awal</option>
                 </select>
@@ -579,10 +579,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 </div>
                 <div>
                   <h4 className="font-extrabold text-sm text-purple-950">
-                    Konfigurasi Modul Projek Penguatan Profil Pelajar Pancasila (P5)
+                    Konfigurasi Modul Projek Penguatan Profil Lulusan
                   </h4>
                   <p className="text-xs text-purple-800">
-                    Sesuai Panduan Pengembangan Projek Penguatan Profil Pelajar Pancasila BSKAP 2024
+                    Sesuai ketentuan projek kokurikuler Kemendikdasmen
                   </p>
                 </div>
               </div>
@@ -593,7 +593,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-purple-950 mb-1.5">
-                Pilih Tema Resmi Projek P5
+                Pilih Tema Resmi Projek
               </label>
               <select
                 value={temaP5}
@@ -802,7 +802,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                         onChange={(e) => setLevelKognitif(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white"
                       >
-                        <option value="Kombinasi MOTS & HOTS (C3-C5)">Kombinasi MOTS & HOTS (C3-C5) - Rekomendasi PPA 2024</option>
+                        <option value="Kombinasi MOTS & HOTS (C3-C5)">Kombinasi MOTS & HOTS (C3-C5) - Rekomendasi PPA</option>
                         <option value="Dominan HOTS (C4-C6)">Dominan HOTS & AKM Literasi/Numerasi Tinggi (C4-C6)</option>
                         <option value="Dasar ke Menengah (C1-C3)">Dasar ke Menengah (C1-C3) - Cocok Fase A / Asesmen Diagnostik</option>
                       </select>
@@ -811,12 +811,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 </div>
               )}
 
-              {/* Modul P5 Specific */}
+              {/* Modul Projek Specific */}
               {docType === 'modul_p5' && (
                 <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 space-y-2">
                   <div className="font-bold text-xs text-purple-900 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-purple-700" />
-                    Pilihan Tema Resmi Projek Penguatan Profil Pelajar Pancasila (Kemendikbud)
+                    Pilihan Tema Resmi Projek Kokurikuler (Kemendikdasmen)
                   </div>
                   <select
                     value={temaP5}
