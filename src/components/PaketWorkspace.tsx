@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DocType, GeneratorParams, Paket, TeacherUser } from '../types';
 import { GeneratorForm } from './GeneratorForm';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
+import { apiFetch } from '../utils/api';
 import {
   ArrowLeft,
   FileText,
@@ -57,6 +58,7 @@ export interface DokumenPaket {
 interface PaketWorkspaceProps {
   paketId: string;
   onKembali: () => void;
+  currentUser?: TeacherUser | null;
 }
 
 // REDESIGN: urutan pipeline 7 jenis dokumen sesuai kontrak DocType
@@ -104,7 +106,7 @@ interface ToastState {
   kind: 'success' | 'error' | 'info';
 }
 
-export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKembali }) => {
+export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKembali, currentUser }) => {
   // REDESIGN: state data paket + dokumen
   const [paket, setPaket] = useState<Paket | null>(null);
   const [dokumen, setDokumen] = useState<DokumenPaket[]>([]);
@@ -128,7 +130,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   // GEL2: loading unduh bundle .docx
   const [mengunduhBundle, setMengunduhBundle] = useState<boolean>(false);
   // GEL2: profil user & status generate untuk GeneratorForm (paketMode)
-  const [pengguna, setPengguna] = useState<TeacherUser | null>(null);
+  const [pengguna, setPengguna] = useState<TeacherUser | null>(currentUser || null);
   const [sedangGenerate, setSedangGenerate] = useState<boolean>(false);
 
   // REDESIGN: toast lokal mengikuti pola DocumentRepository
@@ -149,7 +151,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     setMemuat(true);
     setGalat(null);
     try {
-      const res = await fetch(`/api/pakets/${encodeURIComponent(paketId)}`);
+      const res = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}`);
       if (!res.ok) throw new Error(`Server menjawab ${res.status}`);
       const data = await res.json();
       const p: Paket = data.paket ?? data;
@@ -181,7 +183,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   const muatVersi = useCallback(
     async (docType: DocType): Promise<VersiDokumen[]> => {
       if (versiCache[docType]) return versiCache[docType];
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${docType}/versi`
       );
       if (!res.ok) throw new Error(`Gagal memuat versi (${res.status})`);
@@ -240,7 +242,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     setModal('generate');
     // GEL2: ambil profil user secara malas (lazy) untuk prop currentUser GeneratorForm.
     if (!pengguna) {
-      fetch('/api/users/current')
+      apiFetch('/api/users/current')
         .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
         .then((data) => {
           if (data?.user) setPengguna(data.user as TeacherUser);
@@ -259,7 +261,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     async (params: GeneratorParams): Promise<void> => {
       setSedangGenerate(true);
       try {
-        const res = await fetch('/api/generate', {
+        const res = await apiFetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(params),
@@ -290,7 +292,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         return next;
       });
       try {
-        const res = await fetch(`/api/pakets/${encodeURIComponent(paketId)}/dokumen`);
+        const res = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}/dokumen`);
         if (!res.ok) throw new Error(`Server menjawab ${res.status}`);
         const data = await res.json();
         const daftar: DokumenPaket[] = (data.dokumen ?? []).map(
@@ -333,7 +335,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   const tandaiFinal = async (docType: DocType) => {
     setAksiDoc(docType);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${docType}/final`,
         { method: 'PATCH' }
       );
@@ -385,7 +387,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     if (mengunduhBundle) return;
     setMengunduhBundle(true);
     try {
-      const res = await fetch(`/api/pakets/${encodeURIComponent(paketId)}/bundle`);
+      const res = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}/bundle`);
       if (!res.ok) {
         let pesan = `Server menjawab ${res.status}`;
         try {
@@ -422,7 +424,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     const akanDiarsipkan = paket.status !== 'arsip';
     setMenyimpan(true);
     try {
-      const res = await fetch(`/api/pakets/${encodeURIComponent(paketId)}/arsip`, {
+      const res = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}/arsip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ arsip: akanDiarsipkan }),

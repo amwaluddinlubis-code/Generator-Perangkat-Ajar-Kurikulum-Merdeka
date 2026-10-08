@@ -7,6 +7,7 @@ import {
   exportToPdf,
   copyToClipboard 
 } from '../utils/exportUtils';
+import { apiFetch } from '../utils/api';
 import { 
   Printer, 
   Download, 
@@ -73,7 +74,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setLoadingVersi(true);
     setErrorVersi(null);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/versi`
       );
       const data = await res.json();
@@ -133,7 +134,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     if (!paketId || !docTypeMode || !versiTerpilih || aksiVersi) return;
     setAksiVersi(true);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/generate`,
         {
           method: 'POST',
@@ -159,7 +160,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     if (!paketId || !docTypeMode || aksiVersi) return;
     setAksiVersi(true);
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketId)}/dokumen/${encodeURIComponent(docTypeMode)}/final`,
         { method: 'PATCH', headers: { 'Content-Type': 'application/json' } }
       );
@@ -352,7 +353,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setImgError('');
     setImgResult('');
     try {
-      const res = await fetch('/api/generate-image', {
+      const res = await apiFetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: imgPrompt.trim(), aspectRatio: imgRatio })

@@ -15,6 +15,7 @@ import {
 } from '../data/curriculumData';
 import { ContextualTopicSuggester } from './ContextualTopicSuggester';
 import { CurriculumTopicItem } from '../data/topicCatalog';
+import { apiFetch } from '../utils/api';
 import { 
   Sparkles, 
   FileText, 
@@ -273,7 +274,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     setSedangSimpan(true);
     try {
       // GEL2: langkah 1 — panggil AI, tiru body App.tsx handleGenerate.
-      const res = await fetch('/api/generate', {
+      const res = await apiFetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)
@@ -284,7 +285,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       }
 
       // GEL2: langkah 2 — simpan {title, content} sebagai versi baru.
-      const res2 = await fetch(
+      const res2 = await apiFetch(
         `/api/pakets/${encodeURIComponent(paketMode.paket.id)}/dokumen/${paketMode.docType}/generate`,
         {
           method: 'POST',

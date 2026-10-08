@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { TeacherUser, DocType, Paket, DokumenPaket, VersiDokumen } from '../types';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
+import { apiFetch } from '../utils/api';
 
 // GEL2: duplikasi tipe lokal (tech debt Gelombang 1) dihapus — pakai tipe
 // kanonik dari ../types. Respons API menyertakan kolom ringkasan opsional
@@ -89,20 +90,21 @@ export const Beranda: React.FC<BerandaProps> = ({
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/pakets?status=aktif');
+        const res = await apiFetch('/api/pakets?status=aktif');
         if (!res.ok) throw new Error('gagal memuat paket');
-        const data: PaketTampil[] = await res.json();
+        const data = await res.json();
         if (batal) return;
-        setPakets(Array.isArray(data) ? data : []);
+        const items: PaketTampil[] = Array.isArray(data) ? data : (data?.pakets ?? []);
+        setPakets(items);
 
-        const teratas = [...(Array.isArray(data) ? data : [])]
+        const teratas = [...items]
           .sort((a, b) => keTanggal(b.dibukaTerakhir) - keTanggal(a.dibukaTerakhir))
           .slice(0, 3);
 
         const terkumpul: DokumenPaketTampil[] = [];
         for (const p of teratas) {
           try {
-            const r = await fetch(`/api/pakets/${p.id}/dokumen`);
+            const r = await apiFetch(`/api/pakets/${p.id}/dokumen`);
             if (!r.ok) continue;
             const json = await r.json();
             const list: unknown = Array.isArray(json)

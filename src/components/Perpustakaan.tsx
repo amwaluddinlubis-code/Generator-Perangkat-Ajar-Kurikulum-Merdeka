@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Library, Copy, FileText, UserRound, RefreshCw } from 'lucide-react';
 import { TeacherUser } from '../types';
+import { apiFetch } from '../utils/api';
 
 // GEL2: mengikuti kontrak API GET /api/perpustakaan (Worker C).
 interface PaketPublik {
@@ -36,10 +37,10 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/perpustakaan');
+      const res = await apiFetch('/api/perpustakaan');
       if (!res.ok) throw new Error('gagal memuat perpustakaan');
       const data = await res.json();
-      const daftar = data?.pakets ?? data;
+      const daftar = data?.perpustakaan ?? data?.pakets ?? (Array.isArray(data) ? data : []);
       setPakets(Array.isArray(daftar) ? daftar : []);
     } catch {
       setPakets([]);
@@ -57,7 +58,7 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
   const handleDuplikat = async (p: PaketPublik) => {
     setDuplikatId(p.id);
     try {
-      const res = await fetch(`/api/pakets/${p.id}/duplikat`, {
+      const res = await apiFetch(`/api/pakets/${p.id}/duplikat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requesterId: _currentUser.id }),

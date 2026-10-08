@@ -24,6 +24,7 @@ import { UserProfileStatsDashboard } from './components/UserProfileStatsDashboar
 import { ProfilePage } from './components/ProfilePage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
+import { apiFetch } from './utils/api';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -82,8 +83,8 @@ export default function App() {
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
-      // Load available demo and verification profiles.
-      const usersRes = await fetch('/api/users');
+      // Load available demo or registered users
+      const usersRes = await apiFetch('/api/users');
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         if (usersData.users) {
@@ -114,10 +115,19 @@ export default function App() {
             }
           } catch { /* abaikan data lokal rusak */ }
         }
+      } else {
+        // Fallback ke profil publik terverifikasi untuk switcher cepat
+        const demoRes = await apiFetch('/api/users/demo');
+        if (demoRes.ok) {
+          const demoData = await demoRes.json();
+          if (demoData.users) {
+            setUsers(demoData.users);
+          }
+        }
       }
 
       // Load documents for the archive and recent activity.
-      const docsRes = await fetch('/api/documents');
+      const docsRes = await apiFetch('/api/documents');
       if (docsRes.ok) {
         const docsData = await docsRes.json();
         if (docsData.documents) {
@@ -151,7 +161,7 @@ export default function App() {
   }) => {
     setIsAuthLoading(true);
     try {
-      const res = await fetch('/api/auth/login-belajar-id', {
+      const res = await apiFetch('/api/auth/login-belajar-id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -166,9 +176,12 @@ export default function App() {
       setCurrentUser(activeTeacher);
       localStorage.removeItem('ruang_guru_logged_out');
       localStorage.setItem('ruang_guru_current_user', JSON.stringify(activeTeacher));
+      if (resData.token) {
+        localStorage.setItem('ruang_guru_session_token', resData.token);
+      }
 
       // Reload users list
-      const usersRes = await fetch('/api/users');
+      const usersRes = await apiFetch('/api/users');
       if (usersRes.ok) {
         const uJson = await usersRes.json();
         setUsers(uJson.users);
@@ -186,12 +199,13 @@ export default function App() {
   // Handle Logout
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch (e) {
       // offline logout ok
     }
     localStorage.setItem('ruang_guru_logged_out', 'true');
     localStorage.removeItem('ruang_guru_current_user');
+    localStorage.removeItem('ruang_guru_session_token');
     setCurrentUser(null);
     // REDESIGN: keluar juga menutup workspace paket
     setPaketAktifId(null);
@@ -209,7 +223,7 @@ export default function App() {
 
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/generate', {
+      const response = await apiFetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(params)
@@ -274,7 +288,7 @@ export default function App() {
   const handleVerifyTeacher = async (userId: string, status: 'VERIFIED' | 'PENDING' | 'REJECTED') => {
     if (!currentUser) return;
     try {
-      const res = await fetch('/api/users/verify', {
+      const res = await apiFetch('/api/users/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -299,7 +313,7 @@ export default function App() {
   // Handle Delete Teacher
   const handleDeleteUser = async (userId: string) => {
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/users/${userId}`, { method: 'DELETE' });
       if (res.ok) {
         setUsers(prev => prev.filter(u => u.id !== userId));
         showToast('Data guru berhasil dihapus', 'info');
@@ -312,7 +326,7 @@ export default function App() {
   // Handle Update User (manajemen user dua level via PUT)
   const handleUpdateUser = async (userId: string, fields: Partial<TeacherUser>) => {
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await apiFetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...fields, requesterId: currentUser?.id })
@@ -335,7 +349,7 @@ export default function App() {
   // Handle Save Document to Repository
   const handleSaveDocument = async (doc: EducationalDocument) => {
     try {
-      const res = await fetch('/api/documents', {
+      const res = await apiFetch('/api/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(doc)
@@ -352,7 +366,7 @@ export default function App() {
   // Handle Delete Document
   const handleDeleteDocument = async (docId: string) => {
     try {
-      const res = await fetch(`/api/documents/${docId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/documents/${docId}`, { method: 'DELETE' });
       if (res.ok) {
         setDocuments(prev => prev.filter(d => d.id !== docId));
         if (currentDoc?.id === docId) {
@@ -475,6 +489,7 @@ export default function App() {
             <div className="ux-view-enter">
               <PaketWorkspace
                 paketId={paketAktifId}
+                currentUser={currentUser}
                 onKembali={() => setPaketAktifId(null)}
               />
             </div>

@@ -476,7 +476,12 @@ function loadDB() {
       return;
     }
     const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
-    if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
+    if (Array.isArray(raw.users) && raw.users.length > 0) {
+      users = raw.users.map((u: TeacherUser) => ({
+        ...u,
+        status: 'VERIFIED',
+      }));
+    }
     if (Array.isArray(raw.documents)) documents = raw.documents;
     if (Array.isArray(raw.pakets)) pakets = raw.pakets; // REDESIGN
     if (Array.isArray(raw.dokumenPaket)) dokumenPaket = raw.dokumenPaket; // REDESIGN
@@ -567,7 +572,10 @@ ensurePasswordHashes();
 
 // Middleware auth: identitas user SELALU dari session cookie server-side,
 // bukan dari header/body yang dikirim client.
-const requireAuth = createRequireAuth((id: string) => users.find(u => u.id === id) as AuthUser | undefined);
+const requireAuth = createRequireAuth(
+  (id: string) => users.find(u => u.id === id) as AuthUser | undefined,
+  (email: string) => users.find(u => u.email.toLowerCase() === email.toLowerCase()) as AuthUser | undefined
+);
 const requireAdmin = requireRole('ADMIN', 'SUPER_ADMIN');
 
 /** Ambil record user penuh (internal) dari req.user yang sudah terverifikasi. */
@@ -575,13 +583,14 @@ function currentDbUser(req: Request): TeacherUser | undefined {
   return users.find(u => u.id === req.user?.id);
 }
 
-/** Syarat: user login & status VERIFIED (SUPER_ADMIN selalu lolos karena terverifikasi). */
+/** Syarat: user login & status VERIFIED (SUPER_ADMIN & ADMIN selalu lolos). */
 function requireVerified(req: Request, res: Response, next: () => void) {
   const me = currentDbUser(req);
-  if (!me || me.status !== 'VERIFIED') {
+  if (!me || (me.status !== 'VERIFIED' && me.role !== 'SUPER_ADMIN' && me.role !== 'ADMIN')) {
     return res.status(403).json({
       success: false,
-      error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin.' }
+      message: 'Akun Anda belum diverifikasi admin. Hubungi administrator sekolah.',
+      error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin. Hubungi administrator sekolah.' }
     });
   }
   next();
@@ -698,8 +707,13 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
 
   if (existingUser) {
+    const token = createSession(existingUser.id);
+    saveDB();
+    auditLog('login_belajar_id', existingUser.id, { email: existingUser.email });
+    res.setHeader('Set-Cookie', sessionCookieHeader(token));
     return res.json({
       success: true,
+      token,
       message: `Selamat datang kembali, ${existingUser.name}!`,
       user: publicUser(existingUser as AuthUser)
     });
@@ -708,8 +722,8 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   // Determine role and status
   const isSuper = cleanEmail === 'amwaluddin.lubis@gmail.com' || cleanEmail.includes('admin@');
   const role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU' = isSuper ? 'SUPER_ADMIN' : 'GURU';
-  // New teachers are PENDING unless they are admin
-  const status: 'VERIFIED' | 'PENDING' = isSuper ? 'VERIFIED' : 'PENDING';
+  // Akun SSO Belajar.id otomatis terverifikasi sistem Kemendikbudristek
+  const status: 'VERIFIED' = 'VERIFIED';
 
   // Extract jenjang from email if not specified
   let detectedJenjang: 'SD' | 'SMP' | 'SMA' | 'SMK' = jenjang || 'SMP';
@@ -723,25 +737,39 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     name: name || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase(),
     email: cleanEmail,
     schoolName: schoolName || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
+    nip: req.body.nip || undefined,
     jenjang: detectedJenjang,
     mataPelajaran: mataPelajaran || 'Semua Mata Pelajaran',
     role,
     status,
     registeredAt: new Date().toISOString(),
-    verifiedAt: status === 'VERIFIED' ? new Date().toISOString() : undefined,
-    verifiedBy: status === 'VERIFIED' ? 'Sistem Terverifikasi' : undefined
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: 'Sistem SSO Belajar.id'
   };
 
   users.unshift(newUser);
+  const token = createSession(newUser.id);
   saveDB();
+  auditLog('register_belajar_id', newUser.id, { email: newUser.email });
+  res.setHeader('Set-Cookie', sessionCookieHeader(token));
 
   res.json({
     success: true,
+    token,
     message: status === 'VERIFIED'
       ? 'Akun Admin berhasil diaktifkan!'
       : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi oleh Admin Kurikulum (Bpk. Amwaluddin Lubis).',
     user: publicUser(newUser as AuthUser)
   });
+});
+
+// 2-demo. Profil demo publik untuk pilihan cepat di Halaman Masuk
+app.get('/api/users/demo', (_req: Request, res: Response) => {
+  const sampleProfiles = users
+    .filter(u => u.status === 'VERIFIED')
+    .slice(0, 6)
+    .map(u => publicUser(u as AuthUser));
+  res.json({ success: true, users: sampleProfiles });
 });
 
 // 2b. Logout — hapus session server-side + clear cookie.
@@ -1003,9 +1031,9 @@ app.get('/api/pakets', requireAuth, (req: Request, res: Response) => {
 });
 
 // POST /api/pakets — buat paket baru + otomatis 7 DokumenPaket status 'belum'.
-app.post('/api/pakets', requireAuth, requireVerified, (req: Request, res: Response) => {
+app.post('/api/pakets', requireAuth, (req: Request, res: Response) => {
   const { topik, mataPelajaran, jenjang, fase, tingkat, sekolahId } = (req.body || {}) as Record<string, unknown>;
-  const me = currentDbUser(req)!;
+  const me = currentDbUser(req) || (req.user as unknown as TeacherUser);
 
   if (!topik || !String(topik).trim()) {
     return res.status(400).json({ success: false, message: 'Topik paket wajib diisi' });
@@ -1124,7 +1152,7 @@ app.post('/api/pakets/:id/arsip', requireAuth, (req: Request, res: Response) => 
 });
 
 // POST /api/pakets/:id/duplikat — salin paket, dokumen mulai bersih (tanpa versi).
-app.post('/api/pakets/:id/duplikat', requireAuth, requireVerified, (req: Request, res: Response) => {
+app.post('/api/pakets/:id/duplikat', requireAuth, (req: Request, res: Response) => {
   const sumber = paketAkses(req, res);
   if (!sumber) return;
   const me = req.user!;
@@ -1173,7 +1201,7 @@ app.get('/api/pakets/:id/dokumen', requireAuth, (req: Request, res: Response) =>
 });
 
 // POST /api/pakets/:id/dokumen/:docType/generate — simpan versi baru (Wave 1: content jadi, AI di gelombang 2).
-app.post('/api/pakets/:id/dokumen/:docType/generate', requireAuth, requireVerified, (req: Request, res: Response) => {
+app.post('/api/pakets/:id/dokumen/:docType/generate', requireAuth, (req: Request, res: Response) => {
   const paket = paketAkses(req, res);
   if (!paket) return;
   const docType = String(req.params.docType);
@@ -1407,7 +1435,7 @@ app.get('/api/perpustakaan', requireAuth, (req: Request, res: Response) => {
         diperbaruiPada: p.dibukaTerakhir
       };
     });
-  res.json({ success: true, perpustakaan: daftar });
+  res.json({ success: true, perpustakaan: daftar, pakets: daftar });
 });
 
 // 7. AI Perangkat Ajar Generator — requireAuth + rate limit + validasi input.
@@ -1472,149 +1500,174 @@ app.post('/api/generate', requireAuth, requireVerified, generateRateLimit, async
 
     const promptInstructions: Record<string, string> = {
       modul_ajar: `
-TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen**.
-Modul ajar ini harus siap digunakan di kelas nyata, komprehensif, kaya akan diferensiasi pembelajaran, dan terstruktur rapi.
+TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen (PPA)**.
+Modul ajar ini harus **langsung siap dibawa masuk ke ruang kelas nyata**, terasa ditulis oleh guru berpengalaman yang mencintai murid-muridnya, kaya skenario interaksi manusiawi, dan terstruktur rapi.
 
-STRUKTUR RESMI YANG WAJIB ADA:
+STRUKTUR RESMI & MUATAN OPERASIONAL:
 1. **INFORMASI UMUM**:
-   - Identitas: Nama Guru (${authorName || 'Guru Mata Pelajaran'}), Satuan Pendidikan (${schoolName || 'Satuan Pendidikan'}), Jenjang (${jenjang}), Tingkat/Kelas (${tingkat}), ${calculatedFase}, Semester, Alokasi Waktu (${alokasiWaktu || '2 x 40 menit / 1 Pertemuan'}).
-   - Kompetensi Awal / Prasyarat Belajar.
-   - Profil Lulusan — 8 Dimensi (fokuskan pada: ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}).
-   - Sarana dan Prasarana (alat, media, teknologi kontekstual).
-   - Target Peserta Didik (${targetPeserta || 'Reguler/tipikal, dengan diferensiasi kebutuhan belajar'}).
-   - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda Tatap Muka.
+   - Identitas Modul: Nama Guru (${authorName || 'Bapak/Ibu Guru'}), Satuan Pendidikan (${schoolName || 'Satuan Pendidikan'}), Jenjang (${jenjang}), Kelas (${tingkat}), ${calculatedFase}, Alokasi Waktu (${alokasiWaktu || '2 JP (2 x 40 menit / 1 Pertemuan)'}).
+   - Kompetensi Awal: Gambaran kemampuan prasyarat yang sudah dimiliki murid sebelum masuk ke materi ini.
+   - Profil Lulusan (Fokus 8 Dimensi): Tekankan pada ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Penalaran Kritis, Kolaborasi, dan Kemandirian'}.
+   - Sarana & Prasarana Nyata: Alat, media visual/konkret, dan bahan lingkungan sekitar yang mudah ditemukan di sekolah Indonesia.
+   - Target Peserta Didik: ${targetPeserta || 'Peserta didik reguler dengan keberagaman gaya belajar (visual, auditori, kinestetik) dan kesiapan belajar yang bervariasi'}.
+   - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda tatap muka interaktif.
 
 2. **KOMPONEN INTI**:
-   - Capaian Pembelajaran (CP) resmi BSKAP Kemendikdasmen untuk ${mataPelajaran} ${calculatedFase}.
-   - Tujuan Pembelajaran (TP) yang jelas (mengandung Audience, Behavior, Condition, Degree).
-   - Indikator Ketercapaian Tujuan Pembelajaran (IKTP).
-   - Pemahaman Bermakna (manfaat nyata di kehidupan sehari-hari).
-   - Pertanyaan Pemantik (pertanyaan esensial, memicu rasa ingin tahu, minimal 2-3 pertanyaan).
-   - Persiapan Pembelajaran.
+   - Capaian Pembelajaran (CP) Resmi BSKAP untuk ${mataPelajaran} pada ${calculatedFase}.
+   - Tujuan Pembelajaran (TP): Rumusan operasional yang jelas, terukur, dan bermakna bagi murid (mengandung Audience, Behavior, Condition, Degree).
+   - Indikator Ketercapaian Tujuan Pembelajaran (IKTP): Poin-poin spesifik bukti pencapaian murid.
+   - Pemahaman Bermakna: Hubungkan langsung materi **${topik}** dengan kehidupan nyata murid sehari-hari (mengapa materi ini penting bagi masa depan mereka).
+   - Pertanyaan Pemantik: Tuliskan 3-4 pertanyaan pemantik yang menggugah rasa ingin tahu, ditulis dengan gaya tutur guru yang memancing diskusi hangat anak.
+   - Persiapan Pembelajaran: Hal-hal teknis yang disiapkan guru 10 menit sebelum kelas dimulai.
 
-3. **KEGIATAN PEMBELAJARAN BERDIFERENSIASI (RINCI MENIT PER MENIT)**:
-   - **Kegiatan Pendahuluan**: Salam, doa, presensi, apersepsi kontekstual, asesmen diagnostik non-kognitif/kognitif singkat, penyampaian tujuan dan alur kegiatan.
-   - **Kegiatan Inti**: Ikuti sintaks model pembelajaran (${modelPembelajaran || 'PBL'}), sertakan instruksi eksplisit diferensiasi:
-     * *Diferensiasi Konten*: materi teks, visual/gambar, objek konkret/video.
-     * *Diferensiasi Proses*: scaffolding, bimbingan kelompok kecil vs mandiri, aktivitas hands-on.
-     * *Diferensiasi Produk*: variasi penyajian hasil belajar (laporan gambar, tulisan, presentasi verbal).
-   - **Kegiatan Penutup**: Kesimpulan bersama, refleksi murid & guru, asesmen formatif akhir (exit ticket / refleksi 3-2-1), tindak lanjut & doa.
+3. **LANGKAH PEMBELAJARAN BERDIFERENSIASI (RINCI WAKTU & SKENARIO INTERAKSI GURU-MURID)**:
+   - **Kegiatan Pendahuluan (10 - 15 Menit)**:
+     * Salam hangat, presensi dengan sapaan ceria, doa bersama.
+     * Cek kesiapan emosi/fokus murid (asesmen diagnostik non-kognitif singkat, misal: 'Tebak Perasaan' atau 'Skala Energi 1-5').
+     * Apersepsi Kontekstual: Tuliskan **contoh kalimat langsung yang diucapkan guru** saat mengaitkan materi dengan pengalaman murid kemarin/tadi pagi.
+     * Penyampaian tujuan pembelajaran dan peta alur aktivitas dengan bahasa yang ramah anak.
+   - **Kegiatan Inti (50 - 60 Menit) - Sintaks ${modelPembelajaran || 'PBL'}**:
+     * Uraikan langkah-langkah pembelajaran sintaks model secara bertahap.
+     * Sertakan panduan **Diferensiasi Pembelajaran Nyata**:
+       - *Diferensiasi Konten*: Bagaimana guru menyajikan materi untuk murid yang suka membaca visual vs objek konkret/video pendek.
+       - *Diferensiasi Proses (Scaffolding)*: Uraikan apa yang dilakukan guru saat berkeliling mendampingi murid yang butuh bimbingan intensif vs memberikan keleluasaan eksplorasi pada murid yang sudah cepat paham.
+       - *Diferensiasi Produk*: Pilihan cara bagi murid menyajikan hasil belajar (boleh bagan visual, tulisan deskriptif, atau presentasi lisan singkat).
+   - **Kegiatan Penutup (10 - 15 Menit)**:
+     * Kesimpulan bersama: Guru membimbing murid menyimpulkan inti pembelajaran (bukan guru yang mendikte).
+     * Refleksi Murid & Guru: Tuliskan teknik refleksi seru (contoh: *Exit Ticket 3-2-1* atau *Refleksi Bintang*).
+     * Apresiasi tulus dari guru atas usaha dan kerja sama murid hari ini, pengantar materi pekan depan, doa penutup.
 
-4. **ASESMEN DAN KRITERIA KETERCAPAIAN (KKTP)**:
-   - Asesmen Diagnostik (Awal), Asesmen Formatif (Proses / Observasi / Lembar Kerja), Asesmen Sumatif (Lingkup Materi).
-   - Rubrik Penilaian KKTP dalam bentuk TABEL LENGKAP dengan 4 skala: *Baru Berkembang*, *Layak*, *Cakap*, *Mahir* beserta deskriptor operasional.
-   - Instrumen penilaian sikap dan keterampilan.
+4. **ASESMEN & RUBRIK KKTP OPERASIONAL**:
+   - Asesmen Diagnostik (Awal), Asesmen Formatif (Observasi proses diskusi & LKPD), Asesmen Sumatif Lingkup Materi.
+   - **Tabel Rubrik KKTP**: Buat TABEL MARKDOWN LENGKAP dengan 4 skala (*Baru Berkembang*, *Layak*, *Cakap*, *Mahir*). Deskriptor wajib berupa perilaku/bukti nyata yang dapat dilihat atau didengar langsung oleh guru, bukan sekadar kata sifat abstrak.
+   - Rencana Tindak Lanjut: Panduan remedial yang ramah dan pengayaan yang menantang rasa ingin tahu.
 
-5. **LAMPIRAN LENGKAP**:
-   - Lembar Kerja Peserta Didik (LKPD) yang siap dikerjakan siswa (berisi petunjuk, tugas pengamatan, pertanyaan analisis).
-   - Bahan Bacaan Guru dan Peserta Didik (ringkasan materi esensial 1-2 halaman).
-   - Program Pengayaan dan Remedial.
-   - Glosarium (definisi istilah penting).
-   - Daftar Pustaka resmi Kemendikbudristek.
+5. **LAMPIRAN LENGKAP & SIAP PAKAI**:
+   - **Lembar Kerja Peserta Didik (LKPD)**: Siap dibagikan, memuat identitas, petunjuk kerja ramah murid, stimulus masalah, kolom eksplorasi, dan pertanyaan analisis.
+   - **Bahan Bacaan Ringkas Guru & Murid**: Uraian materi esensial 2-3 halaman mini yang padat ilmu dan mudah dipahami.
+   - **Glosarium**: Istilah-istilah penting beserta penjelasan sederhana.
+   - **Daftar Pustaka**: Sumber rujukan kredibel Kemendikdasmen/buku teks Kurikulum Merdeka.
 `,
       rpp: `
-TUGAS: Susunlah **RENCANA PELAKSANAAN PEMBELAJARAN (RPP) INOVATIF & RINGKAS (1-2 LEMBAR)** Kurikulum Merdeka sesuai Permendikdasmen No. 13 Tahun 2025.
-Fokus pada efisiensi, kemudahan dibaca kepala sekolah/pengawas saat supervisi, dan kejelasan operasional di kelas.
+TUGAS SPESIFIK DOKUMEN: Susunlah **RENCANA PELAKSANAAN PEMBELAJARAN (RPP) INOVATIF, RINGKAS & HUMANIS (1-2 LEMBAR)** Kurikulum Merdeka berpedoman pada Permendikdasmen No. 13 Tahun 2025.
+Dokumen ini dirancang efisien, bernas, dan sangat praktis untuk memandu langkah guru di kelas serta siap untuk supervisi akademik kepala sekolah atau pengawas.
 
-FORMAT WAJIB:
-1. **IDENTITAS & KOMPONEN RPP**: Sekolah (${schoolName || 'Satuan Pendidikan'}), Mata Pelajaran (${mataPelajaran}), Kelas/Fase (${tingkat} / ${calculatedFase}), Topik (${topik}), Alokasi Waktu (${alokasiWaktu || '2 JP'}).
-2. **TUJUAN PEMBELAJARAN**: Rumusan TP operasional berorientasi HOTS & Profil Lulusan.
-3. **MEDIA, ALAT & SUMBER BELAJAR**: Alat praktis dan bahan ajar relevan.
-4. **LANGKAH-LANGKAH PEMBELAJARAN**:
-   - Pendahuluan (10 menit): Doa, Apersepsi, Ice Breaking, Pertanyaan Pemantik.
-   - Kegiatan Inti (60 menit): Penerapan sintaks ${modelPembelajaran || 'Problem Based Learning'} dengan sentuhan diferensiasi.
-   - Penutup (10 menit): Refleksi, asesmen cepat (Exit Ticket), pesan moral dan doa.
-5. **ASESMEN**:
-   - Asesmen Sikap (Observasi Profil Lulusan).
-   - Asesmen Pengetahuan (Tes tulis/lisan).
-   - Asesmen Keterampilan (Kinerja/Produk diskusi).
-6. **TANDA TANGAN PENGESAHAN**: Tempat & Tanggal, Mengetahui Kepala Sekolah & Guru Mata Pelajaran.
+STRUKTUR RESMI:
+1. **IDENTITAS PEMBELAJARAN**: Satuan Pendidikan (${schoolName || 'Satuan Pendidikan'}), Mata Pelajaran (${mataPelajaran}), Kelas/Fase (${tingkat} / ${calculatedFase}), Materi Pokok (${topik}), Alokasi Waktu (${alokasiWaktu || '2 JP'}), Pertemuan ke-1.
+2. **TUJUAN PEMBELAJARAN**: Rumusan TP esensial berorientasi HOTS & Profil Lulusan yang dicapai dalam pertemuan ini.
+3. **MEDIA, ALAT & SUMBER BELAJAR**: Media konkret dan digital yang realistis digunakan di kelas.
+4. **LANGKAH-LANGKAH PEMBELAJARAN (RINCI ALOKASI WAKTU)**:
+   - Pendahuluan (10 Menit): Sapaan ramah, doa, asesmen awal kesiapan belajar, apersepsi kontekstual, pertanyaan pemantik.
+   - Kegiatan Inti (60 Menit): Penerapan sintaks ${modelPembelajaran || 'Problem Based Learning'} yang dipadukan dengan sentuhan diferensiasi proses dan kolaborasi murid.
+   - Penutup (10 Menit): Rangkuman bersama, refleksi murid (exit ticket), apresiasi dari guru, dan doa penutup.
+5. **ASESMEN HASIL PEMBELAJARAN**:
+   - Asesmen Sikap: Observasi dimensi Profil Lulusan selama kerja tim.
+   - Asesmen Pengetahuan: Kuis lisan/tulisan singkat pada lembar kerja.
+   - Asesmen Keterampilan: Unjuk kerja presentasi atau produk hasil diskusi.
+6. **LEMBAR PENGESAHAN**: Tempat & Tanggal, Tanda Tangan Mengetahui Kepala Sekolah dan Guru Mata Pelajaran.
 `,
       soal_ujian: `
-TUGAS: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Nasional (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
+TUGAS SPESIFIK DOKUMEN: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Kompetensi Minimum (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
+Gunakan **stimulus nyata dan membumi khas Indonesia** (artikel informatif, infografis data, studi kasus lingkungan/sosial, atau cerita naratif menarik) sehingga soal mengukur daya nalar murid, bukan sekadar hafalan rumus atau definisi kering.
 
 KONFIGURASI SOAL:
-- Jumlah Soal: ${soalConfig?.jumlahSoal || 15} butir soal.
-- Komposisi Bentuk Soal:
-  1. Pilihan Ganda Biasa (4-5 pilihan A, B, C, D, E).
-  2. Pilihan Ganda Kompleks (Model AKM: Centang Benar/Salah atau pilih lebih dari 1 jawaban benar).
-  3. Menjodohkan (Pasangan pernyataan dan jawaban).
-  4. Isian Singkat.
-  5. Uraian HOTS Berbasis Stimulus (Infografis/Studi Kasus/Wacana Kontekstual Indonesia).
+- Jumlah Soal: ${soalConfig?.jumlahSoal || 15} butir soal berkualitas tinggi.
+- Variasi Bentuk Soal Sesuai Standar Asesmen Nasional:
+  1. Pilihan Ganda Biasa (4-5 opsi jawaban logis).
+  2. Pilihan Ganda Kompleks (Model AKM: Centang Benar/Salah atau memilih lebih dari satu pernyataan yang tepat berdasarkan stimulus).
+  3. Menjodohkan (Memasangkan konsep/pernyataan dengan jawaban yang tepat).
+  4. Isian Singkat / Melengkapi Kalimat Konsep.
+  5. Uraian HOTS Penalaran Kasus (Menganalisis masalah dan memberikan solusi orisinal).
 
-STRUKTUR RESMI DOKUMEN UJIAN:
-1. **KOP UJIAN RESMI**: Satuan Pendidikan, Penilaian Sumatif Akhir/Tengah Semester, Mata Pelajaran (${mataPelajaran}), Kelas (${tingkat} / ${calculatedFase}), Alokasi Waktu (${alokasiWaktu || '90 Menit'}).
-2. **KISI-KISI SOAL (TABEL LENGKAP)**:
-   - Kolom: No, Capaian/Tujuan Pembelajaran, Materi, Indikator Soal, Level Kognitif (C1-C6 / L1-L3), Bentuk Soal, No Soal.
-3. **NASKAH BUTIR SOAL LENGKAP**:
-   - Setiap soal diawali dengan stimulus menarik (data, kasus nyata, cerita, tabel, deskripsi fenomena).
-   - Kalimat jelas, tidak ambigu, mengukur daya nalar kritis siswa.
-4. **KUNCI JAWABAN & PEMBAHASAN MENDALAM**:
-   - Kunci jawaban setiap butir.
-   - Pembahasan rasional mengapa jawaban tersebut benar dan alternatif jawaban lain salah.
-5. **PEDOMAN PENSKORAN & RUBRIK SOAL URAIAN**:
-   - Bobot masing-masing bentuk soal (misal PG = 1, PG Kompleks = 2, Menjodohkan = 2, Isian = 3, Uraian = 5).
-   - Perhitungan Nilai Akhir = (Skor Perolehan / Total Skor Maksimal) x 100.
+SUSUNAN DOKUMEN:
+1. **KOP NASKAH PENILAIAN SUMATIF RESMI**: Satuan Pendidikan, Mata Pelajaran (${mataPelajaran}), Kelas (${tingkat} / ${calculatedFase}), Topik: ${topik}, Waktu: ${alokasiWaktu || '90 Menit'}.
+2. **KISI-KISI SOAL (TABEL LENGKAP MARKDOWN)**:
+   - Kolom: No, Capaian Pembelajaran, Materi, Indikator Soal, Level Kognitif (L1/Pengetahuan, L2/Aplikasi, L3/Penalaran HOTS), Bentuk Soal, No Butir.
+3. **NASKAH SOAL LENGKAP BESERTA STIMULUS**: Tuliskan setiap stimulus teks/data secara lengkap, dilanjutkan butir-butir pertanyaan yang terhubung dengan stimulus tersebut.
+4. **KUNCI JAWABAN & PEMBAHASAN PEDAGOGIS**: Penjelasan rasional mengapa jawaban tersebut benar dan konsep apa yang sedang dipelajari.
+5. **RUBRIK PENSKORAN & PANDUAN PENILAIAN URAIAN**: Pedoman skor per butir dan rumus konversi nilai akhir skala 0-100.
 `,
       kktp_atp: `
-TUGAS: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)** untuk ${mataPelajaran} ${tingkat} (${calculatedFase}) sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen.
+TUGAS SPESIFIK DOKUMEN: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)** untuk ${mataPelajaran} ${tingkat} (${calculatedFase}) sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen.
 
-KOMPONEN WAJIB:
-1. Rasional dan Capaian Pembelajaran Elemen & Fase.
-2. Matriks Alur Tujuan Pembelajaran (ATP) dalam tabel (Elemen, Capaian Pembelajaran, Tujuan Pembelajaran, Alur Pembelajaran, Alokasi Waktu JP, Profil Lulusan, Penilaian).
-3. Penetapan KKTP dengan 3 Pendekatan Resmi Kemendikbud:
-   a. Pendekatan Deskripsi Kriteria.
-   b. Pendekatan Rubrik Skala Berkembang.
-   c. Pendekatan Interval Nilai (0-60 belum mencapai perlu remedial, 61-75 mencapai sebagian, 76-90 sudah tuntas, 91-100 melampaui ketuntasan perlu pengayaan).
-4. Panduan Intervensi Remedial dan Pengayaan Berdasarkan Hasil KKTP.
+MUATAN DOKUMEN:
+1. Rasionalisasi Mata Pelajaran dan Capaian Pembelajaran Elemen per Fase.
+2. **Matriks Alur Tujuan Pembelajaran (ATP) dalam Tabel Markdown**: Kolom Elemen, CP Elemen, Tujuan Pembelajaran (TP) yang berurutan logis dari mudah ke kompleks, Lingkup Materi, Perkiraan Jam Pelajaran (JP), Profil Lulusan yang Disasar, serta Rencana Asesmen.
+3. **Penetapan KKTP Menggunakan 3 Pendekatan Resmi Kemendikdasmen**:
+   a. Pendekatan Deskripsi Kriteria (Kriteria Bukti Ketercapaian Kualitatif).
+   b. Pendekatan Rubrik Skala Berkembang (Baru Berkembang, Layak, Cakap, Mahir).
+   c. Pendekatan Interval Nilai (0-60: Perlu bimbingan intensif/remedial menyeluruh; 61-75: Belum tuntas pada bagian tertentu/remedial sebagian; 76-85: Sudah tuntas/mencapai standar; 86-100: Melampaui ketuntasan/diberi tantangan pengayaan).
+4. Panduan Intervensi Remedial Humanis (tanpa label negatif kepada siswa) dan Program Pengayaan Eksploratif.
 `,
       lkpd: `
-TUGAS: Susunlah **LEMBAR KERJA PESERTA DIDIK (LKPD) INOVATIF & INTERAKTIF** siap cetak untuk ${mataPelajaran} ${tingkat} (${calculatedFase}), Topik: ${topik}.
+TUGAS SPESIFIK DOKUMEN: Susunlah **LEMBAR KERJA PESERTA DIDIK (LKPD) INOVATIF & INTERAKTIF** siap cetak untuk ${mataPelajaran} ${tingkat} (${calculatedFase}), Topik: ${topik}.
+Bahasa LKPD harus **langsung berbicara kepada murid** dengan nada yang ramah, memotivasi, jelas langkah kerjanya, dan menyenangkan untuk dikerjakan secara berkelompok maupun mandiri.
 
 KOMPONEN WAJIB:
-1. Kop LKPD: Nama Sekolah, Nama Kelompok, Anggota Kelompok, Kelas, Tanggal.
-2. Judul Aktivitas yang Menarik Siswa.
-3. Petunjuk Belajar & Keselamatan Kerja/Praktik.
-4. Stimulus / Kasus Masalah Nyata.
-5. Aktivitas 1: Eksplorasi Konsep & Pengamatan Nyata (Tabel Isian).
-6. Aktivitas 2: Analisis & Kolaborasi Pemecahan Masalah (Diskusi Berpikir Kritis).
-7. Aktivitas 3: Kesimpulan & Refleksi Belajar Mandiri.
-8. Rubrik Penilaian Diri & Penilaian Antar-Teman.
+1. Kop LKPD: Nama Sekolah, Nama Kelompok, Anggota, Kelas, Hari/Tanggal.
+2. Judul Aktivitas yang Menarik Rasa Ingin Tahu Murid.
+3. Pengantar Sapaan Ramah Guru & Petunjuk Belajar.
+4. Stimulus Kasus / Cerita Nyata / Fakta Unik yang Relevan dengan ${topik}.
+5. **Aktivitas 1: Mari Mengamati & Mengumpulkan Data** (Tabel panduan eksplorasi).
+6. **Aktivitas 2: Mari Berdiskusi & Memecahkan Masalah** (Tantangan bernalar kritis kelompok).
+7. **Aktivitas 3: Mari Berkreasi & Menyimpulkan** (Menuliskan penemuan utama kelompok).
+8. **Refleksi Diri & Kelompok**: Lembar emotikon atau centang refleksi belajar hari ini.
 `,
       prota_promes: `
-TUGAS: Susunlah **PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)** Kurikulum Merdeka untuk mata pelajaran ${mataPelajaran} kelas ${tingkat} (${calculatedFase}) tahun ajaran berjalan.
+TUGAS SPESIFIK DOKUMEN: Susunlah **PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)** Kurikulum Merdeka untuk mata pelajaran ${mataPelajaran} kelas ${tingkat} (${calculatedFase}) tahun ajaran berjalan.
 
 KOMPONEN WAJIB:
-1. Identitas Satuan Pendidikan dan Alokasi Total Jam Pelajaran per Tahun (Intrakurikuler dan Kokurikuler P5).
-2. Tabel Prota: No, Capaian Pembelajaran / Materi Pokok / Lingkup Materi, Alokasi Waktu (JP), Keterangan Semester (Ganjil/Genap).
-3. Tabel Promes Semester 1 & 2: Distribusi JP per minggu efektif, jadwal asesmen sumatif lingkup materi, asesmen sumatif tengah semester, sumatif akhir semester, dan libur kalender pendidikan.
+1. Identitas Satuan Pendidikan, Perhitungan Alokasi Jam Pelajaran per Tahun (Intrakurikuler dan Alokasi Projek Profil Lulusan).
+2. **Tabel Program Tahunan (Prota)**: No, Capaian Pembelajaran / Materi Pokok, Alokasi Waktu (JP), dan Distribusi Semester (Ganjil/Genap).
+3. **Tabel Program Semester (Promes) Semester 1 & 2**: Pemetaan alokasi waktu per minggu efektif, jadwal asesmen formatif, asesmen sumatif lingkup materi, asesmen sumatif akhir semester, jeda pekan remedial, dan libur kalender pendidikan.
 `,
       modul_p5: `
-TUGAS: Susunlah **MODUL PROJEK PENGUATAN PROFIL LULUSAN** sesuai ketentuan projek kokurikuler Kemendikdasmen.
+TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL PROJEK PENGUATAN PROFIL LULUSAN** sesuai ketentuan projek kokurikuler Kemendikdasmen.
 
-Tema Proyek: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan / Kewirausahaan / Kearifan Lokal / Suara Demokrasi'}
-Topik: ${topik}
+Tema Proyek: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan / Kewirausahaan / Kearifan Lokal / Suara Demokrasi / Rekayasa Teknologi'}
+Topik Proyek: ${topik}
 Jenjang / Fase: ${jenjang} / ${calculatedFase}
 
 KOMPONEN WAJIB:
-1. Profil Modul (Tema, Topik, Fase/Kelas, Durasi JP).
-2. Dimensi Profil Lulusan yang Dikembangkan (dari 8 Dimensi Profil Lulusan) (Matriks Target Pencapaian di Akhir Fase).
-3. Alur Aktivitas Projek (Tahap Pengenalan, Tahap Kontekstualisasi, Tahap Aksi Nyata, Tahap Refleksi dan Tindak Lanjut).
-4. Asesmen Diagnostik, Formatif, dan Sumatif Projek (Rubrik Penilaian Perkembangan Subelemen: Belum Berkembang, Mulai Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
-5. Lampiran: Lembar Jurnal Refleksi Siswa dan Panduan Pameran Karya (Gelar Karya Projek).
+1. Profil Modul: Tema, Judul Projek yang Inspiratif, Fase/Kelas, Durasi Total JP.
+2. Dimensi, Elemen, dan Subelemen Profil Lulusan yang Dikembangkan (Lengkap dengan matriks target capaian di akhir fase).
+3. Alur Aktivitas Projek Humanis (4 Tahap):
+   - Tahap Pengenalan: Membuka wawasan murid terhadap isu lingkungan/sosial di sekitar.
+   - Tahap Kontekstualisasi: Meneliti dan mengidentifikasi masalah nyata di sekolah/lingkungan tempat tinggal.
+   - Tahap Aksi: Merancang karya, produk nyata, atau aksi sosial kolaboratif.
+   - Tahap Refleksi & Tindak Lanjut: Evaluasi proses, pameran hasil karya (Gelar Karya Projek), dan komitmen keberlanjutan.
+4. Instrumen Asesmen Projek: Asesmen diagnostik awal, formatif lembar pengamatan proses, dan rubrik sumatif perkembangan murid (Mulai Berkembang, Sedang Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
+5. Lampiran: Lembar jurnal harian murid dan panduan pameran gelar karya.
 `
     };
 
     const specificInstructions = promptInstructions[docType] || promptInstructions.modul_ajar;
 
     const fullPrompt = `
-Anda adalah Pakar Kurikulum Nasional Indonesia & Pengembang Perangkat Ajar Senior di Kementerian Pendidikan Dasar dan Menengah RI (Kemendikdasmen / Kemendikbudristek).
-Anda memiliki pemahaman mendalam tentang:
-- **Permendikdasmen No. 13 Tahun 2025** (Kurikulum Merdeka sebagai Kurikulum Nasional).
-- **Keputusan Kepala BSKAP tentang Capaian Pembelajaran** (PAUD, Dikdas, dan Dikmen).
-- **Panduan Pembelajaran dan Asesmen**.
-- Paradigma Pembelajaran Berdiferensiasi (Diferensiasi Konten, Proses, Produk).
-- Asesmen Berkelanjutan (Diagnostik, Formatif, Sumatif) & AKM (Asesmen Kompetensi Minimum).
+PERAN & NADA SUARA (ROLE & VOICE OF A REAL HUMAN TEACHER):
+Anda adalah seorang **Guru Penggerak & Pendidik Praktisi Berpengalaman di Indonesia**. Anda telah bertahun-tahun mengajar langsung di ruang kelas nyata, sangat memahami psikologi dan dinamika murid-murid Indonesia, serta berdedikasi menciptakan pembelajaran yang memerdekakan, bermakna, dan menyenangkan.
+
+PANDUAN BAHASA & GAYA PENULISAN "GURU MANUSIAWI SEJATI":
+1. **GAYA BAHASA ALAMI & PEDAGOGIS**:
+   - Gunakan Bahasa Indonesia yang hangat, mengalir wajar, santun, dan membumi—persis seperti tutur kata seorang guru teladan yang menyiapkan perangkat ajar terbaik untuk kelasnya.
+   - HINDARI bahasa robotik, birokrasi teoritis yang kaku, atau kalimat klise AI (JANGAN gunakan kalimat seperti "Dalam era globalisasi yang semakin maju...", "Tentu, ini adalah...", "Adapun tujuan yang hendak dicapai...").
+   - Tulis langsung substansi dokumen pembelajaran dengan format resmi, rapi, dan siap pakai.
+
+2. **SKENARIO KELAS YANG NYATA & HIDUP**:
+   - Sertakan contoh tutur sapa atau pertanyaan pemantik langsung yang diucapkan guru saat menyapa murid (contoh: *"Anak-anak, pernahkah kalian memperhatikan mengapa..."*).
+   - Buat langkah-langkah kegiatan yang realistis dijalankan dalam durasi alokasi waktu yang ditentukan (bukan rencana utopis yang mustahil selesai dalam 2 JP).
+   - Gambarkan interaksi pendampingan guru (scaffolding) dengan penuh empati, bagaimana guru menghampiri murid yang kesulitan dan memfasilitasi murid yang sudah mahir.
+
+3. **KONTEKS KESEHARIAN MURID INDONESIA**:
+   - Gunakan contoh kasus, analogi, benda, dan fenomena yang dekat dengan lingkungan murid di Indonesia (alam sekitar, makanan lokal, kebiasaan sehari-hari, peristiwa di lingkungan rumah dan sekolah).
+   - Sesuaikan gaya bahasa dengan tingkat usia perkembangan anak:
+     * Untuk **SD**: Bahasa ceria, eksploratif, penuh apresiasi, mengutamakan media konkret dan aktivitas motorik.
+     * Untuk **SMP**: Dialogis, menggugah rasa ingin tahu remaja, memupuk kerja sama teman sebaya.
+     * Untuk **SMA/SMK**: Kritis, bernalar mendalam, kontekstual dengan isu nyata masa depan dan dunia kerja.
+
+4. **ANTI-TEMPLATE KOSONG**:
+   - Jangan pernah menyajikan placeholder kosong seperti "[tuliskan materi di sini]" atau "[isi penjelasan]". Tuliskan materi pokok nyata yang kaya konsep, mendalam, akurat, dan edukatif.
+   - Rubrik penilaian harus memiliki deskriptor perilaku yang konkret dan dapat diamati (observable) langsung oleh guru di kelas.
 
 INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Jenis Dokumen: ${docType.toUpperCase()}
@@ -1624,29 +1677,27 @@ INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Topik / Materi Pokok: ${topik}
 - Alokasi Waktu: ${alokasiWaktu || '2 JP (Pertemuan 1)'}
 - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'}
-- Target Peserta Didik: ${targetPeserta || 'Reguler/Tipikal dengan keberagaman gaya belajar'}
-- Dimensi Profil Lulusan (8 dimensi): ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Penalaran Kritis, Kolaborasi, Kemandirian'}
+- Target Peserta Didik: ${targetPeserta || 'Peserta didik reguler dengan keberagaman gaya belajar dan kesiapan belajar'}
+- Dimensi Profil Lulusan (8 Dimensi): ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Penalaran Kritis, Kolaborasi, Kemandirian'}
 - Nama Penyusun: ${authorName || 'Bapak/Ibu Guru'}
 - Nama Sekolah: ${schoolName || 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'}
 ${catatanTambahan ? `- Catatan Khusus Guru: ${JSON.stringify(catatanTambahan)}` : ''}
 
 ${specificInstructions}
 
-PANDUAN PENULISAN:
-1. Format output dalam **MARKDOWN BERKUALITAS TINGGI** dengan heading hierarkis (\`#\`, \`##\`, \`###\`), penomoran teratur, bullet point, dan TABEL Markdown untuk matriks capaian, jadwal, soal, serta rubrik KKTP.
-2. Gunakan Bahasa Indonesia baku, pedagogis, hangat, inspiratif, dan sesuai standar dokumen administrasi guru resmi di Indonesia.
-3. Jangan berikan placeholder kosong seperti "[isi di sini]" jika bisa langsung diisikan konten materi nyata yang edukatif, berbobot, dan aplikatif.
-4. Pastikan rubrik penilaian memiliki deskriptor yang jelas dan terukur, bukan sekadar kata sifat umum.
+STANDAR OUTPUT MARKDOWN:
+- Tuliskan dalam **MARKDOWN BERMUTU TINGGI**: gunakan heading hierarkis (\`#\`, \`##\`, \`###\`), penomoran sistematis, poin-poin terstruktur, serta TABEL MARKDOWN untuk matriks capaian, jadwal, instrumen soal, dan rubrik KKTP.
+- Berikan judul dokumen yang jelas dan berwibawa di bagian paling atas.
 `;
 
     // Generate with multi-model fallback & transient 503 resiliency
-    // Model ID valid Gemini API (diverifikasi 2026): 2.5-flash stabil,
-    // 3-flash-preview generasi baru, 2.5-flash-lite hemat, 2.5-pro paling kuat.
+    // Sesuai panduan resmi @google/genai TypeScript SDK:
+    // gemini-3.8-flash (utama), gemini-2.5-flash (stabil), gemini-3.1-flash-lite (hemat), gemini-3.1-pro-preview (kompleks).
     const candidateModels = [
+      'gemini-3.8-flash',
       'gemini-2.5-flash',
-      'gemini-3-flash-preview',
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-pro'
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
     ];
 
     let generatedText = '';

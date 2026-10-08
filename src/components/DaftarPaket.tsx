@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { TeacherUser, Jenjang, Paket, DokumenPaket, VersiDokumen } from '../types';
 import { JENJANG_CONFIGS } from '../data/curriculumData';
+import { apiFetch, extractErrorMessage } from '../utils/api';
 
 // GEL2: duplikasi tipe lokal (tech debt Gelombang 1) dihapus — pakai tipe
 // kanonik dari ../types. GET /api/pakets menyertakan ringkasan progress per
@@ -53,10 +54,11 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
   const muatPakets = useCallback(async (status: StatusTab) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/pakets?status=${status}`);
+      const res = await apiFetch(`/api/pakets?status=${status}`);
       if (!res.ok) throw new Error('gagal memuat paket');
-      const data: PaketTampil[] = await res.json();
-      setPakets(Array.isArray(data) ? data : []);
+      const data = await res.json();
+      const items: PaketTampil[] = Array.isArray(data) ? data : (data?.pakets ?? []);
+      setPakets(items);
     } catch {
       setPakets([]);
     } finally {
@@ -83,7 +85,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
   const handleArsip = async (p: PaketTampil) => {
     setAksiId(p.id);
     try {
-      const res = await fetch(`/api/pakets/${p.id}/arsip`, {
+      const res = await apiFetch(`/api/pakets/${p.id}/arsip`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ arsip: tab === 'aktif' }),
@@ -101,7 +103,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
   const handleDuplikat = async (p: PaketTampil) => {
     setAksiId(p.id);
     try {
-      const res = await fetch(`/api/pakets/${p.id}/duplikat`, { method: 'POST' });
+      const res = await apiFetch(`/api/pakets/${p.id}/duplikat`, { method: 'POST' });
       if (!res.ok) throw new Error('gagal menduplikat paket');
       await muatPakets(tab);
     } catch {
@@ -116,7 +118,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
     if (!targetHapus) return;
     setAksiId(targetHapus.id);
     try {
-      const res = await fetch(`/api/pakets/${targetHapus.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/pakets/${targetHapus.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('gagal menghapus paket');
       setTargetHapus(null);
       await muatPakets(tab);
@@ -412,7 +414,7 @@ const BuatPaketModal: React.FC<{
     setGalat('');
     setMenyimpan(true);
     try {
-      const res = await fetch('/api/pakets', {
+      const res = await apiFetch('/api/pakets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -423,9 +425,11 @@ const BuatPaketModal: React.FC<{
           tingkat: form.tingkat,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.message || 'Gagal membuat paket');
-      const paketBaru: Paket = (data as { paket?: Paket }).paket ?? (data as Paket);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(extractErrorMessage(data, 'Gagal membuat paket'));
+      }
+      const paketBaru: Paket = (data as { paket?: Paket })?.paket ?? (data as Paket);
       if (!paketBaru?.id) throw new Error('Respons server tidak valid');
       onBerhasil(paketBaru.id);
     } catch (err) {
