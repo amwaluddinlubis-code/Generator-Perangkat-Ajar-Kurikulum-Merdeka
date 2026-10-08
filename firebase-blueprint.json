@@ -1,0 +1,63 @@
+{
+  "entities": {
+    "TeacherUser": {
+      "title": "TeacherUser",
+      "description": "Profil guru dan pendidik terdaftar dengan akun Belajar.id",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID unik guru" },
+        "name": { "type": "string", "description": "Nama lengkap beserta gelar" },
+        "email": { "type": "string", "description": "Alamat email Belajar.id resmi" },
+        "schoolName": { "type": "string", "description": "Nama satuan pendidikan" },
+        "nip": { "type": "string", "description": "Nomor Induk Pegawai atau NUPTK" },
+        "npsn": { "type": "string", "description": "Nomor Pokok Sekolah Nasional" },
+        "jenjang": { "type": "string", "enum": ["SD", "SMP", "SMA", "SMK"], "description": "Jenjang pendidikan" },
+        "mataPelajaran": { "type": "string", "description": "Mata pelajaran yang diampu" },
+        "role": { "type": "string", "enum": ["SUPER_ADMIN", "ADMIN", "GURU"], "description": "Peran sistem" },
+        "status": { "type": "string", "enum": ["VERIFIED", "PENDING", "REJECTED"], "description": "Status verifikasi akun" },
+        "avatarUrl": { "type": "string", "description": "Tautan foto profil" },
+        "registeredAt": { "type": "string", "description": "Waktu registrasi akun" },
+        "verifiedAt": { "type": "string", "description": "Waktu verifikasi akun" },
+        "verifiedBy": { "type": "string", "description": "Nama verifikator akun" }
+      },
+      "required": ["id", "name", "email", "schoolName", "jenjang", "mataPelajaran", "role", "status", "registeredAt"]
+    },
+    "EducationalDocument": {
+      "title": "EducationalDocument",
+      "description": "Dokumen perangkat ajar Kurikulum Merdeka yang disusun oleh guru",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID unik dokumen perangkat ajar" },
+        "title": { "type": "string", "description": "Judul lengkap dokumen perangkat ajar" },
+        "docType": { 
+          "type": "string", 
+          "enum": ["modul_ajar", "rpp", "soal_ujian", "kktp_atp", "lkpd", "prota_promes", "modul_p5"],
+          "description": "Format jenis dokumen kurikulum merdeka"
+        },
+        "jenjang": { "type": "string", "enum": ["SD", "SMP", "SMA", "SMK"], "description": "Jenjang satuan pendidikan" },
+        "tingkat": { "type": "string", "description": "Kelas atau tingkat sasaran pembelajaran" },
+        "fase": { "type": "string", "description": "Fase capaian pembelajaran (Fase A hingga F)" },
+        "mataPelajaran": { "type": "string", "description": "Mata pelajaran perangkat ajar" },
+        "topik": { "type": "string", "description": "Topik atau materi pokok pembelajaran" },
+        "content": { "type": "string", "description": "Isi lengkap dokumen dalam format Markdown standar" },
+        "createdAt": { "type": "string", "description": "Waktu dokumen dibuat" },
+        "authorId": { "type": "string", "description": "ID guru pembuat dokumen" },
+        "authorName": { "type": "string", "description": "Nama guru pembuat dokumen" },
+        "schoolName": { "type": "string", "description": "Nama sekolah pembuat dokumen" },
+        "isPublic": { "type": "boolean", "description": "Visibilitas publik dalam repositori arsip bersama" },
+        "durationMinutes": { "type": "number", "description": "Estimasi durasi penyusunan dalam menit" }
+      },
+      "required": ["id", "title", "docType", "jenjang", "tingkat", "fase", "mataPelajaran", "topik", "content", "createdAt", "authorId", "authorName", "schoolName"]
+    }
+  },
+  "firestore": {
+    "/teachers/{teacherId}": {
+      "schema": { "$ref": "#/entities/TeacherUser" },
+      "description": "Koleksi data guru dan verifikasi profil Belajar.id"
+    },
+    "/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/EducationalDocument" },
+      "description": "Koleksi arsip perangkat ajar modul kurikulum merdeka"
+    }
+  }
+}
