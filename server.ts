@@ -5,6 +5,27 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { generateFallbackDocument } from './serverFallback.js';
+import {
+  hashPassword,
+  verifyPassword,
+  createSession,
+  getSessionUserId,
+  destroySession,
+  destroyUserSessions,
+  getSessions,
+  setSessions,
+  pruneExpiredSessions,
+  parseCookies,
+  sessionCookieHeader,
+  clearSessionCookieHeader,
+  createRequireAuth,
+  requireRole,
+  rateLimit,
+  auditLog,
+  publicUser,
+  SESSION_COOKIE,
+  type AuthUser
+} from './server/auth.js';
 
 dotenv.config();
 
@@ -36,6 +57,8 @@ interface TeacherUser {
   registeredAt: string;
   verifiedAt?: string;
   verifiedBy?: string;
+  /** Hash password (scrypt). Tidak pernah dikirim ke client — selalu lewat publicUser(). */
+  passwordHash?: string;
 }
 
 interface EducationalDocument {
@@ -185,7 +208,7 @@ let documents: EducationalDocument[] = [
     isPublic: true,
     durationMinutes: 3.2,
     content: `# MODUL AJAR KURIKULUM MERDEKA
-## Sesuai Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen (PPA) 2024
+## Sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen
 
 ---
 
@@ -207,16 +230,17 @@ let documents: EducationalDocument[] = [
 ---
 
 ### II. PROFIL PELAJAR PANCASILA
-1. **Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia**: Menyadari kebesaran ciptaan Tuhan melalui keteraturan struktur tumbuhan bagi kelangsungan hidup bumi.
-2. **Bernalar Kritis**: Mengidentifikasi keterkaitan fungsi setiap organ tumbuhan terhadap fotosintesis dan daya hidup tanaman.
-3. **Bergotong Royong**: Berkolaborasi dalam kelompok kecil untuk mengamati spesimen dan menyajikan hasil pengamatan.
-4. **Mandiri**: Bertanggung jawab menyelesaikan LKPD dan refleksi belajar mandiri.
+1. **Keimanan dan Ketakwaan kepada Tuhan YME**: Menyadari kebesaran ciptaan Tuhan melalui keteraturan struktur tumbuhan bagi kelangsungan hidup bumi.
+2. **Penalaran Kritis**: Mengidentifikasi keterkaitan fungsi setiap organ tumbuhan terhadap fotosintesis dan daya hidup tanaman.
+3. **Kolaborasi**: Bekerja sama dalam kelompok kecil untuk mengamati spesimen dan menyajikan hasil pengamatan.
+4. **Kemandirian**: Bertanggung jawab menyelesaikan LKPD dan refleksi belajar mandiri.
+5. **Komunikasi**: Menyampaikan hasil pengamatan secara lisan dan tertulis dengan runtut.
 
 ---
 
 ### III. KOMPONEN INTI
 
-#### A. Capaian Pembelajaran (CP) - Keputusan Kepala BSKAP No. 032/H/KR/2024
+#### A. Capaian Pembelajaran (CP) — Keputusan Kepala BSKAP tentang Capaian Pembelajaran
 Peserta didik menganalisis hubungan antara bentuk serta fungsi bagian tubuh pada tumbuhan (akar, batang, daun, bunga, dan buah) serta mengaitkannya dengan kebutuhan hidup tumbuhan dalam ekosistem.
 
 #### B. Tujuan Pembelajaran (TP) & Indikator Ketercapaian
@@ -295,7 +319,7 @@ Tumbuhan adalah produsen utama kehidupan di bumi. Setiap bagian tubuh tumbuhan b
     isPublic: true,
     durationMinutes: 3.4,
     content: `# MODUL AJAR MATEMATIKA KURIKULUM MERDEKA
-## Sesuai Permendikbudristek No. 12 Tahun 2024 & PPA 2024
+## Sesuai Permendikdasmen No. 13 Tahun 2025
 
 ### I. INFORMASI UMUM
 * **Nama Penyusun**: Amwaluddin Lubis, M.Pd.
@@ -365,7 +389,7 @@ Dilengkapi infografis emisi gas rumah kaca di sektor industri dan transportasi I
     jenjang: 'SMA',
     tingkat: 'Kelas 10',
     fase: 'Fase E',
-    mataPelajaran: 'Projek Penguatan Profil Pelajar Pancasila',
+    mataPelajaran: 'Projek Penguatan Profil Lulusan',
     topik: 'Ekonomi Sirkular dan Pengolahan Sampah Plastik',
     createdAt: '2026-02-28T14:20:00.000Z',
     authorId: 'user-admin-1',
@@ -387,7 +411,7 @@ const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
 function saveDBNow() {
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents }, null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, sessions: getSessions() }, null, 2));
   } catch (err) {
     console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
   }
@@ -408,12 +432,70 @@ function loadDB() {
     const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
     if (Array.isArray(raw.users) && raw.users.length > 0) users = raw.users;
     if (Array.isArray(raw.documents)) documents = raw.documents;
-    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents from db.json`);
+    if (Array.isArray(raw.sessions)) setSessions(raw.sessions);
+    const pruned = pruneExpiredSessions();
+    if (pruned > 0) console.log(`[Auth] ${pruned} session kedaluwarsa dibersihkan saat start`);
+    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents, ${getSessions().length} sessions from db.json`);
   } catch (err) {
     console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
   }
 }
 loadDB();
+
+// ---------------------------------------------------------------------------
+// KREDENSIAL DEMO — PENTING:
+// Semua akun seed memakai password awal dari env SEED_PASSWORD (default 'guru123').
+// Ini HANYA untuk demo/pilot. Di produksi: set SEED_PASSWORD yang kuat via secret
+// manager, lalu WAJIB ganti password tiap akun via POST /api/auth/change-password
+// (atau endpoint admin), dan JANGAN biarkan password default tetap aktif.
+// ---------------------------------------------------------------------------
+const SEED_PASSWORD = process.env.SEED_PASSWORD || 'guru123';
+function ensurePasswordHashes() {
+  let cached = '';
+  for (const u of users) {
+    if (!u.passwordHash) {
+      if (!cached) cached = hashPassword(SEED_PASSWORD);
+      u.passwordHash = cached;
+    }
+  }
+}
+ensurePasswordHashes();
+
+// Middleware auth: identitas user SELALU dari session cookie server-side,
+// bukan dari header/body yang dikirim client.
+const requireAuth = createRequireAuth((id: string) => users.find(u => u.id === id) as AuthUser | undefined);
+const requireAdmin = requireRole('ADMIN', 'SUPER_ADMIN');
+
+/** Ambil record user penuh (internal) dari req.user yang sudah terverifikasi. */
+function currentDbUser(req: Request): TeacherUser | undefined {
+  return users.find(u => u.id === req.user?.id);
+}
+
+/** Syarat: user login & status VERIFIED (SUPER_ADMIN selalu lolos karena terverifikasi). */
+function requireVerified(req: Request, res: Response, next: () => void) {
+  const me = currentDbUser(req);
+  if (!me || me.status !== 'VERIFIED') {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin.' }
+    });
+  }
+  next();
+}
+
+// Rate limiter AI: 20 generate/jam & 10 gambar/jam per user (hemat kuota & cegah abuse).
+const generateRateLimit = rateLimit({
+  windowMs: 3600 * 1000,
+  max: 20,
+  keyFn: (req) => req.user?.id || req.ip || 'unknown',
+  message: 'Batas 20x generate per jam tercapai. Silakan coba lagi nanti.'
+});
+const imageRateLimit = rateLimit({
+  windowMs: 3600 * 1000,
+  max: 10,
+  keyFn: (req) => req.user?.id || req.ip || 'unknown',
+  message: 'Batas 10x ilustrasi per jam tercapai. Silakan coba lagi nanti.'
+});
 
 // Helper to validate Belajar.id email format
 function isBelajarIdEmail(email: string): boolean {
@@ -435,15 +517,63 @@ function isBelajarIdEmail(email: string): boolean {
 }
 
 // Routes
-// 1. Current user session / default user
-app.get('/api/users/current', (req: Request, res: Response) => {
-  const userId = req.headers['x-user-id'] as string;
-  let user = users.find(u => u.id === userId);
-  if (!user) {
-    // Default to the creator / Super Admin Amwaluddin Lubis for immediate full-featured access
-    user = users.find(u => u.email === 'amwaluddin.lubis@gmail.com') || users[0];
+// 0. Health check (untuk monitoring & platform deploy)
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ success: true, status: 'ok', time: new Date().toISOString() });
+});
+
+// 1. Current user — dari session cookie server-side (tanpa fallback header/default).
+app.get('/api/users/current', requireAuth, (req: Request, res: Response) => {
+  res.json({ success: true, user: req.user });
+});
+
+// 1b. Login dengan email + password → session cookie httpOnly.
+app.post('/api/auth/login', (req: Request, res: Response) => {
+  const { email, password } = (req.body || {}) as { email?: string; password?: string };
+  const cleanEmail = String(email || '').toLowerCase().trim();
+  const user = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user || !user.passwordHash || !verifyPassword(String(password || ''), user.passwordHash)) {
+    auditLog('login_failed', undefined, { email: cleanEmail });
+    return res.status(401).json({
+      success: false,
+      error: { code: 'INVALID_CREDENTIALS', message: 'Email atau kata sandi salah.' }
+    });
   }
-  res.json({ success: true, user });
+  if (user.status !== 'VERIFIED') {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin. Hubungi administrator.' }
+    });
+  }
+
+  const token = createSession(user.id);
+  saveDB();
+  auditLog('login', user.id, { email: user.email });
+  res.setHeader('Set-Cookie', sessionCookieHeader(token));
+  res.json({ success: true, user: publicUser(user as AuthUser), message: `Selamat datang kembali, ${user.name}!` });
+});
+
+// 1c. Ganti password (user login).
+app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response) => {
+  const { oldPassword, newPassword } = (req.body || {}) as { oldPassword?: string; newPassword?: string };
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'WEAK_PASSWORD', message: 'Kata sandi baru minimal 8 karakter.' }
+    });
+  }
+  const me = currentDbUser(req);
+  if (!me || !me.passwordHash || !verifyPassword(String(oldPassword || ''), me.passwordHash)) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'INVALID_CREDENTIALS', message: 'Kata sandi lama salah.' }
+    });
+  }
+  me.passwordHash = hashPassword(String(newPassword));
+  saveDB();
+  auditLog('change_password', me.id, {});
+  res.json({ success: true, message: 'Kata sandi berhasil diganti.' });
 });
 
 // 2. Belajar.id Login / Switcher
@@ -467,7 +597,7 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: `Selamat datang kembali, ${existingUser.name}!`,
-      user: existingUser
+      user: publicUser(existingUser as AuthUser)
     });
   }
 
@@ -506,26 +636,35 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     message: status === 'VERIFIED'
       ? 'Akun Admin berhasil diaktifkan!'
       : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi oleh Admin Kurikulum (Bpk. Amwaluddin Lubis).',
-    user: newUser
+    user: publicUser(newUser as AuthUser)
   });
 });
 
-// 2b. Logout endpoint
+// 2b. Logout — hapus session server-side + clear cookie.
 app.post('/api/auth/logout', (req: Request, res: Response) => {
+  const token = parseCookies(req)[SESSION_COOKIE];
+  let actorId: string | undefined;
+  if (token) {
+    actorId = getSessionUserId(token) || undefined;
+    destroySession(token);
+    saveDB();
+  }
+  auditLog('logout', actorId, {});
+  res.setHeader('Set-Cookie', clearSessionCookieHeader());
   res.json({
     success: true,
     message: 'Berhasil keluar dari akun. Sesi telah diakhiri.'
   });
 });
 
-// 3. User list (for Admin verification panel)
-app.get('/api/users', (req: Request, res: Response) => {
-  res.json({ success: true, users });
+// 3. User list (for Admin verification panel) — hanya ADMIN/SUPER_ADMIN, tanpa passwordHash.
+app.get('/api/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  res.json({ success: true, users: users.map(u => publicUser(u as AuthUser)) });
 });
 
 // 4. Admin verify / reject / update teacher status
-app.post('/api/users/verify', (req: Request, res: Response) => {
-  const { userId, status, adminName } = req.body;
+app.post('/api/users/verify', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  const { userId, status } = req.body;
   if (!userId || !['VERIFIED', 'PENDING', 'REJECTED'].includes(status)) {
     return res.status(400).json({ success: false, message: 'Data verifikasi tidak valid' });
   }
@@ -538,34 +677,36 @@ app.post('/api/users/verify', (req: Request, res: Response) => {
   user.status = status;
   if (status === 'VERIFIED') {
     user.verifiedAt = new Date().toISOString();
-    user.verifiedBy = adminName || 'Amwaluddin Lubis, M.Pd.';
+    user.verifiedBy = req.user?.name || 'Administrator';
   } else {
     user.verifiedAt = undefined;
     user.verifiedBy = undefined;
   }
 
   saveDB();
+  auditLog('user_verify', req.user?.id, { targetUserId: user.id, status });
 
   res.json({
     success: true,
     message: `Status guru ${user.name} berhasil diubah menjadi: ${status}`,
-    user
+    user: publicUser(user as AuthUser)
   });
 });
 
 // 4b. Update user (manajemen user dua level)
+// Identitas peminta SELALU dari session (req.user) — requesterId dari body diabaikan.
 // - Admin: boleh ubah profil siapa pun + role (GURU/ADMIN), kecuali SUPER_ADMIN.
 // - Guru: hanya profil sendiri (nama, sekolah, mapel, NIP, NPSN).
 // - Status HANYA via /api/users/verify. Email & id tidak bisa diubah.
-app.put('/api/users/:id', (req: Request, res: Response) => {
+app.put('/api/users/:id', requireAuth, (req: Request, res: Response) => {
   const { id } = req.params;
-  const { requesterId, name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
+  const { name, schoolName, jenjang, mataPelajaran, nip, npsn, role } = req.body as Record<string, any>;
 
   const target = users.find(u => u.id === id);
   if (!target) {
     return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
   }
-  const requester = users.find(u => u.id === String(requesterId || ''));
+  const requester = currentDbUser(req);
   if (!requester) {
     return res.status(403).json({ success: false, message: 'Identitas peminta tidak valid' });
   }
@@ -580,6 +721,7 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   }
 
   const clean = (v: any) => (typeof v === 'string' ? v.trim() : v);
+  const oldRole = target.role;
 
   if (isAdmin) {
     if (clean(name)) target.name = clean(name);
@@ -602,27 +744,45 @@ app.put('/api/users/:id', (req: Request, res: Response) => {
   }
 
   saveDB();
-  res.json({ success: true, message: `Profil ${target.name} berhasil diperbarui`, user: target });
+  if (oldRole !== target.role) {
+    auditLog('role_change', requester.id, { targetUserId: target.id, from: oldRole, to: target.role });
+  } else {
+    auditLog('user_update', requester.id, { targetUserId: target.id });
+  }
+  res.json({ success: true, message: `Profil ${target.name} berhasil diperbarui`, user: publicUser(target as AuthUser) });
 });
 
-// 5. Delete teacher
-app.delete('/api/users/:id', (req: Request, res: Response) => {
+// 5. Delete teacher — hanya ADMIN/SUPER_ADMIN; tidak boleh hapus diri sendiri / SUPER_ADMIN.
+app.delete('/api/users/:id', requireAuth, requireAdmin, (req: Request, res: Response) => {
   const { id } = req.params;
-  const initialLength = users.length;
-  users = users.filter(u => u.id !== id);
-  if (users.length === initialLength) {
+  const target = users.find(u => u.id === id);
+  if (!target) {
     return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
   }
+  if (target.role === 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, message: 'Akun Super Admin tidak dapat dihapus' });
+  }
+  if (target.id === req.user?.id) {
+    return res.status(403).json({ success: false, message: 'Tidak dapat menghapus akun sendiri' });
+  }
+  users = users.filter(u => u.id !== id);
+  destroyUserSessions(id);
   saveDB();
+  auditLog('user_delete', req.user?.id, { targetUserId: id, targetEmail: target.email });
   res.json({ success: true, message: 'Data guru berhasil dihapus' });
 });
 
-// 6. Documents repository
-app.get('/api/documents', (req: Request, res: Response) => {
+// 6. Documents repository — requireAuth.
+// Non-admin: hanya dokumen miliknya + yang public. Admin: semua.
+app.get('/api/documents', requireAuth, (req: Request, res: Response) => {
   const { authorId, jenjang, docType } = req.query;
+  const me = req.user!;
+  const isAdmin = me.role === 'ADMIN' || me.role === 'SUPER_ADMIN';
   let filtered = [...documents];
 
-  if (authorId && authorId !== 'all') {
+  if (!isAdmin) {
+    filtered = filtered.filter(d => d.authorId === me.id || d.isPublic);
+  } else if (authorId && authorId !== 'all') {
     filtered = filtered.filter(d => d.authorId === authorId || d.isPublic);
   }
   if (jenjang && jenjang !== 'all') {
@@ -635,50 +795,75 @@ app.get('/api/documents', (req: Request, res: Response) => {
   res.json({ success: true, documents: filtered });
 });
 
-app.post('/api/documents', (req: Request, res: Response) => {
-  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, authorId, authorName, schoolName, durationMinutes } = req.body;
+const DOC_TYPES = ['modul_ajar', 'rpp', 'soal_ujian', 'kktp_atp', 'lkpd', 'prota_promes', 'modul_p5'] as const;
+const JENJANGS = ['SD', 'SMP', 'SMA', 'SMK'] as const;
+
+// Simpan dokumen — identitas penulis SELALU dari session; dokumen baru default PRIVATE.
+app.post('/api/documents', requireAuth, requireVerified, (req: Request, res: Response) => {
+  const { title, docType, jenjang, tingkat, fase, mataPelajaran, topik, content, durationMinutes } = req.body;
+  const me = currentDbUser(req)!;
 
   if (!title || !content) {
     return res.status(400).json({ success: false, message: 'Judul dan konten dokumen wajib diisi' });
   }
+  if (docType && !(DOC_TYPES as readonly string[]).includes(String(docType))) {
+    return res.status(400).json({ success: false, message: 'Jenis dokumen tidak valid' });
+  }
+  if (jenjang && !(JENJANGS as readonly string[]).includes(String(jenjang))) {
+    return res.status(400).json({ success: false, message: 'Jenjang tidak valid' });
+  }
 
   const newDoc: EducationalDocument = {
     id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    title,
+    title: String(title),
     docType: docType || 'modul_ajar',
-    jenjang: jenjang || 'SD',
+    jenjang: jenjang || me.jenjang,
     tingkat: tingkat || 'Kelas 4',
     fase: fase || 'Fase B',
-    mataPelajaran: mataPelajaran || 'Umum',
-    topik: topik || title,
-    content,
+    mataPelajaran: mataPelajaran || me.mataPelajaran,
+    topik: topik || String(title),
+    content: String(content),
     createdAt: new Date().toISOString(),
-    authorId: authorId || 'user-admin-1',
-    authorName: authorName || 'Guru Merdeka Belajar',
-    schoolName: schoolName || 'Sekolah Penggerak',
-    isPublic: true,
+    authorId: me.id,
+    authorName: me.name,
+    schoolName: me.schoolName,
+    isPublic: false,
     durationMinutes: durationMinutes || Number((2.8 + Math.random() * 0.9).toFixed(1))
   };
 
   documents.unshift(newDoc);
   saveDB();
+  auditLog('document_create', me.id, { docId: newDoc.id, docType: newDoc.docType });
   res.json({ success: true, message: 'Dokumen perangkat ajar berhasil disimpan ke arsip!', document: newDoc });
 });
 
-app.delete('/api/documents/:id', (req: Request, res: Response) => {
+// Hapus dokumen — hanya pemilik atau ADMIN/SUPER_ADMIN.
+app.delete('/api/documents/:id', requireAuth, (req: Request, res: Response) => {
   const { id } = req.params;
+  const me = req.user!;
+  const doc = documents.find(d => d.id === id);
+  if (!doc) {
+    return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
+  }
+  const isAdmin = me.role === 'ADMIN' || me.role === 'SUPER_ADMIN';
+  if (doc.authorId !== me.id && !isAdmin) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'Anda hanya dapat menghapus dokumen milik sendiri.' }
+    });
+  }
   documents = documents.filter(d => d.id !== id);
   saveDB();
+  auditLog('document_delete', me.id, { docId: id, title: doc.title });
   res.json({ success: true, message: 'Dokumen berhasil dihapus dari arsip' });
 });
 
-// 7. AI Perangkat Ajar Generator using Gemini 3.8 Flash
-app.post('/api/generate', async (req: Request, res: Response) => {
+// 7. AI Perangkat Ajar Generator — requireAuth + rate limit + validasi input.
+app.post('/api/generate', requireAuth, requireVerified, generateRateLimit, async (req: Request, res: Response) => {
   try {
     // Kunci jenjang: 1 guru hanya untuk 1 tingkat sekolah sesuai profil.
     // Admin/Super Admin bebas lintas jenjang (tugas verifikasi & supervisi).
-    const reqAuthorId = String((req.body as any)?.authorId || '');
-    const authorUser = users.find(u => u.id === reqAuthorId);
+    const authorUser = currentDbUser(req);
     if (authorUser && authorUser.role === 'GURU') {
       req.body.jenjang = authorUser.jenjang;
     }
@@ -693,17 +878,37 @@ app.post('/api/generate', async (req: Request, res: Response) => {
       alokasiWaktu,
       modelPembelajaran,
       targetPeserta,
-      dimensiP5,
+      dimensiProfilLulusan,
       soalConfig,
       authorName,
       schoolName,
       catatanTambahan
     } = req.body;
 
+    // Validasi input (batas panjang cegah prompt raksasa / abuse kuota AI).
+    if (docType && !(DOC_TYPES as readonly string[]).includes(String(docType))) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Jenis dokumen tidak valid.' }
+      });
+    }
     if (!mataPelajaran || !topik) {
       return res.status(400).json({
         success: false,
         message: 'Mata pelajaran dan topik materi pokok wajib diisi!'
+      });
+    }
+    if (String(topik).length > 500 || String(mataPelajaran).length > 200) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Topik maksimal 500 karakter, mata pelajaran maksimal 200 karakter.' }
+      });
+    }
+    const instruksiKhusus = (catatanTambahan as any)?.instruksiKhusus;
+    if (instruksiKhusus && String(instruksiKhusus).length > 2000) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message: 'Instruksi khusus maksimal 2000 karakter.' }
       });
     }
 
@@ -715,20 +920,20 @@ app.post('/api/generate', async (req: Request, res: Response) => {
 
     const promptInstructions: Record<string, string> = {
       modul_ajar: `
-TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikbudristek No. 12 Tahun 2024** dan **Panduan Pembelajaran dan Asesmen (PPA) 2024**.
+TUGAS: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen**.
 Modul ajar ini harus siap digunakan di kelas nyata, komprehensif, kaya akan diferensiasi pembelajaran, dan terstruktur rapi.
 
 STRUKTUR RESMI YANG WAJIB ADA:
 1. **INFORMASI UMUM**:
    - Identitas: Nama Guru (${authorName || 'Guru Mata Pelajaran'}), Satuan Pendidikan (${schoolName || 'Satuan Pendidikan'}), Jenjang (${jenjang}), Tingkat/Kelas (${tingkat}), ${calculatedFase}, Semester, Alokasi Waktu (${alokasiWaktu || '2 x 40 menit / 1 Pertemuan'}).
    - Kompetensi Awal / Prasyarat Belajar.
-   - Profil Pelajar Pancasila (fokuskan pada dimensi: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}).
+   - Profil Lulusan — 8 Dimensi (fokuskan pada: ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}).
    - Sarana dan Prasarana (alat, media, teknologi kontekstual).
    - Target Peserta Didik (${targetPeserta || 'Reguler/tipikal, dengan diferensiasi kebutuhan belajar'}).
    - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda Tatap Muka.
 
 2. **KOMPONEN INTI**:
-   - Capaian Pembelajaran (CP) sesuai BSKAP No. 032/H/KR/2024 untuk ${mataPelajaran} ${calculatedFase}.
+   - Capaian Pembelajaran (CP) resmi BSKAP Kemendikdasmen untuk ${mataPelajaran} ${calculatedFase}.
    - Tujuan Pembelajaran (TP) yang jelas (mengandung Audience, Behavior, Condition, Degree).
    - Indikator Ketercapaian Tujuan Pembelajaran (IKTP).
    - Pemahaman Bermakna (manfaat nyata di kehidupan sehari-hari).
@@ -756,25 +961,25 @@ STRUKTUR RESMI YANG WAJIB ADA:
    - Daftar Pustaka resmi Kemendikbudristek.
 `,
       rpp: `
-TUGAS: Susunlah **RENCANA PELAKSANAAN PEMBELAJARAN (RPP) INOVATIF & RINGKAS (1-2 LEMBAR)** Kurikulum Merdeka sesuai Permendikbudristek No 12 Tahun 2024.
+TUGAS: Susunlah **RENCANA PELAKSANAAN PEMBELAJARAN (RPP) INOVATIF & RINGKAS (1-2 LEMBAR)** Kurikulum Merdeka sesuai Permendikdasmen No. 13 Tahun 2025.
 Fokus pada efisiensi, kemudahan dibaca kepala sekolah/pengawas saat supervisi, dan kejelasan operasional di kelas.
 
 FORMAT WAJIB:
 1. **IDENTITAS & KOMPONEN RPP**: Sekolah (${schoolName || 'Satuan Pendidikan'}), Mata Pelajaran (${mataPelajaran}), Kelas/Fase (${tingkat} / ${calculatedFase}), Topik (${topik}), Alokasi Waktu (${alokasiWaktu || '2 JP'}).
-2. **TUJUAN PEMBELAJARAN**: Rumusan TP operasional berorientasi HOTS & Profil Pelajar Pancasila.
+2. **TUJUAN PEMBELAJARAN**: Rumusan TP operasional berorientasi HOTS & Profil Lulusan.
 3. **MEDIA, ALAT & SUMBER BELAJAR**: Alat praktis dan bahan ajar relevan.
 4. **LANGKAH-LANGKAH PEMBELAJARAN**:
    - Pendahuluan (10 menit): Doa, Apersepsi, Ice Breaking, Pertanyaan Pemantik.
    - Kegiatan Inti (60 menit): Penerapan sintaks ${modelPembelajaran || 'Problem Based Learning'} dengan sentuhan diferensiasi.
    - Penutup (10 menit): Refleksi, asesmen cepat (Exit Ticket), pesan moral dan doa.
 5. **ASESMEN**:
-   - Asesmen Sikap (Observasi Profil Pelajar Pancasila).
+   - Asesmen Sikap (Observasi Profil Lulusan).
    - Asesmen Pengetahuan (Tes tulis/lisan).
    - Asesmen Keterampilan (Kinerja/Produk diskusi).
 6. **TANDA TANGAN PENGESAHAN**: Tempat & Tanggal, Mengetahui Kepala Sekolah & Guru Mata Pelajaran.
 `,
       soal_ujian: `
-TUGAS: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Nasional (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikbudristek No 12 Tahun 2024.
+TUGAS: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Nasional (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
 
 KONFIGURASI SOAL:
 - Jumlah Soal: ${soalConfig?.jumlahSoal || 15} butir soal.
@@ -800,11 +1005,11 @@ STRUKTUR RESMI DOKUMEN UJIAN:
    - Perhitungan Nilai Akhir = (Skor Perolehan / Total Skor Maksimal) x 100.
 `,
       kktp_atp: `
-TUGAS: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)** untuk ${mataPelajaran} ${tingkat} (${calculatedFase}) sesuai Permendikbudristek No 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen 2024.
+TUGAS: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)** untuk ${mataPelajaran} ${tingkat} (${calculatedFase}) sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen.
 
 KOMPONEN WAJIB:
 1. Rasional dan Capaian Pembelajaran Elemen & Fase.
-2. Matriks Alur Tujuan Pembelajaran (ATP) dalam tabel (Elemen, Capaian Pembelajaran, Tujuan Pembelajaran, Alur Pembelajaran, Alokasi Waktu JP, Profil Pelajar Pancasila, Penilaian).
+2. Matriks Alur Tujuan Pembelajaran (ATP) dalam tabel (Elemen, Capaian Pembelajaran, Tujuan Pembelajaran, Alur Pembelajaran, Alokasi Waktu JP, Profil Lulusan, Penilaian).
 3. Penetapan KKTP dengan 3 Pendekatan Resmi Kemendikbud:
    a. Pendekatan Deskripsi Kriteria.
    b. Pendekatan Rubrik Skala Berkembang.
@@ -833,7 +1038,7 @@ KOMPONEN WAJIB:
 3. Tabel Promes Semester 1 & 2: Distribusi JP per minggu efektif, jadwal asesmen sumatif lingkup materi, asesmen sumatif tengah semester, sumatif akhir semester, dan libur kalender pendidikan.
 `,
       modul_p5: `
-TUGAS: Susunlah **MODUL PROYEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)** sesuai Panduan Pengembangan Projek Penguatan Profil Pelajar Pancasila BSKAP 2024.
+TUGAS: Susunlah **MODUL PROJEK PENGUATAN PROFIL LULUSAN** sesuai ketentuan projek kokurikuler Kemendikdasmen.
 
 Tema Proyek: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan / Kewirausahaan / Kearifan Lokal / Suara Demokrasi'}
 Topik: ${topik}
@@ -841,7 +1046,7 @@ Jenjang / Fase: ${jenjang} / ${calculatedFase}
 
 KOMPONEN WAJIB:
 1. Profil Modul (Tema, Topik, Fase/Kelas, Durasi JP).
-2. Dimensi, Elemen, dan Subelemen Profil Pelajar Pancasila yang Dikembangkan (Matriks Target Pencapaian di Akhir Fase).
+2. Dimensi Profil Lulusan yang Dikembangkan (dari 8 Dimensi Profil Lulusan) (Matriks Target Pencapaian di Akhir Fase).
 3. Alur Aktivitas Projek (Tahap Pengenalan, Tahap Kontekstualisasi, Tahap Aksi Nyata, Tahap Refleksi dan Tindak Lanjut).
 4. Asesmen Diagnostik, Formatif, dan Sumatif Projek (Rubrik Penilaian Perkembangan Subelemen: Belum Berkembang, Mulai Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
 5. Lampiran: Lembar Jurnal Refleksi Siswa dan Panduan Pameran Karya (Gelar Karya Projek).
@@ -853,9 +1058,9 @@ KOMPONEN WAJIB:
     const fullPrompt = `
 Anda adalah Pakar Kurikulum Nasional Indonesia & Pengembang Perangkat Ajar Senior di Kementerian Pendidikan Dasar dan Menengah RI (Kemendikdasmen / Kemendikbudristek).
 Anda memiliki pemahaman mendalam tentang:
-- **Permendikbudristek No. 12 Tahun 2024** (Kurikulum Merdeka sebagai Kurikulum Nasional).
-- **Keputusan Kepala BSKAP No. 032/H/KR/2024** (Capaian Pembelajaran PAUD, Dikdas, dan Dikmen).
-- **Panduan Pembelajaran dan Asesmen (PPA) 2024**.
+- **Permendikdasmen No. 13 Tahun 2025** (Kurikulum Merdeka sebagai Kurikulum Nasional).
+- **Keputusan Kepala BSKAP tentang Capaian Pembelajaran** (PAUD, Dikdas, dan Dikmen).
+- **Panduan Pembelajaran dan Asesmen**.
 - Paradigma Pembelajaran Berdiferensiasi (Diferensiasi Konten, Proses, Produk).
 - Asesmen Berkelanjutan (Diagnostik, Formatif, Sumatif) & AKM (Asesmen Kompetensi Minimum).
 
@@ -868,7 +1073,7 @@ INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Alokasi Waktu: ${alokasiWaktu || '2 JP (Pertemuan 1)'}
 - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'}
 - Target Peserta Didik: ${targetPeserta || 'Reguler/Tipikal dengan keberagaman gaya belajar'}
-- Dimensi Profil Pelajar Pancasila: ${Array.isArray(dimensiP5) && dimensiP5.length ? dimensiP5.join(', ') : 'Bernalar Kritis, Gotong Royong, Mandiri'}
+- Dimensi Profil Lulusan (8 dimensi): ${Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length ? dimensiProfilLulusan.join(', ') : 'Penalaran Kritis, Kolaborasi, Kemandirian'}
 - Nama Penyusun: ${authorName || 'Bapak/Ibu Guru'}
 - Nama Sekolah: ${schoolName || 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'}
 ${catatanTambahan ? `- Catatan Khusus Guru: ${JSON.stringify(catatanTambahan)}` : ''}
@@ -883,11 +1088,13 @@ PANDUAN PENULISAN:
 `;
 
     // Generate with multi-model fallback & transient 503 resiliency
+    // Model ID valid Gemini API (diverifikasi 2026): 2.5-flash stabil,
+    // 3-flash-preview generasi baru, 2.5-flash-lite hemat, 2.5-pro paling kuat.
     const candidateModels = [
-      'gemini-3.8-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-flash-latest',
-      'gemini-3.1-pro-preview'
+      'gemini-2.5-flash',
+      'gemini-3-flash-preview',
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro'
     ];
 
     let generatedText = '';
@@ -937,7 +1144,7 @@ PANDUAN PENULISAN:
         alokasiWaktu,
         modelPembelajaran,
         targetPeserta,
-        dimensiP5,
+        dimensiProfilLulusan,
         authorName,
         schoolName,
         catatanTambahan
@@ -956,6 +1163,8 @@ PANDUAN PENULISAN:
     } - ${mataPelajaran} ${tingkat} (${topik})`;
 
     const calculatedDuration = Number((2.8 + Math.random() * 0.9).toFixed(1));
+
+    auditLog('generate', req.user?.id, { docType, jenjang, mataPelajaran: String(mataPelajaran).slice(0, 80), modelUsed });
 
     res.json({
       success: true,
@@ -986,8 +1195,8 @@ PANDUAN PENULISAN:
 });
 
 // 7b. AI Image Generator (ilustrasi dokumen) — model gemini-2.5-flash-image,
-// memakai GEMINI_API_KEY yang sama dengan generator teks.
-app.post('/api/generate-image', async (req: Request, res: Response) => {
+// memakai GEMINI_API_KEY yang sama dengan generator teks. requireAuth + rate limit.
+app.post('/api/generate-image', requireAuth, imageRateLimit, async (req: Request, res: Response) => {
   try {
     const { prompt, aspectRatio } = req.body as { prompt?: string; aspectRatio?: string };
 
