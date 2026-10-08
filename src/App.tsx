@@ -579,7 +579,7 @@ export default function App() {
                       Landasan hukum kurikulum nasional 2024
                     </h3>
                     <p className="!text-[13.5px] !text-[#424245]">
-                      Berdasarkan <b>Permendikbudristek No. 12 Tahun 2024</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, dan berorientasi Profil Pelajar Pancasila.
+                      Berdasarkan <b>Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, mendalam (berkesadaran, bermakna, menggembirakan), dan berorientasi Profil Lulusan 8 dimensi.
                     </p>
                   </div>
 
@@ -627,7 +627,7 @@ export default function App() {
 
         {/* Global Footer — minimal */}
         <footer className="py-6 px-6 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d] no-print mt-auto">
-          <p><span className="font-semibold dark:text-[#f5f5f7]">Ruang Guru Merdeka</span> · Permendikbudristek No. 12 Tahun 2024 & PPA 2024</p>
+          <p><span className="font-semibold dark:text-[#f5f5f7]">Ruang Guru Merdeka</span> · Permendikdasmen No. 13 Tahun 2025</p>
         </footer>
 
       </div>

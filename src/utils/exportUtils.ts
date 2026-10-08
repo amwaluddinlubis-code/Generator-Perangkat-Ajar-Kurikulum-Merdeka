@@ -1,4 +1,5 @@
 import { marked } from 'marked';
+import sanitizeHtml from 'sanitize-html';
 import {
   Document,
   Paragraph,
@@ -24,10 +25,25 @@ const BODY_SIZE = 24; // 12pt dalam half-point
 export function renderMarkdownToHtml(markdownText: string): string {
   if (!markdownText) return '';
   try {
-    return marked.parse(markdownText, { gfm: true, breaks: true }) as string;
+    const rawHtml = marked.parse(markdownText, { gfm: true, breaks: true }) as string;
+    // Sanitasi: konten markdown (dari AI/template/pengguna) tidak boleh menyuntikkan
+    // script/iframe/event-handler ke DOM. Dipakai sebelum dangerouslySetInnerHTML.
+    return sanitizeHtml(rawHtml, {
+      allowedTags: [
+        'p', 'h1', 'h2', 'h3', 'h4',
+        'ul', 'ol', 'li',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'strong', 'em', 'blockquote', 'code', 'pre',
+        'br', 'hr', 'a'
+      ],
+      allowedAttributes: {
+        a: ['href']
+      },
+      allowedSchemes: ['http', 'https', 'mailto']
+    });
   } catch (err) {
     console.error('Error parsing markdown:', err);
-    return markdownText;
+    return sanitizeHtml(markdownText);
   }
 }
 
@@ -153,7 +169,7 @@ export async function exportToDocx(
       },
       children: [
         new TextRun({
-          text: 'Implementasi Kurikulum Merdeka Berdasarkan Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen',
+          text: 'Implementasi Kurikulum Merdeka Berdasarkan Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen',
           italics: true,
           size: 18,
           color: '555555',
@@ -645,7 +661,7 @@ export function downloadWordDocument(
       <div class="kop-kementerian">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA</div>
       <div class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</div>
       <div class="kop-sekolah">${metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}</div>
-      <div class="kop-alamat">Implementasi Kurikulum Merdeka Berdasarkan Permendikbudristek No. 12 Tahun 2024 & Panduan Pembelajaran dan Asesmen</div>
+      <div class="kop-alamat">Implementasi Kurikulum Merdeka Berdasarkan Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen</div>
     </div>
 
     ${htmlBody}

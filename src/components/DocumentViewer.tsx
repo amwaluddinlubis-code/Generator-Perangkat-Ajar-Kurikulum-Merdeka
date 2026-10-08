@@ -390,7 +390,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
             {/* Kop resmi */}
             <div className="doc-kop print-kop">
-              <div className="kop-eyebrow">Kurikulum Merdeka • Permendikbudristek No. 12 Tahun 2024</div>
+              <div className="kop-eyebrow">Kurikulum Merdeka • Permendikdasmen No. 13 Tahun 2025</div>
               <h4>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</h4>
               <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</h4>
               <div className="kop-school">
