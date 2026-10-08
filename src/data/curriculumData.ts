@@ -104,13 +104,17 @@ export const JENJANG_CONFIGS: Record<Jenjang, JenjangConfig> = {
   }
 };
 
-export const DIMENSI_P5 = [
-  'Beriman, Bertakwa kepada Tuhan YME, dan Berakhlak Mulia',
-  'Berkebinekaan Global',
-  'Bergotong Royong',
-  'Mandiri',
-  'Bernalar Kritis',
-  'Kreatif'
+// 8 Dimensi Profil Lulusan — Permendikdasmen No. 10 Tahun 2025 tentang SKL
+// (menggantikan 6 dimensi Profil Pelajar Pancasila).
+export const DIMENSI_PROFIL_LULUSAN = [
+  'Keimanan dan Ketakwaan kepada Tuhan YME',
+  'Kewargaan',
+  'Penalaran Kritis',
+  'Kreativitas',
+  'Kolaborasi',
+  'Kemandirian',
+  'Kesehatan',
+  'Komunikasi'
 ];
 
 export const MODEL_PEMBELAJARAN = [
@@ -140,7 +144,7 @@ export const DOC_TYPE_INFO: Record<DocType, { label: string; icon: string; desc:
     label: 'Modul Ajar Kurikulum Merdeka',
     icon: 'FileText',
     desc: 'Format lengkap mencakup Identitas, CP, TP, Pemahaman Bermakna, Pertanyaan Pemantik, Kegiatan Berdiferensiasi, Asesmen & Rubrik KKTP, LKPD, hingga Glosarium.',
-    badge: 'Standar PPA 2024'
+    badge: 'Panduan Pembelajaran & Asesmen'
   },
   rpp: {
     label: 'RPP Ringkas (1-2 Lembar)',
@@ -173,10 +177,10 @@ export const DOC_TYPE_INFO: Record<DocType, { label: string; icon: string; desc:
     badge: 'Perencanaan Tahunan'
   },
   modul_p5: {
-    label: 'Modul Projek Penguatan P5',
+    label: 'Modul Projek Penguatan Profil Lulusan',
     icon: 'Sparkles',
-    desc: 'Perangkat modul projek Profil Pelajar Pancasila sesuai 8 tema resmi Kemdikbudristek lengkap dengan matriks sub-elemen dan gelar karya.',
-    badge: 'Kokurikuler P5'
+    desc: 'Perangkat modul projek kokurikuler sesuai 8 tema resmi Kemendikdasmen dan 8 Dimensi Profil Lulusan, lengkap dengan matriks target capaian dan gelar karya.',
+    badge: 'Kokurikuler'
   }
 };
 

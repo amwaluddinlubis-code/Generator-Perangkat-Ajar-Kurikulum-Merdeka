@@ -37,7 +37,7 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
             Regulasi Kurikulum Merdeka
           </h2>
           <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
-            Permendikbudristek No. 12/2024 & PPA 2024
+            Permendikdasmen No. 13/2025
           </p>
         </div>
 
@@ -48,17 +48,17 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-black/[0.03] dark:bg-white/5">
             <div className="flex items-center gap-2 font-semibold text-[15px] mb-2">
               <Scale className="w-5 h-5" />
-              1. Permendikbudristek No. 12 Tahun 2024
+              1. Permendikdasmen No. 13 Tahun 2025
             </div>
             <p className="text-[#424245] dark:text-[#c7c7cc] mb-3">
-              Peraturan Menteri Pendidikan, Kebudayaan, Riset, dan Teknologi Nomor 12 Tahun 2024 secara resmi menetapkan Kurikulum Merdeka sebagai <b>Kurikulum Nasional</b> untuk jenjang PAUD, Pendidikan Dasar, dan Pendidikan Menengah di seluruh Indonesia.
+              Peraturan Menteri Pendidikan Dasar dan Menengah Nomor 13 Tahun 2025 (perubahan atas Permendikbudristek No. 12/2024) menegaskan Kurikulum Merdeka sebagai <b>Kurikulum Nasional</b> untuk PAUD, Pendidikan Dasar, dan Pendidikan Menengah, dengan penguatan <b>pembelajaran mendalam</b> (berkesadaran, bermakna, menggembirakan).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[13px]">
               <div className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-black/10 dark:border-white/10">
                 <span className="font-semibold block mb-1">Struktur kurikulum</span>
                 <ul className="list-disc pl-4 space-y-1 text-[#424245] dark:text-[#c7c7cc]">
                   <li><b>Intrakurikuler</b>: pembelajaran reguler berbasis capaian.</li>
-                  <li><b>Kokurikuler (P5)</b>: projek Profil Pelajar Pancasila (20–30% JP).</li>
+                  <li><b>Kokurikuler</b>: projek penguatan Profil Lulusan 8 dimensi, terintegrasi dengan pembelajaran tematik/projek.</li>
                   <li><b>Ekstrakurikuler</b>: minat dan bakat peserta didik.</li>
                 </ul>
               </div>
@@ -77,11 +77,11 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Komponen Modul Ajar (PPA 2024) */}
+          {/* Section 2: Komponen Modul Ajar (Panduan Pembelajaran dan Asesmen) */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 font-semibold text-[15px]">
               <Layers className="w-5 h-5" />
-              2. Komponen Modul Ajar PPA 2024
+              2. Komponen Modul Ajar (Panduan Pembelajaran dan Asesmen)
             </div>
             <p className="text-[#424245] dark:text-[#c7c7cc]">
               Pendidik boleh memodifikasi modul ajar. Modul yang ideal memuat:
@@ -94,7 +94,7 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
                 <ul className="text-[12.5px] space-y-1 text-[#424245] dark:text-[#c7c7cc]">
                   <li>• Identitas sekolah & guru</li>
                   <li>• Kompetensi awal</li>
-                  <li>• Profil Pelajar Pancasila</li>
+                  <li>• Profil Lulusan (8 dimensi)</li>
                   <li>• Sarana & prasarana</li>
                   <li>• Target peserta didik</li>
                   <li>• Model (PBL/PjBL)</li>

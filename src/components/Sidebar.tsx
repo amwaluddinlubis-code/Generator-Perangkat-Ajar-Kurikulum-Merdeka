@@ -56,13 +56,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
 
   const docMenuItems: { type: DocType; label: string; sub: string; icon: React.ReactNode }[] = [
-    { type: 'modul_ajar', label: 'Modul Ajar', sub: 'Lengkap · PPA 2024', icon: <FileText className="w-[18px] h-[18px]" /> },
+    { type: 'modul_ajar', label: 'Modul Ajar', sub: 'Lengkap · PPA', icon: <FileText className="w-[18px] h-[18px]" /> },
     { type: 'rpp', label: 'RPP Ringkas', sub: '1–2 lembar', icon: <Layers className="w-[18px] h-[18px]" /> },
     { type: 'soal_ujian', label: 'Soal & Asesmen', sub: 'AKM · HOTS', icon: <HelpCircle className="w-[18px] h-[18px]" /> },
     { type: 'lkpd', label: 'LKPD', sub: 'Siap cetak', icon: <BookOpen className="w-[18px] h-[18px]" /> },
     { type: 'kktp_atp', label: 'ATP & KKTP', sub: 'Matriks', icon: <Target className="w-[18px] h-[18px]" /> },
     { type: 'prota_promes', label: 'Prota & Promes', sub: 'Tahunan', icon: <Calendar className="w-[18px] h-[18px]" /> },
-    { type: 'modul_p5', label: 'Modul P5', sub: '8 tema', icon: <Sparkles className="w-[18px] h-[18px]" /> },
+    { type: 'modul_p5', label: 'Modul Projek', sub: '8 tema', icon: <Sparkles className="w-[18px] h-[18px]" /> },
   ];
 
   const handleNavClick = (target: NavigationTarget) => {

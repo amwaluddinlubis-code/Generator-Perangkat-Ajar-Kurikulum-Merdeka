@@ -1,7 +1,7 @@
 # Dokumentasi — Ruang Guru Merdeka
 ### Generator Perangkat Ajar Kurikulum Merdeka
 
-Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum Merdeka** sesuai **Permendikbudristek No. 12 Tahun 2024** dan **Panduan Pembelajaran & Asesmen (PPA) 2024**, dibantu AI Gemini dengan mesin cadangan otomatis, ekspor Word/PDF siap cetak kertas A4, dan arsip terverifikasi Belajar.id.
+Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum Merdeka** sesuai **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen**, dibantu AI Gemini dengan mesin cadangan otomatis, ekspor Word/PDF siap cetak kertas A4, dan arsip terverifikasi Belajar.id.
 
 ---
 
@@ -15,7 +15,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Ekspor | `.docx` asli (Times New Roman 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
 | Akun | Masuk/daftar Belajar.id, status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
-| Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP) |
+| Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP, 8 Dimensi Profil Lulusan) |
 | Tema | Terang/gelap ala Apple, tersimpan otomatis, grafik adaptif |
 
 ---
@@ -24,7 +24,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 
 - **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + D3.js + `marked`
 - **Backend:** Express 5 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
-- **AI:** `@google/genai` (teks: `gemini-3.8-flash` dkk. dengan fallback; gambar: `gemini-2.5-flash-image`)
+- **AI:** `@google/genai` (teks: `gemini-2.5-flash` → `gemini-3-flash-preview` → `gemini-2.5-flash-lite` → `gemini-2.5-pro`, fallback berurutan; gambar: `gemini-2.5-flash-image`)
 - **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), salin clipboard
 - **Data:** JSON file `data/db.json` (di-gitignore), dimuat saat start + disimpan debounce tiap mutasi
 
@@ -71,13 +71,13 @@ PerangkatAjar/
 
 | Target | Fungsi |
 |---|---|
-| `modul_ajar` | Wizard Modul Ajar lengkap PPA 2024 |
+| `modul_ajar` | Wizard Modul Ajar lengkap (Panduan Pembelajaran dan Asesmen) |
 | `rpp` | RPP ringkas 1–2 lembar siap supervisi |
 | `soal_ujian` | Paket soal + kisi-kisi + kunci (opsi jumlah & level) |
 | `lkpd` | LKPD siap cetak (kop kelompok, 3 aktivitas, rubrik diri) |
 | `kktp_atp` | Matriks ATP + 3 pendekatan KKTP + remedial/pengayaan |
 | `prota_promes` | Tabel Prota + Promes ganjil/genap |
-| `modul_p5` | Projek P5 (8 tema, 4 tahap, rubrik, jurnal) |
+| `modul_p5` | Projek penguatan Profil Lulusan (8 tema, 4 tahap, rubrik, jurnal) |
 | `stats` | Statistik, grafik, lencana, riwayat |
 | `profile` | Profil Saya: edit mandiri (nama, sekolah, mapel, NIP, NPSN), statistik sendiri, ganti tema/akun |
 | `repository` | Arsip semua dokumen |

@@ -24,6 +24,8 @@ export interface TeacherUser {
   registeredAt: string;
   verifiedAt?: string;
   verifiedBy?: string;
+  /** Hash password (scrypt). Opsional agar data seed lama tetap valid; tidak pernah dikirim ke client. */
+  passwordHash?: string;
 }
 
 export interface EducationalDocument {
@@ -67,7 +69,7 @@ export interface GeneratorParams {
   alokasiWaktu: string;
   modelPembelajaran: string;
   targetPeserta: string;
-  dimensiP5: string[];
+  dimensiProfilLulusan: string[];
   soalConfig?: {
     jumlahSoal: number;
     bentukSoal: string[];
