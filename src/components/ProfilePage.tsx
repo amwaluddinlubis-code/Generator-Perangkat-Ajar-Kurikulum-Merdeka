@@ -28,6 +28,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { theme, toggle } = useTheme();
   const isVerified = currentUser.status === 'VERIFIED';
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
+  const canChangeSchool = currentUser.role === 'SUPER_ADMIN';
 
   const [name, setName] = useState(currentUser.name);
   const [school, setSchool] = useState(currentUser.schoolName);
@@ -35,6 +36,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [nip, setNip] = useState(currentUser.nip || '');
   const [npsn, setNpsn] = useState(currentUser.npsn || '');
   const [saving, setSaving] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwMsg, setPwMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
 
   // Sinkron bila profil diubah admin dari perangkat lain
   useEffect(() => {
@@ -54,6 +59,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     setSaving(true);
     await onUpdateSelf({ name, schoolName: school, mataPelajaran: mapel, nip, npsn });
     setSaving(false);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwMsg(null);
+    if (pwNew.length < 8) {
+      setPwMsg({ ok: false, text: 'Kata sandi baru minimal 8 karakter.' });
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const res = await fetch('/api/auth/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwCurrent || undefined, newPassword: pwNew })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error?.message || data.message || 'Gagal memperbarui kata sandi');
+      setPwMsg({ ok: true, text: 'Kata sandi berhasil diperbarui.' });
+      setPwCurrent('');
+      setPwNew('');
+    } catch (err: any) {
+      setPwMsg({ ok: false, text: err.message || 'Gagal memperbarui kata sandi' });
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   return (
@@ -94,7 +125,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
         <div>
           <label className="block text-[13px] font-semibold mb-1.5">Sekolah</label>
-          <input value={school} onChange={(e) => setSchool(e.target.value)} required className="apple-input" />
+          <input value={school} onChange={(e) => setSchool(e.target.value)} required disabled={!canChangeSchool} className="apple-input disabled:opacity-60" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
@@ -121,8 +152,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           {saving ? 'Menyimpan...' : 'Simpan perubahan'}
         </button>
         <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] text-center">
-          Jenjang, peran, dan status hanya bisa diubah oleh admin.
+          Jenjang, peran, dan status hanya bisa diubah oleh admin. Sekolah hanya dapat dipindahkan oleh Super Admin.
         </p>
+      </form>
+
+      {/* Keamanan */}
+      <form onSubmit={handlePasswordSubmit} className="apple-card p-6 sm:p-8 space-y-3.5">
+        <h3 className="font-semibold text-[15px]">Kata sandi</h3>
+        <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d]">
+          Lindungi akun dengan kata sandi. Setelah diatur, masuk wajib memakai kata sandi.
+        </p>
+        <div>
+          <label className="block text-[13px] font-semibold mb-1.5">Kata sandi saat ini (bila sudah ada)</label>
+          <input type="password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} autoComplete="current-password" className="apple-input" />
+        </div>
+        <div>
+          <label className="block text-[13px] font-semibold mb-1.5">Kata sandi baru (min. 8 karakter)</label>
+          <input type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)} autoComplete="new-password" className="apple-input" />
+        </div>
+        {pwMsg && (
+          <div className={`rounded-xl px-4 py-3 text-[13px] ${pwMsg.ok ? 'bg-[#30b158]/10' : 'bg-[#ff3b30]/10'}`}>
+            {pwMsg.text}
+          </div>
+        )}
+        <button type="submit" disabled={pwSaving} className="btn-apple w-full">
+          {pwSaving ? 'Menyimpan...' : 'Perbarui kata sandi'}
+        </button>
       </form>
 
       {/* Aktivitas & preferensi */}

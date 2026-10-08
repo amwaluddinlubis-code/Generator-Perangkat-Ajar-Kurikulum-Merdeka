@@ -3,7 +3,16 @@ import { TeacherUser, DocType } from '../types';
 import { NavigationTarget } from './Sidebar';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
 import { useTheme } from '../theme';
-import { Menu, CheckCircle2, Clock, ShieldCheck, ChevronRight, LogOut, Sun, Moon } from 'lucide-react';
+import {
+  Menu,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  LogOut,
+  Sun,
+  Moon,
+} from 'lucide-react';
 
 interface TopHeaderProps {
   currentUser: TeacherUser;
@@ -23,60 +32,88 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onLogout,
 }) => {
   const { theme, toggle } = useTheme();
-  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
+  const isAdmin = currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
   const isVerified = currentUser.status === 'VERIFIED';
 
   const getTitle = (): { kicker: string; title: string } => {
+    if (activeTarget === 'dashboard') return { kicker: 'Beranda', title: 'Ringkasan kerja' };
     if (activeTarget === 'profile') return { kicker: 'Ruang kerja', title: 'Profil saya' };
     if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
     if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
-    if (activeTarget === 'admin') return { kicker: 'Admin', title: 'Verifikasi guru' };
-    if (activeTarget === 'guide') return { kicker: 'Regulasi', title: 'Panduan Kurikulum Merdeka' };
+    if (activeTarget === 'admin') return { kicker: 'Administrasi', title: 'Verifikasi guru' };
+    if (activeTarget === 'school') return { kicker: 'Administrasi', title: 'Identitas sekolah' };
+    if (activeTarget === 'guide') return { kicker: 'Referensi', title: 'Panduan Kurikulum' };
     const info = DOC_TYPE_INFO[activeTarget as DocType];
-    return { kicker: 'Buat perangkat', title: info ? info.label : 'Generator' };
+    return { kicker: 'Buat perangkat', title: info?.label || 'Generator' };
   };
-  const t = getTitle();
+
+  const page = getTitle();
 
   return (
-    <header className="sticky top-0 z-30 apple-nav no-print">
-      <div className="px-4 sm:px-8 lg:px-12 h-[60px] flex items-center justify-between gap-3 max-w-[1400px] mx-auto">
-        <div className="flex items-center gap-2 min-w-0">
-          <button onClick={onOpenMobileSidebar} className="lg:hidden p-2.5 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer" aria-label="Buka menu">
-            <Menu className="w-5 h-5" />
+    <header className="sticky top-0 z-30 px-3 pt-3 sm:px-5 lg:px-7 no-print">
+      <div className="apple-nav mx-auto flex h-[58px] max-w-[1440px] items-center justify-between gap-3 rounded-[18px] border px-3 shadow-sm sm:px-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onOpenMobileSidebar}
+            className="rounded-full p-2.5 text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-surface-muted)] lg:hidden"
+            aria-label="Buka navigasi"
+          >
+            <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
-            <p className="text-[12px] font-medium text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1 leading-none">
-              {t.kicker} <ChevronRight className="w-3 h-3" />
-            </p>
-            <h2 className="text-[17px] font-semibold tracking-tight truncate leading-tight">{t.title}</h2>
-          </div>
+
+          <nav className="min-w-0" aria-label="Breadcrumb">
+            <div className="flex items-center gap-1 text-[11px] font-semibold text-[var(--app-text-tertiary)]">
+              <span>{page.kicker}</span>
+              <ChevronRight className="h-3 w-3" aria-hidden="true" />
+            </div>
+            <h1 className="truncate text-[16px] font-bold tracking-[-.025em]">{page.title}</h1>
+          </nav>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10">
-            {isSuperAdmin ? <><ShieldCheck className="w-3.5 h-3.5" /> Admin</>
-            : isVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#30b158]" /> Terverifikasi</>
-            : <><Clock className="w-3.5 h-3.5 text-[#ff9f0a]" /> Menunggu verifikasi</>}
-          </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="status-chip hidden sm:inline-flex">
+            {isAdmin ? (
+              <><ShieldCheck className="h-3.5 w-3.5" /> Administrator</>
+            ) : isVerified ? (
+              <><CheckCircle2 className="h-3.5 w-3.5 text-[var(--app-success)]" /> Terverifikasi</>
+            ) : (
+              <><Clock className="h-3.5 w-3.5 text-[var(--app-warning)]" /> Menunggu</>
+            )}
+          </div>
 
-          {/* Toggle tema */}
           <button
+            type="button"
             onClick={toggle}
-            className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
-            title={theme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+            className="rounded-full p-2.5 text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-surface-muted)]"
+            title={theme === 'dark' ? 'Gunakan mode terang' : 'Gunakan mode gelap'}
             aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
           >
-            {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px] text-[#424245] dark:text-[#f5f5f7]" />}
+            {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </button>
 
-          <button onClick={onOpenAuthModal} className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Profil">
-            <div className="w-8 h-8 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[13px]">
-              {currentUser.name.charAt(0)}
-            </div>
-            <span className="hidden sm:block text-[13.5px] font-semibold max-w-[140px] truncate">{currentUser.name}</span>
+          <button
+            type="button"
+            onClick={onOpenAuthModal}
+            className="flex items-center gap-2 rounded-full p-1.5 pr-3 transition-colors hover:bg-[var(--app-surface-muted)]"
+            title="Buka profil"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-text)] text-[12px] font-bold text-[var(--app-bg)]">
+              {currentUser.name.charAt(0).toUpperCase()}
+            </span>
+            <span className="hidden max-w-[160px] truncate text-[13px] font-semibold sm:block">
+              {currentUser.name}
+            </span>
           </button>
-          <button onClick={onLogout} className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Keluar">
-            <LogOut className="w-[18px] h-[18px]" />
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="rounded-full p-2.5 text-[var(--app-text-secondary)] transition-colors hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-danger)]"
+            title="Keluar"
+            aria-label="Keluar"
+          >
+            <LogOut className="h-[18px] w-[18px]" />
           </button>
         </div>
       </div>

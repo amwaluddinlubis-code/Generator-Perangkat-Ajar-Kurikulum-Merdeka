@@ -10,10 +10,15 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Area | Isi |
 |---|---|
 | 7 Generator | Modul Ajar, RPP Ringkas, Soal AKM/HOTS, LKPD, ATP & KKTP, Prota & Promes, Modul P5 — **terkunci ke jenjang profil** (1 akun = 1 jenjang; admin bebas lintas jenjang) |
+| Bank soal terstruktur | Jumlah ditentukan guru **per bentuk soal** (`jumlahPG`, `jumlahPGKompleks`, `jumlahMenjodohkan`, `jumlahIsianSingkat`, `jumlahUraian` — masing-masing 0–50, 0 = tidak dipakai; total = penjumlahannya, mis. PG 15 + menjodohkan 10 + isian 5 + uraian 5 = 35). Opsi Pilihan Ganda dapat diatur 2–6 per nomor; penomoran berurutan per bentuk; kisi-kisi, kunci, pembahasan, dan penskoran dipisahkan. Cara lama (`jumlahSoal` + `bentukSoal` multi-pilih) tetap didukung sebagai legacy. Aturan kelengkapan keras: semua butir 1..N wajib ditulis utuh (tanpa "Dan seterusnya..."), kunci mencakup semua nomor, penskoran menampilkan perhitungan total 100, estimasi waktu tidak boleh melebihi alokasi, identitas tidak boleh dikarang |
 | AI + Fallback | Gemini (multi-model + retry) → otomatis ke template cadangan terverifikasi saat AI sibuk, lengkap dengan **badge penanda** "AI Gemini" / "Template cadangan" |
+| Prompt berversi | `src/server/prompts/` — 1 file per jenis + `base.ts` + builder; versi tercatat di meta/audit; test snapshot per jenis |
+| Generasi berpusat pada guru | Form menangkap cerita guru, profil/kebutuhan murid, konteks lokal, pengetahuan awal, pertimbangan emosi, niat, dan nada suara; hasil diberi `needs_review` bila konteks belum memadai |
+| Isian generator tersimpan | Isian terakhir guru disimpan lokal per akun dan dapat dipulihkan untuk dokumen berikutnya; topik/format tetap dapat disesuaikan |
 | Ilustrasi AI | Tombol di viewer → `POST /api/generate-image` (model `gemini-2.5-flash-image`), tersisip sebagai gambar dokumen |
-| Ekspor | `.docx` asli (Times New Roman 12pt, A4, margin dinas), `.pdf` A4, cetak langsung, salin |
-| Akun | Masuk/daftar Belajar.id, status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis |
+| Ekspor | `.docx` asli (Calibri 12pt, A4, margin atas 1,5 cm dan sisi lain 2 cm), `.pdf` A4, cetak langsung, salin |
+| Akun | Masuk/daftar Belajar.id + kata sandi opsional (scrypt), status PENDING → VERIFIED/REJECTED oleh admin, revalidasi sesi otomatis. **Login Google resmi (OAuth2/OIDC)** tersedia bila `GOOGLE_CLIENT_ID/SECRET` dikonfigurasi — kepemilikan email diverifikasi Google, status verifikasi internal tetap berlaku |
+| Identitas sekolah | Menu Sekolah (admin): nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP, logo — dipakai kop & pengesahan semua output. Kota pengesahan mengikuti data sekolah; bila kosong hanya tanggal yang tampil (tidak ada lagi default "Jakarta") |
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
 | Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP, 8 Dimensi Profil Lulusan) |
 | Tema | Terang/gelap ala Apple, tersimpan otomatis, grafik adaptif |
@@ -23,10 +28,10 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 ## 2. Teknologi
 
 - **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + D3.js + `marked`
-- **Backend:** Express 5 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
+- **Backend:** Express 4.21 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
 - **AI:** `@google/genai` (teks: `gemini-2.5-flash` → `gemini-3-flash-preview` → `gemini-2.5-flash-lite` → `gemini-2.5-pro`, fallback berurutan; gambar: `gemini-2.5-flash-image`)
 - **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), salin clipboard
-- **Data:** JSON file `data/db.json` (di-gitignore), dimuat saat start + disimpan debounce tiap mutasi
+- **Data:** SQLite file `data/app.sqlite` dengan transaksi, WAL, foreign keys, soft-delete, tenant `schoolId`, session store, rate-limit store, dan audit log. Tidak ada lagi penyimpanan JSON.
 
 ---
 
@@ -36,7 +41,9 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 PerangkatAjar/
 ├── server.ts              # API Express + serve frontend
 ├── serverFallback.ts      # Template cadangan 7 tipe dokumen
-├── data/db.json           # Data runtime (dibuat otomatis, jangan di-commit)
+├── src/server/prompts/    # Prompt AI modular: types, base, 7 spec, section, index(builder+versi)
+├── data/app.sqlite        # Database runtime SQLite (dibuat otomatis, jangan di-commit)
+├── data/backups/          # Hasil backup SQLite (jangan di-commit)
 ├── .env                   # Kunci API (dibuat dari .env.example)
 ├── index.html
 ├── src/
@@ -47,7 +54,7 @@ PerangkatAjar/
 │   ├── types/index.ts     # TeacherUser, EducationalDocument, GeneratorParams, ...
 │   ├── data/
 │   │   ├── curriculumData.ts  # DOC_TYPE_INFO, JENJANG_CONFIGS, DIMENSI_P5, ...
-│   │   └── topicCatalog.ts    # Katalog topik per fase/kelas + pencarian
+│   │   └── topicCatalog.ts    # Katalog 174 topik: semua mapel/Jenjang + 6 agama (020/2026)
 │   ├── components/
 │   │   ├── Sidebar.tsx / TopHeader.tsx   # Navigasi (profil hanya di header)
 │   │   ├── LoginPage.tsx                 # Masuk/daftar + akun demo 1-ketuk
@@ -59,6 +66,11 @@ PerangkatAjar/
 │   │   ├── UserProfileStatsDashboard.tsx # Profil + KPI + grafik D3 + riwayat
 │   │   ├── ProductivityD3Chart.tsx / DocumentTypeD3Donut.tsx
 │   │   └── BelajarIdAuthModal.tsx / CurriculumGuideModal.tsx / LogoutConfirmModal.tsx
+│   ├── server/
+│   │   ├── database.ts       # SQLite schema, migration, persistence, backup
+│   │   ├── security.ts       # session cookie, rate limit, security limits
+│   │   ├── authorization.ts  # role + tenant authorization policy
+│   │   └── validation.ts     # API + AI input/output validation
 │   └── utils/exportUtils.ts  # Markdown→HTML, docx, pdf, .doc legacy, clipboard
 └── dist/                  # Hasil build produksi
 ```
@@ -79,6 +91,7 @@ PerangkatAjar/
 | `prota_promes` | Tabel Prota + Promes ganjil/genap |
 | `modul_p5` | Projek penguatan Profil Lulusan (8 tema, 4 tahap, rubrik, jurnal) |
 | `stats` | Statistik, grafik, lencana, riwayat |
+| `dashboard` | Beranda: sapaan, ringkasan, aksi cepat, aktivitas terbaru, sebaran jenis dokumen |
 | `profile` | Profil Saya: edit mandiri (nama, sekolah, mapel, NIP, NPSN), statistik sendiri, ganti tema/akun |
 | `repository` | Arsip semua dokumen |
 | `admin` | Verifikasi + edit profil + ubah peran + tambah/hapus guru |
@@ -90,25 +103,38 @@ Alur generator: **Langkah 1** format & kelas → **2** materi → **3** periksa 
 
 | Method & Path | Fungsi | Catatan |
 |---|---|---|
-| `GET /api/users/current` | Profil aktif (header `x-user-id`, default Super Admin) | — |
-| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Validasi domain Belajar.id |
-| `POST /api/auth/logout` | Keluar (stateless) | — |
-| `GET /api/users` | Daftar guru (panel admin) | — |
-| `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | + `verifiedBy` |
-| `PUT /api/users/:id` | Ubah profil (butuh `requesterId`) | Admin: profil siapa pun + role GURU/ADMIN (kecuali SUPER_ADMIN & diri sendiri); Guru: hanya profil sendiri tanpa jenjang/role/status |
-| `DELETE /api/users/:id` | Hapus guru | — |
-| `GET /api/documents` | Daftar dokumen (`?authorId&jenjang&docType`) | — |
-| `POST /api/documents` | Simpan dokumen | — |
-| `DELETE /api/documents/:id` | Hapus dokumen | — |
-| `POST /api/generate` | Susun dokumen via AI/fallback | Balikan: `title, content, durationMinutes, modelUsed` |
-| `POST /api/generate-image` | Buat ilustrasi (`prompt, aspectRatio`) | Balikan: `imageUrl` (data-URL) |
+| `GET /api/users/current` | Profil aktif dari session cookie | Server menentukan identitas |
+| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Cookie HttpOnly; rate limit; validasi payload; bila akun punya kata sandi maka wajib benar |
+| `GET /api/auth/google/config` | Cek apakah login Google dikonfigurasi | Mengembalikan `{configured: boolean}` |
+| `GET /api/auth/google/url` | URL otorisasi Google + state anti-CSRF sekali pakai | 503 bila env Google belum diisi; rate limit |
+| `GET /api/auth/google/callback` | Callback OAuth: tukar code → verifikasi id_token via tokeninfo → buat sesi | Validasi aud/iss/exp/email_verified + suffix Belajar.id; akun baru → `PENDING`; redirect `/?auth=` atau `/?auth_error=` |
+| `POST /api/auth/password` | Atur/ganti kata sandi sendiri (sesi) | Min. 8 karakter; wajib kata sandi lama bila sudah ada |
+| `POST /api/admin/users/:id/password` | Reset kata sandi user (admin) | Tidak untuk SUPER_ADMIN lain |
+| `GET /api/admin/schools/mine` | Identitas sekolah sendiri (semua peran login) | Kop dokumen memakai data ini |
+| `GET /api/admin/schools` | Daftar sekolah (Super Admin) | Untuk pemilih sekolah |
+| `GET /api/admin/schools/:id` | Detail sekolah (admin: milik sendiri) | Tenant check |
+| `PUT /api/admin/schools/:id` | Ubah nama, NPSN, alamat, kota, akreditasi, kepala sekolah + NIP | Admin milik sendiri / Super Admin |
+| `POST /api/admin/schools/:id/logo` | Unggah logo PNG/JPEG/WebP ≤500KB | Tersaji di `/uploads/...`, tampil di kop + PDF + docx |
+| `POST /api/auth/logout` | Keluar + revoke session | Cookie dihapus server |
+| `GET /api/users` | Daftar user sesuai role + `schoolId` | Super Admin lintas tenant; Admin sekolah sendiri |
+| `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | Authorization policy + audit |
+| `PUT /api/users/:id` | Ubah profil | Ownership/role/tenant diverifikasi server; tenant hanya dapat dipindah Super Admin |
+| `DELETE /api/users/:id` | Soft-delete user | Session/membership direvoke; histori tetap ada |
+| `GET /api/audit-logs` | Audit log | Super Admin global; Admin tenant sendiri |
+| `GET /api/documents` | Daftar dokumen | Server filter berdasarkan role/ownership/`schoolId` |
+| `POST /api/documents` | Simpan dokumen | author + tenant berasal dari session; private default |
+| `GET /api/documents/:id/versions` | Riwayat versi dokumen | Ownership/tenant policy server-side |
+| `DELETE /api/documents/:id` | Soft-delete dokumen | Ownership/tenant policy server-side |
+| `POST /api/generate` | Susun dokumen via AI/fallback | Session wajib; input + output divalidasi; balikan `quality{status: AI|fallback|needs_review, issues[], stats}` |
+| `POST /api/regenerate-section` | Tulis ulang satu bagian (heading dipertahankan, konteks 6000 char) | Session + rate limit; 503 jujur bila AI sibuk |
+| `POST /api/generate-image` | Buat ilustrasi | Session wajib; rate limit + input validation |
 
 ---
 
 ## 5. Menjalankan Lokal
 
 ### Prasyarat
-Node.js 20+ · npm · port 3000 bebas.
+Node.js 24.15+ · npm · port 3000 bebas. Versi pengembangan dipin ke Node 24.21.0 melalui `.nvmrc`.
 
 ### Langkah
 ```bash
@@ -128,6 +154,13 @@ npm run dev
 3. Restart server. Tanda berhasil: badge hasil menjadi **"AI Gemini"**.
 4. Tanpa key: aplikasi tetap jalan memakai template cadangan (badge "Template cadangan").
 
+### Login Google Belajar.id (OAuth2/OIDC resmi, opsional tapi disarankan)
+1. Buka `https://console.cloud.google.com/apis/credentials` → buat **OAuth Client ID** tipe "Web application".
+2. Authorized redirect URI: `http://localhost:3000/api/auth/google/callback` (lokal) atau `<APP_URL>/api/auth/google/callback` (produksi).
+3. Isi di `.env`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (dan `GOOGLE_REDIRECT_URI` bila `APP_URL` tidak sesuai).
+4. Restart server. Tanda berhasil: tombol **"Masuk dengan Google Belajar.id"** di halaman masuk mengarah ke akun Google.
+5. Tanpa konfigurasi ini: tombol menampilkan pesan belum dikonfigurasi; login manual/simulasi tetap berfungsi. Akun baru via Google tetap berstatus `PENDING` sampai diverifikasi admin — OAuth membuktikan kepemilikan email, bukan peran/sekolah (tetap via verifikasi internal/Dapodik).
+
 ### Skrip npm
 | Skrip | Fungsi |
 |---|---|
@@ -135,7 +168,10 @@ npm run dev
 | `npm run build` | Build produksi Vite → `dist/` |
 | `npm run preview` | Pratinjau hasil build (frontend saja) |
 | `npm run lint` | `tsc --noEmit` |
-| `npm run clean` | Hapus `dist` & `server.js` |
+| `npm run clean` | Hapus `dist` & `server.js` secara cross-platform |
+| `npm test` | Unit + security + authorization + validation + API integration tests |
+| `npm run backup` | Backup SQLite ke `data/backups/` atau path yang diberikan |
+| `npm run restore -- <backup.sqlite>` | Restore aman; wajib server dihentikan dan `RGM_RESTORE_CONFIRM=YES` |
 
 ---
 
@@ -144,15 +180,37 @@ npm run dev
 - Bahasa visual Apple: latar aurora gradien lembut, kartu putih, pil hitam, aksen biru `#0071e3`, target sentuh ≥ 44px.
 - Toggle bulan/matahari di header; pilihan tersimpan (`rgm-theme`); anti-kedip via skrip `index.html`.
 - Kertas dokumen (`.doc-paper`): lebar 210mm, serif formal, kop + ornamen + pengesahan; cetak via `@page A4`.
-- Standar naskah dinas di `.docx`: Times New Roman 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
+- Standar naskah di `.docx`: Calibri 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
+
+### 6.1 Design system (satu sistem, dipakai semua halaman)
+
+Token di `src/index.css`: warna (`--app-*`), radius 12/18/24/30, spacing basis 4/8 (`--app-space-*`), shadow ringan 3 tingkat, fokus terlihat + `prefers-reduced-motion`.
+
+| Kebutuhan | Standar | Contoh pakai |
+|---|---|---|
+| Tombol | `.btn-apple` / `.btn-apple-secondary` / `.btn-danger`, `.btn-sm` | Semua aksi |
+| Input/select/textarea | `.apple-input` + `.field-*` (label, required, hint, error) | Semua form |
+| Status | `.badge` + tone `neutral/success/warning/danger/info` | Verifikasi, kualitas, arsip |
+| Kartu | `.apple-card` / `.metric-card` / `.soft-section` | Dashboard, arsip |
+| Modal | `.modal-backdrop/.modal-panel/.modal-header/.modal-body/.modal-footer`, ukuran `sm/md/lg` | Semua dialog |
+| Tabel | `.data-table` dalam `.data-table-wrap` | Verifikasi, arsip |
+| Loading | `.skeleton` | Daftar & kartu saat memuat |
+| Kosong | `.empty-state` | Arsip, riwayat, hasil filter |
+
+Primitif React (`src/components/ui/`): `Modal` (ESC + fokus + `role=dialog`), `Badge`, `EmptyState`, `Field` (error dekat field + `aria-describedby`). Pesan error server dibaca dua format via `getServerMessage` (`src/utils/api.ts`) agar penyebab asli (sesi berakhir, rate limit, AI sibuk) selalu tampil, bukan generik. Aturan: halaman baru wajib memakai primitif ini, bukan merakit ulang. Model pembelajaran mengikuti jenjang profil (`MODEL_PEMBELAJARAN_PER_JENJANG`: SD 6, SMP 7, SMA 7, SMK 6 — tanpa diferensiasi/TaRL); saran katalog di luar daftar muncul sebagai opsi dinamis. Tabel memakai `.data-table`; bulk action tersedia di verifikasi guru; daftar memakai skeleton saat memuat dan empty/error state dengan aksi coba lagi.
+
+**Aksesibilitas & responsif:** target sentuh ≥24px (`.check-hit`), fokus terlihat + `prefers-reduced-motion`, input 16px anti-zoom iOS, tabel punya kolom lengket + wilayah gulir keyboard, fokus pindah ke konten tiap navigasi, kontras teks sekunder memenuhi AA.
+
+**Alur generator (wizard 3 langkah):** semua isian default kosong dan wajib diisi/dipilih (validasi bawaan + pesan dekat field); hero ringkas satu baris; langkah 1 format (strip info ikut sidebar) + kelas/fase terkunci jenjang; langkah 2 terbagi seksi berlabel — inti bersama (mapel & topik → waktu JP/durasi/pertemuan/model per-jenjang/profil) **plus input khusus tiap jenis**: modul_ajar→pilihan lampiran, rpp→fokus penekanan, soal→jumlah bebas 1–50 + bentuk multi-pilih + komposisi mudah/sedang/sukar (total 100%), lkpd→jumlah aktivitas + kunci guru, kktp→pendekatan KKTP, prota→semester + tahun ajaran, p5→tema; semuanya di wiring ke prompt AI dan template cadangan; dimensi P5 minimal 1; langkah 3 ringkasan + mini pratinjau kertas + identitas; error tampil inline dengan tombol coba lagi; progres bertahap selama AI bekerja.
 
 ---
 
 ## 7. Data & Akun Demo
 
-- Seed: 1 Super Admin (`amwaluddin.lubis@gmail.com`), 1 admin, 3 guru terverifikasi, 3 pendaftar PENDING, 5 dokumen contoh.
-- Data tersimpan di `data/db.json`; hapus file untuk kembali ke data awal.
-- Login cepat 1-ketuk tersedia di halaman masuk dan modal ganti akun.
+- Seed: 1 Super Admin, 1 Admin, guru terverifikasi/pending, dan 5 dokumen contoh.
+- Pada startup pertama, SQLite yang masih kosong diisi dari seed kode.
+- SQLite adalah satu-satunya source of truth. Jangan menghapus `data/app.sqlite` pada instalasi yang sudah berisi data kecuali memang ingin memulai ulang.
+- Login cepat tetap tersedia untuk akun seed di UI pilot.
 
 ## 8. Troubleshooting
 
@@ -162,53 +220,60 @@ npm run dev
 | `EADDRINUSE` port 3000 | Matikan proses lama yang menjalankan `tsx server.ts` |
 | Selalu "Template cadangan" | Isi `GEMINI_API_KEY` lalu restart |
 | "API key not valid" (ilustrasi) | Key salah/kedaluwarsa — buat baru di AI Studio |
-| Data kembali ke awal | `data/db.json` terhapus — normal, akan dibuat ulang |
-| Fase kosong untuk SMP/SMA | Sudah diperbaiki — default mengikuti jenjang akun |
+| Data tidak muncul | Pastikan `data/app.sqlite` dapat dibuat/ditulis oleh proses Node |
+| Restore | Hentikan server, jalankan `RGM_RESTORE_CONFIRM=YES npm run restore -- <backup.sqlite>`, lalu start kembali |
+| Fase kosong untuk SMP/SMA | Default generator mengikuti jenjang akun |
 
 ---
 
-## 9. Batasan yang Diketahui
+## 9. Rujukan Regulasi Kurikulum (CP)
+
+- **CP umum semua mapel:** Keputusan Kepala BSKAP No. **046/H/KR/2025** (mencabut 032/H/KR/2024). Meliputi Fase Fondasi (PAUD), Fase A–C (SD), D (SMP), E–F (SMA/SMK); Fase A selaras 6 kemampuan fondasi PAUD.
+- **CP Agama & Budi Pekerti:** direvisi terbatas oleh Keputusan Kepala BKPDM No. **020 Tahun 2026** (Lampiran II & V dari 046/2025). Mapel lain tidak berubah.
+- **Implementasi di aplikasi** (`src/server/curriculumRefs.ts`, satu-satunya sumber sitasi):
+  - Prompt AI memakai `cpReference(mapel)`; mapel agama otomatis mendapat blok ketentuan 020/2026 (tiga ranah sikap–pengetahuan–keterampilan, pengamalan nilai sehari-hari).
+  - Template cadangan memakai sitasi + Daftar Pustaka yang sama, plus kalimat pengamalan untuk mapel agama.
+  - Validator menandai dokumen agama tanpa dimensi "pengamalan" sebagai `needs_review`.
+  - UI (panduan, fase, statistik) merujuk 046/H/KR/2025.
+
+---
+
+## 10. Batasan yang Diketahui
 
 - Statistik bulanan memakai tren contoh (bukan murni data nyata).
-- Arsip tersimpan per-server (file lokal), bukan cloud multi-perangkat.
-- Ilustrasi AI memakai kuota Gemini; saat habis, hanya teks yang memakai fallback.
-- Gambar tersisip tersimpan sebagai data-URL (memperbesar `db.json`); di `.docx` menjadi keterangan teks.
+- SQLite saat ini ditujukan untuk deployment single-node. Untuk multi-instance/cloud, storage tenant/session perlu dipindahkan ke PostgreSQL atau database terkelola bersama.
+- Belajar.id: login Google resmi (OAuth2/OIDC) tersedia bila dikonfigurasi; tanpa konfigurasi tetap memakai validasi suffix + approval internal; sinkronisasi peran/sekolah via Dapodik belum terintegrasi.
+- Ilustrasi AI memakai kuota Gemini; tanpa `GEMINI_API_KEY`, generator teks tetap dapat memakai fallback dan generator gambar mengembalikan status konfigurasi.
+- Gambar tersisip tetap berupa data-URL sehingga dokumen besar dapat meningkatkan ukuran payload.
 
 ---
 
-## 10. Status Kesiapan Produk
+## 11. Status Kesiapan Produk
 
-Versi pada branch `main` saat ini adalah **prototype fungsional / pilot internal**, bukan aplikasi produksi multi-guru.
-
-Fitur antarmuka dan alur utama sudah tersedia, tetapi produksi publik belum boleh dilakukan sebelum kontrol berikut selesai:
-
-- autentikasi dan sesi server yang nyata;
-- otorisasi terpusat pada seluruh endpoint;
-- database transaksional untuk multi-user;
-- perlindungan data pribadi guru dan sekolah;
-- sanitasi konten Markdown/HTML;
-- rate limit untuk generator AI;
-- audit log tindakan admin;
-- backup dan pemulihan data;
-- pengujian unit, integrasi, dan end-to-end;
-- validasi kualitas hasil dokumen AI dan template fallback.
-
-Status penilaian saat ini:
+Branch `main` tetap menjadi baseline prototype lama. Branch `feat/security-baseline` sekarang menjadi kandidat **pilot internal single-node** setelah automated gate PASS dan sebelum Browser QA.
 
 | Area | Status |
 |---|---|
-| UI dan alur generator | Berfungsi sebagai prototype |
+| UI dan alur generator | Tersedia |
 | 7 jenis perangkat ajar | Tersedia |
-| AI dan fallback | Tersedia, belum memiliki validator output |
-| Ekspor Word/PDF | Tersedia, perlu pengujian dokumen panjang |
-| Autentikasi Belajar.id | Simulasi validasi domain, belum OAuth/OIDC |
-| Otorisasi API | Belum aman untuk produksi |
-| Penyimpanan | File JSON lokal, hanya untuk pilot tunggal |
-| Testing | Belum tersedia secara memadai |
-| Observability | Belum tersedia |
-| Kesiapan produksi | Belum siap |
+| AI + fallback | Tersedia; fallback tetap berjalan tanpa Gemini |
+| Validasi AI output | PASS melalui automated tests |
+| Autentikasi session | PASS — server-side persistent session |
+| Otorisasi API | PASS — role + schoolId + ownership |
+| Penyimpanan | PASS — SQLite transactional single-node |
+| Rate limit | PASS — persistent + atomic |
+| Audit log | PASS — tenant-scoped |
+| Backup/restore | PASS — automated test |
+| Type check | PASS |
+| Unit/security/authorization/validation tests | PASS |
+| API integration tests | PASS |
+| Production build | PASS |
+| OAuth/OIDC Belajar.id resmi | Tersedia (Google OAuth + state anti-CSRF + verifikasi id_token); aktif bila `GOOGLE_CLIENT_ID/SECRET` diisi |
+| Multi-instance PostgreSQL | Belum |
+| Browser QA | **DEFERRED — menunggu user memulai pengujian** |
+| Public production readiness | Belum diklaim |
 
-## 11. Sasaran Produk Produksi Multi-Guru
+## 12. Sasaran Produk Produksi Multi-Guru
 
 Target produk adalah aplikasi SaaS/internal platform yang memungkinkan banyak guru dari banyak sekolah menggunakan generator secara aman, dengan batas kepemilikan data yang jelas.
 
@@ -231,7 +296,7 @@ Model akses harus berbasis `tenantId`/`schoolId`. Filter di frontend tidak boleh
 - Guru hanya dapat mengubah/menghapus dokumennya sendiri, kecuali role yang berwenang.
 - Dokumen soal, identitas siswa, dan data sekolah tidak boleh otomatis tampil di katalog publik.
 
-## 12. Arah Arsitektur Target
+## 13. Arah Arsitektur Target
 
 ```text
 React + TypeScript
@@ -265,7 +330,7 @@ Route HTTP tidak boleh mengambil keputusan authorization dari `requesterId` yang
 
 ### Data dan penyimpanan
 
-Migrasikan `data/db.json` ke database transaksional. Minimal entitas target:
+Database transaksional (SQLite, `node:sqlite`) sudah menjadi satu-satunya penyimpanan. Entitas yang ada:
 
 - `users`
 - `schools`
@@ -279,37 +344,41 @@ Migrasikan `data/db.json` ke database transaksional. Minimal entitas target:
 
 Gambar dan lampiran jangan disimpan sebagai data-URL di dokumen. Simpan file pada object storage dan hanya simpan metadata serta URL internal yang memiliki masa berlaku.
 
-## 13. Roadmap Implementasi
+## 14. Roadmap Implementasi
 
-### Fase 0 — Baseline dan keamanan P0
+### Fase 0 — Baseline dan keamanan P0 — SELESAI
 
-Tujuan: menutup celah yang menghalangi produksi.
+Implemented dan diuji otomatis:
 
-- Tambahkan session/token server-side.
-- Terapkan middleware `requireAuth`, `requireRole`, dan `requireSchoolAccess`.
-- Lindungi seluruh endpoint admin, dokumen, dan AI.
-- Hilangkan kepercayaan terhadap `requesterId`, `authorId`, `authorName`, dan `isPublic` dari body request.
-- Validasi input dengan schema terpusat.
-- Tambahkan rate limit, ukuran prompt maksimum, timeout, dan idempotency untuk generate.
-- Sanitasi Markdown sebelum `dangerouslySetInnerHTML`.
-- Sembunyikan endpoint daftar pengguna dari akses publik.
-- Tambahkan audit log untuk verifikasi, perubahan role, penghapusan, sharing, dan ekspor.
+- session/token server-side;
+- authorization terpusat berbasis role + `schoolId` + ownership;
+- penghapusan kepercayaan terhadap `requesterId`, `authorId`, `authorName`, `schoolId`, dan `isPublic` dari request sebagai sumber otorisasi;
+- validation terpusat;
+- rate limit persistent + atomic;
+- sanitasi Markdown;
+- audit log tenant-aware;
+- security headers + CSRF baseline;
+- negative tests lintas role/tenant;
+- API integration tests.
 
-**Kriteria selesai:** pengguna tidak dapat membaca atau mengubah data tenant lain meskipun memanggil API secara langsung.
+**Kriteria selesai:** PASS. Pemanggilan API lintas tenant diuji dan ditolak server.
 
-### Fase 1 — Database dan tenancy
+### Fase 1 — Database dan tenancy — BASELINE SINGLE-NODE SELESAI
 
-Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
+Implemented dan diuji otomatis:
 
-- Buat schema database dan migration.
-- Tambahkan `schoolId`/`tenantId` pada semua data bisnis.
-- Implementasikan unique constraint email dan membership.
-- Gunakan transaksi untuk pembuatan dokumen dan versi.
-- Tambahkan soft delete untuk pengguna dan dokumen penting.
-- Tambahkan backup terjadwal dan prosedur restore yang diuji.
-- Pisahkan konfigurasi dev, staging, dan production.
+- SQLite schema + seed kode (tanpa JSON);
+- `users`, `schools`, `school_memberships`, `documents`, `audit_logs`, `sessions`, dan `rate_limits`;
+- unique email + foreign keys;
+- tenant `schoolId` server-owned;
+- soft delete user dan dokumen;
+- transaksi untuk operasi persistence penting;
+- backup dan restore command yang diuji;
+- runtime/integration test lintas tenant.
 
-**Kriteria selesai:** dua sekolah dapat menggunakan sistem bersamaan tanpa kebocoran data dan tanpa overwrite dokumen.
+**Sisa Fase 1 untuk deployment multi-instance:** pindahkan state ke PostgreSQL/managed database bersama, object storage untuk file besar, dan lakukan load/concurrency testing.
+
+**Kriteria selesai single-node:** PASS. Data tenant tidak saling bocor pada API integration test dan persistence tidak lagi bergantung pada JSON runtime.
 
 ### Fase 2 — Identitas dan administrasi sekolah
 
@@ -321,14 +390,16 @@ Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
 
 **Kriteria selesai:** setiap dokumen yang diekspor memakai identitas sekolah dan penandatangan yang berasal dari profil tenant.
 
-### Fase 3 — Kualitas AI dan dokumen
+### Fase 3 — Kualitas AI dan dokumen — LIFECYCLE DASAR SELESAI
 
 - Buat schema output berbeda untuk setiap `docType`.
 - Validasi jumlah soal, kunci jawaban, tabel, rubrik, fase, dan alokasi waktu.
 - Simpan `promptVersion`, `model`, `generationStatus`, dan `validationErrors`.
 - Tampilkan status `AI`, `fallback`, atau `needs_review` secara jujur.
 - Tambahkan tombol regenerasi bagian tertentu, bukan hanya seluruh dokumen.
-- Tambahkan versioning dan autosave draft.
+- Versioning dasar dan autosave draft sudah tersedia: setiap penyimpanan edit pada dokumen yang sama membuat versi baru.
+- Status dokumen tersedia: `DRAFT`, `REVIEW`, `APPROVED`, `ARCHIVED`.
+- Riwayat versi dapat dibaca melalui `GET /api/documents/:id/versions` dengan ownership/tenant check.
 - Uji ekspor dengan tabel panjang, gambar, halaman lebih dari satu, dan dokumen berbahasa Indonesia.
 
 **Kriteria selesai:** hasil yang tidak memenuhi struktur minimum tidak dapat diberi status siap ekspor tanpa peringatan.
@@ -346,7 +417,7 @@ Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
 
 **Kriteria selesai:** tim dapat mendeteksi kegagalan, memulihkan data, dan melakukan rollback tanpa mengedit data produksi secara manual.
 
-## 14. Kontrak API Produksi
+## 15. Kontrak API Produksi
 
 Semua endpoint bisnis harus:
 
@@ -371,7 +442,24 @@ Format error yang disarankan:
 }
 ```
 
-## 15. Pengujian Minimum Sebelum Go-Live
+## 16. Pengujian Minimum Sebelum Go-Live
+
+CI (`.github/workflows/ci.yml` + `ci-runtime.yml`, cabang `main` & `feat/**`): `npm ci --legacy-peer-deps` → `lint` → `test` → `build`. Test kontrak UI (`tests/uiregression.test.ts`) mengunci katalog dokumen, konsistensi jenjang/fase, saran topik, token & class design system, dan keterjangkauan semua target navigasi.
+
+### Checklist regresi manual tiap rilis UI
+
+| Alur | Harapan |
+|---|---|
+| Masuk (email saja & email+password) | Berhasil/gagal dengan pesan jelas, tanpa error konsol |
+| Wizard 3 langkah tiap 7 tipe | Lanjut–kembali–susun mulus, validasi dekat field |
+| Generate → badge kualitas → viewer | Status jujur tampil, kop sekolah benar, ekspor docx/pdf bisa dibuka |
+| Regen 1 bagian | Hanya bagian itu berubah, heading utuh |
+| Ilustrasi AI → sisip | Gambar tampil di pratinjau & PDF |
+| Arsip cari/filter/sort/hapus | Hasil tepat, kosong ada empty state |
+| Verifikasi: setujui/tolak/bulk | Status berubah, audit tercatat |
+| Profil: edit + password + tema | Tersimpan, sesi tetap valid |
+| Sekolah: identitas + logo | Kop semua output ikut berubah |
+| Responsif 360px + dark mode | Tanpa scroll ganda, kontras terbaca, drawer + ESC |
 
 ### Unit test
 
@@ -404,7 +492,7 @@ Minimal satu alur lengkap untuk setiap role:
 5. Dokumen diekspor ke Word/PDF.
 6. Admin melihat audit trail.
 
-## 16. Definition of Done Produksi
+## 17. Definition of Done Produksi
 
 Aplikasi dapat disebut siap produksi apabila seluruh kondisi berikut terpenuhi:
 
@@ -420,7 +508,7 @@ Aplikasi dapat disebut siap produksi apabila seluruh kondisi berikut terpenuhi:
 - staging telah digunakan untuk uji pilot minimal beberapa sekolah;
 - tersedia runbook untuk deployment, rollback, backup, restore, dan insiden keamanan.
 
-## 17. Keputusan Produk yang Harus Ditentukan
+## 18. Keputusan Produk yang Harus Ditentukan
 
 Sebelum implementasi Fase 1, pemilik produk perlu menetapkan:
 
@@ -433,3 +521,109 @@ Sebelum implementasi Fase 1, pemilik produk perlu menetapkan:
 7. Di mana wilayah penyimpanan data dan backup akan ditempatkan?
 
 Keputusan tersebut memengaruhi schema database, authorization policy, biaya operasional, dan desain onboarding.
+
+---
+
+## 19. Update Implementasi — Security + Tenant Baseline
+
+Branch `feat/security-baseline` telah melampaui baseline Fase 0 dan baseline tenancy single-node Fase 1.
+
+### Source of truth saat ini
+
+- SQLite `data/app.sqlite` adalah satu-satunya source of truth (jalur JSON legacy dihapus).
+- Session, rate limit, audit, user, school, membership, dan dokumen disimpan di SQLite.
+- Browser tidak menjadi sumber identitas atau authorization.
+
+### Security contract
+
+- Identitas requester berasal dari session cookie.
+- `schoolId` berasal dari user yang dibaca server.
+- Role berasal dari database server.
+- Ownership dokumen diverifikasi server.
+- `isPublic` tidak dapat dinaikkan melalui request body.
+- Tenant change hanya dapat dilakukan oleh Super Admin.
+- User deletion bersifat soft-delete.
+- Audit log tidak dapat dibaca lintas tenant oleh Admin sekolah.
+
+### Verification gate
+
+CI terakhir yang berhasil menjalankan branch ini:
+
+- Type check: PASS
+- Security/unit tests: PASS
+- Authorization tests: PASS
+- Validation tests: PASS
+- SQLite persistence/backup tests: PASS
+- API integration tests: PASS
+- Production build: PASS
+- Browser QA: DEFERRED
+
+### Catatan deployment
+
+Baseline ini siap untuk **pilot single-node** setelah Browser QA. Belum diklaim sebagai deployment multi-instance/public production karena OAuth/OIDC resmi, PostgreSQL/managed database, object storage, observability, dan load testing belum selesai.
+
+## 20. Status Implementasi Terkini — Security + Tenant Baseline
+
+**Branch kerja:** `feat/security-baseline`
+
+### P0 — Generasi manusiawi (selesai 30 September 2026)
+
+- Wizard generator meminta cerita guru minimal, niat pembelajaran, dan sedikitnya dua konteks kelas.
+- Konteks diteruskan sebagai data terpisah ke prompt, dengan batas keamanan agar tidak dianggap instruksi sistem.
+- Panduan prompt melarang klaim tentang emosi/diagnosis/kondisi murid yang tidak diberikan dan mengharuskan alasan pedagogis yang konkret.
+- Validator kualitas menandai keluaran `needs_review` bila cerita, niat, atau konteks kelas terlalu tipis.
+- Versi prompt dinaikkan ke `2026-09-30`; cakupan diuji melalui prompt dan quality tests.
+
+### P1 — Review manusia yang fleksibel (selesai 30 September 2026)
+
+- Dokumen dengan status kualitas `needs_review` atau memiliki catatan kualitas menampilkan catatan yang jelas di viewer.
+- Guru tetap dapat langsung mengedit, menyimpan, dan mengekspor hasil tanpa menunggu persetujuan siapa pun.
+- Review sekolah bersifat opsional dan hanya dipakai bila sekolah menginginkan kolaborasi tambahan.
+
+### P2 — Lifecycle review multi-guru (opsional)
+
+- Status `DRAFT`, `REVIEW`, `APPROVED`, dan `ARCHIVED` tetap tersedia sebagai metadata kolaborasi.
+- Guru dapat menggunakan hasil secara mandiri tanpa approval formal; admin hanya membatasi status persetujuan/pengarsipan bila workflow sekolah dipakai.
+- Catatan kualitas dan status tidak menjadi penghalang untuk mengedit atau mengekspor dokumen.
+
+### Selesai dan terverifikasi otomatis
+
+- Session server-side persisten di SQLite; token raw tidak disimpan, hanya hash.
+- Cookie session HttpOnly + SameSite=Lax; Secure + `__Host-` pada production.
+- Absolute session TTL 8 jam dan idle timeout 2 jam.
+- Login/logout, status akun, role, dan ownership diverifikasi server-side.
+- `schoolId` menjadi tenant boundary server-owned. Client tidak dapat memilih `schoolId`, `authorId`, `authorName`, atau `schoolName` sebagai sumber otorisasi.
+- Admin hanya melihat/mengelola user dan dokumen dalam sekolahnya; Super Admin dapat lintas tenant.
+- Privilege escalation ke `ADMIN`/`SUPER_ADMIN` diblok.
+- User delete menjadi soft-delete agar referensi dokumen dan audit tetap valid.
+- SQLite memakai foreign key, WAL, synchronous FULL, busy timeout, dan transaksi untuk operasi penting.
+- Rate limit disimpan di SQLite dan update quota dibuat atomik.
+- Audit log tenant-aware dan visibilitas log mengikuti role/tenant.
+- Input validation terpusat untuk login, profil, dokumen, generator, dan image generator.
+- Output AI divalidasi sebelum dikembalikan.
+- Prompt generator memiliki security boundary yang memperlakukan input guru sebagai data, bukan instruksi sistem.
+- Markdown output disanitasi sebelum DOM injection.
+- Security headers: CSP, HSTS production, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP/CORP.
+- CSRF baseline: fetch metadata + Origin validation untuk request state-changing.
+- Backup dan restore SQLite tersedia melalui npm scripts.
+- Automated tests mencakup authorization policy, validation, session/rate limit, SQLite persistence/backup, dan API integration lintas tenant.
+- GitHub Actions memverifikasi lint/typecheck, seluruh test, dan production build pada Node 24.21.0.
+
+### Hasil verifikasi terakhir
+
+Run terakhir yang berhasil:
+
+- **CI Runtime:** PASS — runtime/integration tests.
+- **CI:** PASS — dependency install, TypeScript check, security/unit tests, production build.
+- **Browser QA:** **DEFERRED** sesuai keputusan pengembangan. Tidak ada manual UI/browser test yang dianggap selesai sebelum pengguna menyatakan siap.
+
+### Yang masih berada di luar baseline ini
+
+1. ~~OAuth/OIDC Belajar.id resmi dan identity proofing.~~ **SELESAI sebagian (30 September 2026):** login Google OAuth resmi membuktikan kepemilikan email @belajar.id (verifikasi id_token via tokeninfo + state anti-CSRF); verifikasi peran/sekolah tetap via approval internal. Identity proofing via Dapodik masih belum.
+2. Deployment multi-instance dengan PostgreSQL/managed database.
+3. Object storage untuk file/gambar besar.
+4. Metrics/tracing/alerting produksi.
+5. Role `KEPALA_SEKOLAH`, workflow approval formal, komentar, dan sharing eksplisit.
+6. E2E browser QA setelah user meminta tahap tersebut.
+
+**Kriteria masuk Browser QA:** automated CI dan runtime integration sudah PASS. Tahap berikutnya adalah pengguna menjalankan aplikasi dan melakukan uji UI nyata; hasil Browser QA kemudian dicatat sebagai gate terpisah, bukan dicampur dengan hasil automated test.

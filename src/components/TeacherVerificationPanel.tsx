@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TeacherUser, Jenjang } from '../types';
+import { Modal } from './ui/Modal';
+import { Badge } from './ui/Badge';
+import { EmptyState } from './ui/EmptyState';
+import { Field } from './ui/Field';
 import {
+  AlertCircle,
   CheckCircle2,
   XCircle,
   Clock,
+  RefreshCw,
   Search,
   UserPlus,
   School,
@@ -13,11 +19,15 @@ import {
   Trash2,
   Crown,
   Pencil,
+  UserSearch,
 } from 'lucide-react';
 
 interface TeacherVerificationPanelProps {
   users: TeacherUser[];
   currentUser: TeacherUser;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onUpdateStatus: (userId: string, status: 'VERIFIED' | 'PENDING' | 'REJECTED') => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
   onAddUser: (user: Partial<TeacherUser>) => Promise<void>;
@@ -27,6 +37,9 @@ interface TeacherVerificationPanelProps {
 export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> = ({
   users,
   currentUser,
+  loading = false,
+  error = null,
+  onRetry,
   onUpdateStatus,
   onDeleteUser,
   onAddUser,
@@ -65,6 +78,40 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
     return matchesSearch && matchesStatus && matchesJenjang;
   });
 
+  // Bulk selection (hanya baris yang tampil & bisa diverifikasi)
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectableIds = filteredUsers
+    .filter(u => u.role !== 'SUPER_ADMIN' && u.id !== currentUser.id)
+    .map(u => u.id);
+  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.includes(id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : selectableIds);
+  };
+
+  // Seleksi hangus bila filter berubah — predictable
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [statusFilter, jenjangFilter, searchTerm]);
+
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const handleBulkStatus = async (status: 'VERIFIED' | 'REJECTED') => {
+    if (selectedIds.length === 0 || bulkWorking) return;
+    setBulkWorking(true);
+    try {
+      for (const id of selectedIds) {
+        await onUpdateStatus(id, status);
+      }
+      setSelectedIds([]);
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
   // Edit teacher form state
   const [editingUser, setEditingUser] = useState<TeacherUser | null>(null);
   const [editName, setEditName] = useState<string>('');
@@ -74,6 +121,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
   const [editNip, setEditNip] = useState<string>('');
   const [editNpsn, setEditNpsn] = useState<string>('');
   const [editRole, setEditRole] = useState<'GURU' | 'ADMIN'>('GURU');
+  const canChangeTenant = currentUser.role === 'SUPER_ADMIN';
 
   const openEdit = (t: TeacherUser) => {
     setEditingUser(t);
@@ -251,343 +299,404 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
         </div>
       </div>
 
-      {/* Teachers List */}
-      <div className="apple-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-black/10 dark:border-white/10 text-[11.5px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
-                <th className="py-3.5 px-4 sm:px-6 font-semibold">Guru & email</th>
-                <th className="py-3.5 px-4 font-semibold">Sekolah</th>
-                <th className="py-3.5 px-4 font-semibold">Jenjang & mapel</th>
-                <th className="py-3.5 px-4 font-semibold">Status</th>
-                <th className="py-3.5 px-4 text-right font-semibold">Tindakan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5 dark:divide-white/10 text-[13.5px]">
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-[#6e6e73] dark:text-[#98989d]">
-                    Tidak ada guru yang sesuai kriteria pencarian.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((teacher) => {
-                  const isUserSuperAdmin = teacher.role === 'SUPER_ADMIN';
-                  const isCurrentTeacher = teacher.id === currentUser.id;
-
-                  return (
-                    <tr key={teacher.id} className="hover:bg-black/[0.025] dark:hover:bg-white/5 transition-colors">
-                      
-                      {/* Name & Email */}
-                      <td className="py-4 px-4 sm:px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[13px] shrink-0">
-                            {teacher.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold">{teacher.name}</span>
-                              {isUserSuperAdmin && (
-                                <span className="px-1.5 py-0.5 bg-black/5 dark:bg-white/10 text-[10.5px] font-semibold rounded-full flex items-center gap-0.5">
-                                  <Crown className="w-3 h-3" />
-                                  Admin
-                                </span>
-                              )}
-                              {isCurrentTeacher && (
-                                <span className="px-1.5 py-0.5 bg-black/5 dark:bg-white/10 text-[10.5px] font-semibold rounded-full">
-                                  Anda
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[12px] text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1 truncate">
-                              <Mail className="w-3 h-3 shrink-0" />
-                              {teacher.email}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* School */}
-                      <td className="py-4 px-4">
-                        <div className="font-medium flex items-center gap-1.5">
-                          <School className="w-3.5 h-3.5 text-[#86868b] shrink-0" />
-                          <span className="truncate max-w-[200px]">{teacher.schoolName}</span>
-                        </div>
-                        {teacher.npsn && (
-                          <div className="text-[11.5px] text-[#86868b]">NPSN: {teacher.npsn}</div>
-                        )}
-                      </td>
-
-                      {/* Jenjang & Mapel */}
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10">
-                            {teacher.jenjang}
-                          </span>
-                        </div>
-                        <div className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] truncate max-w-[180px] mt-0.5">
-                          {teacher.mataPelajaran}
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-4 px-4">
-                        {teacher.status === 'VERIFIED' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#30b158]" />
-                            Terverifikasi
-                          </span>
-                        ) : teacher.status === 'PENDING' ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse" />
-                            Menunggu
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#ff6961]" />
-                            Ditolak
-                          </span>
-                        )}
-
-                        {teacher.verifiedBy && (
-                          <div className="text-[11px] text-[#86868b] mt-1">
-                            Oleh: {teacher.verifiedBy}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => openEdit(teacher)}
-                            className="p-2 rounded-full text-[#86868b] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                            title="Ubah profil & peran"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          {teacher.status !== 'VERIFIED' && (
-                            <button
-                              onClick={() => onUpdateStatus(teacher.id, 'VERIFIED')}
-                              className="px-3.5 py-1.5 rounded-full bg-black dark:bg-white dark:text-black text-white text-[12.5px] font-semibold transition-all flex items-center gap-1 cursor-pointer min-h-[34px]"
-                              title="Setujui dan beri akses penuh"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Setujui</span>
-                            </button>
-                          )}
-
-                          {teacher.status !== 'REJECTED' && !isUserSuperAdmin && (
-                            <button
-                              onClick={() => onUpdateStatus(teacher.id, 'REJECTED')}
-                              className="px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[12.5px] font-semibold transition-all cursor-pointer min-h-[34px]"
-                              title="Tolak akses akun"
-                            >
-                              Tolak
-                            </button>
-                          )}
-
-                          {!isUserSuperAdmin && (
-                            <button
-                              onClick={() => {
-                                if (confirm(`Hapus data guru ${teacher.name}?`)) {
-                                  onDeleteUser(teacher.id);
-                                }
-                              }}
-                              className="p-2 rounded-full text-[#86868b] hover:text-[#ff6961] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                              title="Hapus data guru"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Bulk action bar */}
+      {selectedIds.length > 0 && (
+        <div className="apple-card flex flex-wrap items-center gap-2 p-3.5" role="toolbar" aria-label="Aksi massal">
+          <Badge tone="info" dot>{selectedIds.length} dipilih</Badge>
+          <div className="ms-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="btn-apple-secondary btn-sm"
+            >
+              Batalkan
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatus('REJECTED')}
+              disabled={bulkWorking}
+              className="btn-apple-secondary btn-sm"
+            >
+              Tolak terpilih
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkStatus('VERIFIED')}
+              disabled={bulkWorking}
+              className="btn-apple btn-sm"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {bulkWorking ? 'Memproses…' : 'Setujui terpilih'}
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Teachers List */}
+      <div
+        className="data-table-wrap data-table-sticky-first"
+        role="region"
+        aria-label="Daftar guru, dapat digulir horizontal"
+        tabIndex={0}
+      >
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th className="!py-3 w-10">
+                <label className="check-hit">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    disabled={selectableIds.length === 0}
+                    aria-label="Pilih semua yang tampil"
+                  />
+                </label>
+              </th>
+              <th>Guru & email</th>
+              <th>Sekolah</th>
+              <th>Jenjang & mapel</th>
+              <th>Status</th>
+              <th className="!text-right">Tindakan</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} aria-hidden="true">
+                  <td><div className="skeleton h-4 w-4 !rounded" /></td>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="skeleton h-9 w-9 !rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="skeleton h-4 w-2/3" />
+                        <div className="skeleton h-3 w-1/2" />
+                      </div>
+                    </div>
+                  </td>
+                  <td><div className="skeleton h-4 w-3/4" /></td>
+                  <td><div className="skeleton h-4 w-1/2" /></td>
+                  <td><div className="skeleton h-6 w-24 !rounded-full" /></td>
+                  <td><div className="skeleton ms-auto h-8 w-24 !rounded-full" /></td>
+                </tr>
+              ))
+            ) : error && users.length === 0 ? (
+              <tr>
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={<AlertCircle className="h-6 w-6" />}
+                    title="Data guru tidak dapat dimuat"
+                    description={error}
+                    action={
+                      <button type="button" onClick={onRetry} className="btn-apple btn-sm">
+                        <RefreshCw className="h-4 w-4" />
+                        Coba lagi
+                      </button>
+                    }
+                  />
+                </td>
+              </tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={6}>
+                  <EmptyState
+                    icon={<UserSearch className="h-6 w-6" />}
+                    title="Tidak ada guru yang cocok"
+                    description="Ubah kata kunci atau filter status/jenjang untuk menemukan guru."
+                  />
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map((teacher) => {
+                const isUserSuperAdmin = teacher.role === 'SUPER_ADMIN';
+                const isCurrentTeacher = teacher.id === currentUser.id;
+                const selectable = !isUserSuperAdmin && !isCurrentTeacher;
+
+                return (
+                  <tr key={teacher.id}>
+
+                    <td className="!py-3">
+                      <label className="check-hit">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(teacher.id)}
+                          onChange={() => toggleSelect(teacher.id)}
+                          disabled={!selectable}
+                          aria-label={`Pilih ${teacher.name}`}
+                        />
+                      </label>
+                    </td>
+
+                    {/* Name & Email */}
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-[13px] font-semibold text-white dark:bg-white dark:text-black">
+                          {teacher.name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold">{teacher.name}</span>
+                            {isUserSuperAdmin && (
+                              <Badge tone="neutral">
+                                <Crown className="h-3 w-3" />
+                                Admin
+                              </Badge>
+                            )}
+                            {isCurrentTeacher && (
+                              <Badge tone="info">Anda</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 truncate text-[12px] text-[var(--app-text-secondary)]">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            {teacher.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* School */}
+                    <td>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <School className="h-3.5 w-3.5 shrink-0 text-[var(--app-text-tertiary)]" />
+                        <span className="max-w-[200px] truncate">{teacher.schoolName}</span>
+                      </div>
+                      {teacher.npsn && (
+                        <div className="text-[11.5px] text-[var(--app-text-tertiary)]">NPSN: {teacher.npsn}</div>
+                      )}
+                    </td>
+
+                    {/* Jenjang & Mapel */}
+                    <td>
+                      <Badge tone="neutral">{teacher.jenjang}</Badge>
+                      <div className="mt-1 max-w-[180px] truncate text-[12.5px] text-[var(--app-text-secondary)]">
+                        {teacher.mataPelajaran}
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td>
+                      {teacher.status === 'VERIFIED' ? (
+                        <Badge tone="success" dot>Terverifikasi</Badge>
+                      ) : teacher.status === 'PENDING' ? (
+                        <Badge tone="warning" dot>Menunggu</Badge>
+                      ) : (
+                        <Badge tone="danger" dot>Ditolak</Badge>
+                      )}
+
+                      {teacher.verifiedBy && (
+                        <div className="mt-1 text-[11px] text-[var(--app-text-tertiary)]">
+                          Oleh: {teacher.verifiedBy}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="!text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(teacher)}
+                          className="rounded-full p-2 text-[var(--app-text-tertiary)] transition-colors hover:bg-black/5 hover:text-[var(--app-text)] dark:hover:bg-white/10"
+                          title="Ubah profil & peran"
+                          aria-label={`Ubah ${teacher.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        {teacher.status !== 'VERIFIED' && (
+                          <button
+                            onClick={() => onUpdateStatus(teacher.id, 'VERIFIED')}
+                            className="btn-apple btn-sm"
+                            title="Setujui dan beri akses penuh"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Setujui</span>
+                          </button>
+                        )}
+
+                        {teacher.status !== 'REJECTED' && !isUserSuperAdmin && (
+                          <button
+                            onClick={() => onUpdateStatus(teacher.id, 'REJECTED')}
+                            className="btn-apple-secondary btn-sm"
+                            title="Tolak akses akun"
+                          >
+                            Tolak
+                          </button>
+                        )}
+
+                        {!isUserSuperAdmin && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Hapus data guru ${teacher.name}?`)) {
+                                onDeleteUser(teacher.id);
+                              }
+                            }}
+                            className="rounded-full p-2 text-[var(--app-text-tertiary)] transition-colors hover:bg-black/5 hover:text-[var(--app-danger)] dark:hover:bg-white/10"
+                            title="Hapus data guru"
+                            aria-label={`Hapus ${teacher.name}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Edit Teacher Modal (admin) */}
-      {editingUser && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="apple-card max-w-md w-full p-6 sm:p-7 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-[19px] font-semibold tracking-tight mb-1">
-              Ubah profil guru
-            </h3>
-            <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mb-5">
-              {editingUser.email}
-            </p>
-
-            <form onSubmit={handleEditSubmit} className="space-y-3.5">
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">Nama lengkap & gelar</label>
-                <input type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} className="apple-input" />
-              </div>
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">Sekolah</label>
-                <input type="text" required value={editSchool} onChange={(e) => setEditSchool(e.target.value)} className="apple-input" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">Jenjang</label>
-                  <select value={editJenjang} onChange={(e) => setEditJenjang(e.target.value as Jenjang)} className="apple-input">
-                    <option value="SD">SD</option>
-                    <option value="SMP">SMP</option>
-                    <option value="SMA">SMA</option>
-                    <option value="SMK">SMK</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">Peran</label>
-                  <select
-                    value={editRole}
-                    onChange={(e) => setEditRole(e.target.value as 'GURU' | 'ADMIN')}
-                    disabled={editingUser.role === 'SUPER_ADMIN' || editingUser.id === currentUser.id}
-                    className="apple-input disabled:opacity-50"
-                    title={editingUser.role === 'SUPER_ADMIN' || editingUser.id === currentUser.id ? 'Peran ini tidak dapat diubah' : 'Ubah peran'}
-                  >
-                    <option value="GURU">Guru</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">Mata pelajaran</label>
-                <input type="text" value={editMapel} onChange={(e) => setEditMapel(e.target.value)} className="apple-input" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">NIP / NUPTK</label>
-                  <input type="text" value={editNip} onChange={(e) => setEditNip(e.target.value)} className="apple-input" />
-                </div>
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">NPSN</label>
-                  <input type="text" value={editNpsn} onChange={(e) => setEditNpsn(e.target.value)} className="apple-input" />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4">
-                <button type="button" onClick={() => setEditingUser(null)} className="btn-apple-secondary">
-                  Batal
-                </button>
-                <button type="submit" className="btn-apple">
-                  Simpan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        size="md"
+        title="Ubah profil guru"
+        subtitle={editingUser?.email}
+        footer={
+          <>
+            <button type="button" onClick={() => setEditingUser(null)} className="btn-apple-secondary btn-sm">
+              Batal
+            </button>
+            <button type="submit" form="edit-teacher-form" className="btn-apple btn-sm">
+              Simpan perubahan
+            </button>
+          </>
+        }
+      >
+        {editingUser && (
+          <form id="edit-teacher-form" onSubmit={handleEditSubmit} className="space-y-4">
+            <Field label="Nama lengkap & gelar" htmlFor="edit-name" required>
+              <input id="edit-name" type="text" required value={editName} onChange={(e) => setEditName(e.target.value)} className="apple-input" />
+            </Field>
+            <Field label="Sekolah" htmlFor="edit-school" required hint={!canChangeTenant ? 'Hanya Super Admin yang dapat memindahkan guru antar sekolah.' : undefined}>
+              <input id="edit-school" type="text" required value={editSchool} onChange={(e) => setEditSchool(e.target.value)} disabled={!canChangeTenant} className="apple-input" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Jenjang" htmlFor="edit-jenjang">
+                <select id="edit-jenjang" value={editJenjang} onChange={(e) => setEditJenjang(e.target.value as Jenjang)} className="apple-input">
+                  <option value="SD">SD</option>
+                  <option value="SMP">SMP</option>
+                  <option value="SMA">SMA</option>
+                  <option value="SMK">SMK</option>
+                </select>
+              </Field>
+              <Field
+                label="Peran"
+                htmlFor="edit-role"
+                hint={editingUser.role === 'SUPER_ADMIN' || editingUser.id === currentUser.id ? 'Peran ini tidak dapat diubah.' : undefined}
+              >
+                <select
+                  id="edit-role"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as 'GURU' | 'ADMIN')}
+                  disabled={editingUser.role === 'SUPER_ADMIN' || editingUser.id === currentUser.id}
+                  className="apple-input"
+                  title={editingUser.role === 'SUPER_ADMIN' || editingUser.id === currentUser.id ? 'Peran ini tidak dapat diubah' : 'Ubah peran'}
+                >
+                  <option value="GURU">Guru</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Mata pelajaran" htmlFor="edit-mapel">
+              <input id="edit-mapel" type="text" value={editMapel} onChange={(e) => setEditMapel(e.target.value)} className="apple-input" />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="NIP / NUPTK" htmlFor="edit-nip">
+                <input id="edit-nip" type="text" value={editNip} onChange={(e) => setEditNip(e.target.value)} className="apple-input" />
+              </Field>
+              <Field label="NPSN" htmlFor="edit-npsn">
+                <input id="edit-npsn" type="text" value={editNpsn} onChange={(e) => setEditNpsn(e.target.value)} className="apple-input" />
+              </Field>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {/* Manual Add Teacher Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="apple-card max-w-md w-full p-6 sm:p-7">
-            <h3 className="text-[19px] font-semibold tracking-tight mb-1">
-              Tambah guru baru
-            </h3>
-            <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mb-5">
-              Langsung terverifikasi dengan akun Belajar.id.
-            </p>
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        size="md"
+        title="Tambah guru baru"
+        subtitle="Langsung terverifikasi dengan akun Belajar.id."
+        footer={
+          <>
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn-apple-secondary btn-sm">
+              Batal
+            </button>
+            <button type="submit" form="add-teacher-form" className="btn-apple btn-sm">
+              Simpan guru
+            </button>
+          </>
+        }
+      >
+        <form id="add-teacher-form" onSubmit={handleCreateTeacher} className="space-y-4">
+          <Field label="Nama lengkap & gelar" htmlFor="add-name" required>
+            <input
+              id="add-name"
+              type="text"
+              required
+              placeholder="Contoh: Budi Prasetyo, S.Pd."
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="apple-input"
+            />
+          </Field>
 
-            <form onSubmit={handleCreateTeacher} className="space-y-3.5">
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
-                  Nama lengkap & gelar
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Budi Prasetyo, S.Pd."
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="apple-input"
-                />
-              </div>
+          <Field label="Email Belajar.id" htmlFor="add-email" required hint="@guru.sd / @guru.smp / @guru.sma / @guru.smk.belajar.id">
+            <input
+              id="add-email"
+              type="email"
+              required
+              placeholder="budi.prasetyo@guru.smp.belajar.id"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              className="apple-input"
+            />
+          </Field>
 
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
-                  Email Belajar.id
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="budi.prasetyo@guru.smp.belajar.id"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="apple-input"
-                />
-              </div>
+          <Field label="Sekolah" htmlFor="add-school">
+            <input
+              id="add-school"
+              type="text"
+              placeholder="SMP Negeri 1 Surabaya"
+              value={newSchool}
+              onChange={(e) => setNewSchool(e.target.value)}
+              className="apple-input"
+            />
+          </Field>
 
-              <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
-                  Sekolah
-                </label>
-                <input
-                  type="text"
-                  placeholder="SMP Negeri 1 Surabaya"
-                  value={newSchool}
-                  onChange={(e) => setNewSchool(e.target.value)}
-                  className="apple-input"
-                />
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Jenjang" htmlFor="add-jenjang">
+              <select
+                id="add-jenjang"
+                value={newJenjang}
+                onChange={(e) => setNewJenjang(e.target.value as Jenjang)}
+                className="apple-input"
+              >
+                <option value="SD">SD</option>
+                <option value="SMP">SMP</option>
+                <option value="SMA">SMA</option>
+                <option value="SMK">SMK</option>
+              </select>
+            </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">
-                    Jenjang
-                  </label>
-                  <select
-                    value={newJenjang}
-                    onChange={(e) => setNewJenjang(e.target.value as Jenjang)}
-                    className="apple-input"
-                  >
-                    <option value="SD">SD</option>
-                    <option value="SMP">SMP</option>
-                    <option value="SMA">SMA</option>
-                    <option value="SMK">SMK</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">
-                    Mata pelajaran
-                  </label>
-                  <input
-                    type="text"
-                    value={newMapel}
-                    onChange={(e) => setNewMapel(e.target.value)}
-                    placeholder="Matematika"
-                    className="apple-input"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="btn-apple-secondary"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-apple"
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
+            <Field label="Mata pelajaran" htmlFor="add-mapel">
+              <input
+                id="add-mapel"
+                type="text"
+                value={newMapel}
+                onChange={(e) => setNewMapel(e.target.value)}
+                placeholder="Matematika"
+                className="apple-input"
+              />
+            </Field>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
 
     </div>
   );
