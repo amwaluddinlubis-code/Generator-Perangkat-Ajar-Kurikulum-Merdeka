@@ -139,6 +139,22 @@ export function validateGeneratorPayload(body: unknown): ValidationResult<Record
       errors.push('Konfigurasi soal tidak valid.');
     } else {
       const config = input.soalConfig as Record<string, unknown>;
+      // Cara baru: jumlah per bentuk (panel kartu). Hadir bila salah satu kunci jumlah* diisi.
+      const perBentukKeys = ['jumlahPG', 'jumlahPGKompleks', 'jumlahMenjodohkan', 'jumlahIsianSingkat', 'jumlahUraian'];
+      const hasPerBentuk = perBentukKeys.some(key => config[key] !== undefined);
+      if (hasPerBentuk) {
+        let total = 0;
+        for (const key of perBentukKeys) {
+          const v = config[key];
+          if (v === undefined || v === null) continue;
+          if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > 50) {
+            errors.push('Jumlah tiap bentuk soal harus bilangan bulat 0–50.');
+            break;
+          }
+          total += v;
+        }
+        if (total < 1 || total > 200) errors.push('Total soal per bentuk harus 1–200 butir.');
+      }
       if (config.jumlahSoal !== undefined && (
         typeof config.jumlahSoal !== 'number' ||
         !Number.isInteger(config.jumlahSoal) ||

@@ -91,11 +91,19 @@ export interface GeneratorParams {
   targetPeserta: string;
   dimensiP5: string[];
   soalConfig?: {
-    jumlahSoal: number;
-    bentukSoal: string[];
+    // Cara baru: jumlah per bentuk soal (0 = bentuk tidak dipakai).
+    // Total = penjumlahan kelimanya. Dipakai panel kartu per bentuk.
+    jumlahPG?: number;
+    jumlahPGKompleks?: number;
+    jumlahMenjodohkan?: number;
+    jumlahIsianSingkat?: number;
+    jumlahUraian?: number;
     jumlahOpsiPilihanGanda?: number;
     levelKognitif?: string;
     komposisi?: { mudah: number; sedang: number; sukar: number };
+    // Cara lama (legacy, tetap didukung): satu total yang dibagi otomatis.
+    jumlahSoal?: number;
+    bentukSoal?: string[];
   };
   authorName: string;
   schoolName: string;

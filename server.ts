@@ -63,6 +63,7 @@ import {
   validateBuiltPrompt,
   type PromptContext
 } from './src/server/prompts/index.js';
+import { totalSoalDiminta } from './src/server/prompts/soal_ujian.js';
 import {
   buildGoogleAuthUrl,
   createOAuthState,
@@ -1526,7 +1527,7 @@ app.post('/api/generate', async (req: Request, res: Response) => {
     const calculatedDuration = Number((2.8 + Math.random() * 0.9).toFixed(1));
 
     const quality = validateDocumentStructure(docType, generatedText, {
-      expectedQuestions: Number((soalConfig as any)?.jumlahSoal) || 0,
+      expectedQuestions: totalSoalDiminta(soalConfig as any) || Number((soalConfig as any)?.jumlahSoal) || 0,
       modelUsed,
       mapel: mataPelajaran,
       classroomContext

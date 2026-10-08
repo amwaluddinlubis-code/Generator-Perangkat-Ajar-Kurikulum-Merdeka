@@ -7,6 +7,7 @@
  * revisi BKPDM 020 Tahun 2026 (lihat src/server/curriculumRefs.ts).
  */
 import { cpReference, isAgamaMapel } from './src/server/curriculumRefs.js';
+import { resolveDistribusiSoal } from './src/server/prompts/soal_ujian.js';
 
 export interface FallbackParams {
   docType: string;
@@ -19,7 +20,16 @@ export interface FallbackParams {
   modelPembelajaran?: string;
   targetPeserta?: string;
   dimensiP5?: string[];
-  soalConfig?: { jumlahSoal?: number; bentukSoal?: string[]; jumlahOpsiPilihanGanda?: number };
+  soalConfig?: {
+    jumlahSoal?: number;
+    bentukSoal?: string[];
+    jumlahPG?: number;
+    jumlahPGKompleks?: number;
+    jumlahMenjodohkan?: number;
+    jumlahIsianSingkat?: number;
+    jumlahUraian?: number;
+    jumlahOpsiPilihanGanda?: number;
+  };
   authorName?: string;
   schoolName?: string;
   catatanTambahan?: any;
@@ -49,9 +59,12 @@ export function generateFallbackDocument(params: FallbackParams): string {
   const agamaNote = isAgamaMapel(mataPelajaran)
     ? ' Pembelajaran diarahkan pada pengamalan nilai ajaran agama dalam sikap, pengetahuan, dan keterampilan sehari-hari sesuai CP revisi BKPDM 020 Tahun 2026.'
     : '';
-  const selectedQuestionForms = Array.isArray(params.soalConfig?.bentukSoal) && params.soalConfig.bentukSoal.length
-    ? params.soalConfig.bentukSoal.join(', ')
-    : 'Pilihan Ganda, Pilihan Ganda Kompleks (AKM), Menjodohkan, Isian Singkat, dan Uraian HOTS';
+  const distribusiFallback = resolveDistribusiSoal(params.soalConfig as any);
+  const selectedQuestionForms = distribusiFallback.mode === 'perBentuk' && distribusiFallback.items.length > 0
+    ? distribusiFallback.items.map(item => `${item.label} (${item.count} butir, Nomor ${item.start}–${item.end})`).join(', ')
+    : Array.isArray(params.soalConfig?.bentukSoal) && params.soalConfig.bentukSoal.length
+      ? params.soalConfig.bentukSoal.join(', ')
+      : 'Pilihan Ganda, Pilihan Ganda Kompleks (AKM), Menjodohkan, Isian Singkat, dan Uraian HOTS';
   const pgOptionCount = Math.min(6, Math.max(2, Number(params.soalConfig?.jumlahOpsiPilihanGanda) || 4));
   const pgOptionLetters = 'ABCDEF'.slice(0, pgOptionCount).split('');
   const pgOptionLines = pgOptionLetters.map((letter, index) => `${letter}. ${[

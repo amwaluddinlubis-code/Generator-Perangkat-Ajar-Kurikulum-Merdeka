@@ -13,13 +13,84 @@ export function resolveKomposisi(komposisi?: { mudah?: number; sedang?: number; 
   };
 }
 
+/** Urutan kanonis bentuk soal untuk penomoran berurutan. */
+export const BENTUK_SOAL_ORDER = [
+  { key: 'jumlahPG', label: 'Pilihan Ganda' },
+  { key: 'jumlahPGKompleks', label: 'Pilihan Ganda Kompleks' },
+  { key: 'jumlahMenjodohkan', label: 'Menjodohkan' },
+  { key: 'jumlahIsianSingkat', label: 'Isian Singkat' },
+  { key: 'jumlahUraian', label: 'Uraian HOTS' }
+] as const;
+
+export interface DistribusiBentuk {
+  key: string;
+  label: string;
+  count: number;
+  start: number;
+  end: number;
+}
+
+export interface DistribusiSoal {
+  /** 'perBentuk' bila salah satu kunci jumlah* hadir; selain itu 'legacy'. */
+  mode: 'perBentuk' | 'legacy';
+  /** Hanya bentuk dengan count > 0, bernomor urut mulai 1. */
+  items: DistribusiBentuk[];
+  total: number;
+  legacyJumlah?: number;
+  legacyBentuk: string[];
+}
+
+/**
+ * Menyelesaikan konfigurasi soal menjadi distribusi eksplisit per bentuk.
+ * Kontrak untuk panel kartu per bentuk: kirim jumlahPG, jumlahPGKompleks,
+ * jumlahMenjodohkan, jumlahIsianSingkat, jumlahUraian (0 = tidak dipakai).
+ */
+export function resolveDistribusiSoal(
+  soalConfig?: PromptContext['soalConfig'] | null
+): DistribusiSoal {
+  const cfg = (soalConfig || {}) as Record<string, unknown>;
+  const keys = BENTUK_SOAL_ORDER.map(b => b.key);
+  const hasPerBentuk = keys.some(key => cfg[key] !== undefined);
+  if (!hasPerBentuk) {
+    return {
+      mode: 'legacy',
+      items: [],
+      total: Number(cfg.jumlahSoal) || 0,
+      legacyJumlah: typeof cfg.jumlahSoal === 'number' ? cfg.jumlahSoal : undefined,
+      legacyBentuk: Array.isArray(cfg.bentukSoal) ? (cfg.bentukSoal as string[]) : []
+    };
+  }
+  const items: DistribusiBentuk[] = [];
+  let nomor = 1;
+  for (const bentuk of BENTUK_SOAL_ORDER) {
+    const raw = cfg[bentuk.key];
+    const count = raw === undefined || raw === null ? 0 : Math.max(0, Math.floor(Number(raw) || 0));
+    if (count > 0) {
+      items.push({ key: bentuk.key, label: bentuk.label, count, start: nomor, end: nomor + count - 1 });
+      nomor += count;
+    }
+  }
+  return { mode: 'perBentuk', items, total: nomor - 1, legacyBentuk: [] };
+}
+
+/** Total soal yang diminta (untuk validator kualitas & ekspektasi jumlah). */
+export function totalSoalDiminta(soalConfig?: PromptContext['soalConfig'] | null): number {
+  return resolveDistribusiSoal(soalConfig).total;
+}
+
 export const soalUjianSpec: PromptSpec = {
   docType: 'soal_ujian',
   render(ctx: PromptContext): string {
-    const jumlah = ctx.soalConfig?.jumlahSoal || 15;
-    const bentuk = Array.isArray(ctx.soalConfig?.bentukSoal) && ctx.soalConfig.bentukSoal.length
-      ? ctx.soalConfig.bentukSoal.join('; ')
-      : 'Pilihan Ganda; Pilihan Ganda Kompleks; Menjodohkan; Isian Singkat; Uraian HOTS';
+    const distribusi = resolveDistribusiSoal(ctx.soalConfig);
+    const jumlah = distribusi.mode === 'perBentuk' ? distribusi.total : (ctx.soalConfig?.jumlahSoal || 15);
+    const bentuk = distribusi.mode === 'perBentuk'
+      ? distribusi.items.map(item => `${item.label} (${item.count} butir)`).join('; ')
+      : Array.isArray(ctx.soalConfig?.bentukSoal) && ctx.soalConfig.bentukSoal.length
+        ? ctx.soalConfig.bentukSoal.join('; ')
+        : 'Pilihan Ganda; Pilihan Ganda Kompleks; Menjodohkan; Isian Singkat; Uraian HOTS';
+    const distribusiText = distribusi.mode === 'perBentuk'
+      ? distribusi.items.map(item => `- ${item.label}: ${item.count} butir (Nomor ${item.start}–${item.end}).`).join('\n') + `\n- TOTAL: ${distribusi.total} butir.`
+      : `- ${jumlah} butir dibagi seimbang ke semua bentuk terpilih.`;
     const komp = resolveKomposisi((ctx.soalConfig as any)?.komposisi);
     const opsi = Math.min(6, Math.max(2, Number(ctx.soalConfig?.jumlahOpsiPilihanGanda) || 4));
     const letters = 'ABCDEF'.slice(0, opsi).split('').join(', ');
@@ -27,8 +98,11 @@ export const soalUjianSpec: PromptSpec = {
 
 ATURAN TAMBAHAN WAJIB:
 - Setiap nomor pilihan ganda wajib memiliki tepat ${opsi} opsi (${letters}).
-- Jika beberapa bentuk soal dipilih, distribusikan ${jumlah} butir secara seimbang dan beri label bentuk soal pada setiap nomor.
+- Gunakan distribusi per bentuk TEPAT seperti di bawah — JANGAN membagi ulang total dan JANGAN mengubah nomor tiap bentuk.
 - Pisahkan secara jelas tabel kisi-kisi, kunci jawaban, pembahasan, dan pedoman penskoran.
+
+DISTRIBUSI SOAL PER BENTUK (patuhi tepat):
+${distribusiText}
 
 ATURAN KELENGKAPAN (HARD RULE — DILARANG MELANGGAR):
 - Tulis SEMUA ${jumlah} butir soal secara LENGKAP, bernomor urut 1 sampai ${jumlah}. Setiap nomor wajib ada stimulus (bila sesuai bentuknya), redaksi butir, dan opsi/petunjuk yang utuh.
