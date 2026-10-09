@@ -1,9 +1,11 @@
 // GEL2: Perpustakaan — Worker D. Bank perangkat sekolah: daftar paket yang
 // dipublikasikan guru lain, lengkap dengan aksi "Duplikat ke Paket Saya".
 import React, { useEffect, useState } from 'react';
-import { Library, Copy, FileText, UserRound, RefreshCw } from 'lucide-react';
+import { Copy, FileText, UserRound, RefreshCw } from 'lucide-react';
 import { TeacherUser } from '../types';
 import { apiFetch } from '../utils/api';
+import Maskot from './Maskot';
+import { pesanKosong } from '../utils/sapaan';
 
 // GEL2: mengikuti kontrak API GET /api/perpustakaan (Worker C).
 interface PaketPublik {
@@ -122,15 +124,13 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
       )}
 
       {!loading && !error && pakets.length === 0 && (
-        <div className="hero min-h-[52vh] rounded-[20px] bg-base-100 border border-black/10 dark:border-white/15">
+        <div className="hero min-h-[52vh] rounded-[20px] bg-[#FFFBF5] dark:bg-white/5 border border-[#F5C77E]/40">
           <div className="hero-content text-center">
-            <div className="max-w-md px-4">
-              <div className="w-16 h-16 rounded-3xl bg-black/5 dark:bg-white/10 flex items-center justify-center mx-auto mb-5">
-                <Library className="w-8 h-8" />
-              </div>
+            <div className="max-w-md px-4 py-8">
+              <Maskot size={120} melayang={true} className="mx-auto mb-5" />
               <h2 className="text-2xl font-bold tracking-tight">Belum ada paket yang dipublikasikan</h2>
               <p className="py-4 text-[14px] opacity-70">
-                Jadilah yang pertama! Buat paket di Paket Saya, lengkapi dokumennya, lalu publikasikan agar bisa diteladani guru lain di sini.
+                {pesanKosong('perpustakaan')} Buat paket di Paket Saya, lengkapi dokumennya, lalu publikasikan agar bisa diteladani guru lain di sini.
               </p>
             </div>
           </div>
@@ -140,11 +140,11 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
       {!loading && !error && pakets.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {pakets.map((p) => (
-            <div key={p.id} className="card bg-base-100 shadow hover:shadow-md transition-shadow">
+            <div key={p.id} className="rgm-card ux-lift card bg-base-100 shadow">
               <div className="card-body p-5">
                 <h2 className="card-title text-[16px] leading-snug line-clamp-2">{p.topik}</h2>
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  <div className="badge badge-secondary badge-soft">{p.mataPelajaran}</div>
+                  <div className="badge rgm-badge-warm">{p.mataPelajaran}</div>
                   <div className="badge badge-ghost">
                     {p.jenjang}{p.tingkat ? ` · ${p.tingkat}` : ''}
                   </div>
@@ -164,13 +164,14 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
                     className="btn btn-primary btn-sm rounded-full"
                     onClick={() => handleDuplikat(p)}
                     disabled={duplikatId === p.id}
+                    title="Duplikat ke Paket Saya"
                   >
                     {duplikatId === p.id ? (
                       <span className="loading loading-spinner loading-sm" aria-hidden="true" />
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
-                    Duplikat ke Paket Saya
+                    Duplikat, yuk! 📥
                   </button>
                 </div>
               </div>

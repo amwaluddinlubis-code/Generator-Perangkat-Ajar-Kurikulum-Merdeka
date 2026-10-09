@@ -1,10 +1,11 @@
 // REDESIGN: Beranda baru berbasis paket (Worker B) — rancang ulang "Ruang Guru Merdeka".
 // Hero sapaan, "Lanjutkan", "Dokumen terbaru", dan statistik — semuanya DaisyUI.
+// FRIENDLY: restyle hangat & playful — maskot Owi, sapaan hangat, kartu rgm-card,
+// animasi ux-*; logika/state/API tidak diubah.
 import React, { useEffect, useMemo, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Plus,
-  FolderOpen,
   FileText,
   Layers,
   HelpCircle,
@@ -17,6 +18,8 @@ import {
 import { TeacherUser, DocType, Paket, DokumenPaket, VersiDokumen } from '../types';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
 import { apiFetch } from '../utils/api';
+import { Maskot } from './Maskot';
+import { salamHangat, ajakanAcak, pesanKosong } from '../utils/sapaan';
 
 // GEL2: duplikasi tipe lokal (tech debt Gelombang 1) dihapus — pakai tipe
 // kanonik dari ../types. Respons API menyertakan kolom ringkasan opsional
@@ -135,21 +138,20 @@ export const Beranda: React.FC<BerandaProps> = ({
     };
   }, []);
 
-  // REDESIGN: sapaan berdasarkan jam + tanggal hari ini (id-ID).
-  const { sapaanWaktu, tanggalHariIni, namaDepan } = useMemo(() => {
-    const now = new Date();
-    const jam = now.getHours();
-    const sapaanWaktu =
-      jam < 11 ? 'pagi' : jam < 15 ? 'siang' : jam < 18 ? 'sore' : 'malam';
-    const tanggalHariIni = new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(now);
-    const namaDepan = currentUser.name.trim().split(/\s+/)[0] || currentUser.name;
-    return { sapaanWaktu, tanggalHariIni, namaDepan };
-  }, [currentUser.name]);
+  // FRIENDLY: tanggal hari ini (id-ID) untuk baris kecil di hero.
+  const tanggalHariIni = useMemo(
+    () =>
+      new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date()),
+    []
+  );
+
+  // FRIENDLY: ajakan acak yang ramah — dihitung sekali agar stabil antar-render.
+  const ajakan = useMemo(() => ajakanAcak(), []);
 
   const lanjutkan = useMemo(
     () =>
@@ -180,29 +182,32 @@ export const Beranda: React.FC<BerandaProps> = ({
 
   return (
     <div className="space-y-6 sm:space-y-8 ux-view-enter">
-      {/* REDESIGN: hero sapaan + CTA buat paket */}
-      <div className="hero rounded-3xl bg-base-200">
-        <div className="hero-content flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full text-left py-8 sm:py-10 px-6 sm:px-10">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm opacity-70">
-              Selamat {sapaanWaktu} · {tanggalHariIni}
+      {/* FRIENDLY: hero hangat — gradasi peach, maskot Owi wisuda, sapaan hangat */}
+      <div className="rgm-hero-warm rounded-3xl ux-pop-in">
+        <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-8 w-full text-left py-8 sm:py-10 px-6 sm:px-10">
+          <div className="flex-1 min-w-0 w-full">
+            <p className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80">
+              📅 {tanggalHariIni}
             </p>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight mt-1">
-              Halo, {namaDepan} 👋
+              {salamHangat(currentUser.name)}
             </h1>
             <p className="text-sm sm:text-base opacity-70 mt-2 max-w-xl">
-              Siap menyusun perangkat ajar hari ini? Setiap paket berisi 7 dokumen
-              Kurikulum Merdeka — dari Modul Ajar sampai Modul P5.
+              {ajakan} Setiap paket berisi 7 dokumen Kurikulum Merdeka — dari
+              Modul Ajar sampai Modul P5.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onBuatPaket}
-            className="btn btn-primary btn-lg shrink-0"
-          >
-            <Plus className="w-5 h-5" />
-            Buat Paket Baru
-          </button>
+          <div className="flex flex-col items-center gap-4 shrink-0">
+            <Maskot varian="wisuda" size={110} />
+            <button
+              type="button"
+              onClick={onBuatPaket}
+              className="btn btn-primary btn-lg"
+            >
+              <Plus className="w-5 h-5" />
+              Yuk, Buat Paket Baru ✨
+            </button>
+          </div>
         </div>
       </div>
 
@@ -220,19 +225,19 @@ export const Beranda: React.FC<BerandaProps> = ({
           ))}
         </div>
       ) : pakets.length === 0 ? (
-        /* REDESIGN: empty state — hero dengan CTA */
-        <div className="hero rounded-3xl border border-dashed border-base-300 py-12">
-          <div className="hero-content text-center">
-            <div className="max-w-md">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-                <FolderOpen className="w-8 h-8" />
+        /* FRIENDLY: empty state — maskot Owi + pesan penyemangat + CTA hangat */
+        <div className="rounded-3xl border-2 border-dashed border-amber-300/70 dark:border-amber-500/25 py-12 ux-pop-in">
+          <div className="text-center px-6">
+            <div className="max-w-md mx-auto">
+              <div className="flex justify-center mb-4">
+                <Maskot size={120} />
               </div>
               <h2 className="text-2xl font-black tracking-tight">
-                Belum ada paket perangkat ajar
+                {pesanKosong('paket')}
               </h2>
               <p className="py-3 text-sm opacity-70">
-                Buat paket pertama Anda — pilih topik, mata pelajaran, dan fase,
-                lalu susun 7 dokumennya satu per satu dengan bantuan AI.
+                Pilih topik, mata pelajaran, dan fase — lalu susun 7 dokumennya
+                satu per satu dengan bantuan AI.
               </p>
               <button
                 type="button"
@@ -240,26 +245,30 @@ export const Beranda: React.FC<BerandaProps> = ({
                 className="btn btn-primary btn-lg mt-2"
               >
                 <Plus className="w-5 h-5" />
-                Buat Paket Baru
+                Yuk, Buat Paket Pertama ✨
               </button>
             </div>
           </div>
         </div>
       ) : (
         <>
-          {/* REDESIGN: "Lanjutkan" — 3 paket terakhir dibuka */}
+          {/* FRIENDLY: "Lanjutkan" — kartu hangat, hover terangkat, muncul berurutan */}
           <section aria-labelledby="beranda-lanjutkan">
             <div className="flex items-center justify-between mb-3">
               <h2 id="beranda-lanjutkan" className="text-lg sm:text-xl font-black tracking-tight">
-                Lanjutkan
+                Lanjutkan 🚀
               </h2>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {lanjutkan.map((p) => {
+              {lanjutkan.map((p, idx) => {
                 const selesai = p.progress?.selesai ?? 0;
                 const total = p.progress?.totalDokumen ?? 7;
                 return (
-                  <div key={p.id} className="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+                  <div
+                    key={p.id}
+                    className="card rgm-card ux-lift ux-stagger"
+                    style={{ '--ux-delay': `${idx * 80}ms` } as React.CSSProperties}
+                  >
                     <div className="card-body">
                       <h3 className="card-title text-base line-clamp-2">{p.topik}</h3>
                       <div className="flex flex-wrap gap-1.5 mt-1">
@@ -275,7 +284,7 @@ export const Beranda: React.FC<BerandaProps> = ({
                           <span>{waktuRelatif(p.dibukaTerakhir)}</span>
                         </div>
                         <progress
-                          className="progress progress-primary w-full"
+                          className="progress progress-warning w-full"
                           value={selesai}
                           max={total}
                           aria-label={`Progres ${selesai} dari ${total} dokumen`}
@@ -298,24 +307,24 @@ export const Beranda: React.FC<BerandaProps> = ({
             </div>
           </section>
 
-          {/* REDESIGN: "Dokumen terbaru" — 5 versi/dokumen terbaru */}
+          {/* FRIENDLY: "Dokumen terbaru" — item membulat, ikon dalam lingkaran peach */}
           <section aria-labelledby="beranda-dokumen-terbaru">
             <h2 id="beranda-dokumen-terbaru" className="text-lg sm:text-xl font-black tracking-tight mb-3">
-              Dokumen terbaru
+              Dokumen terbaru 📄
             </h2>
             {dokumenTerbaru.length === 0 ? (
-              <div className="card bg-base-100 shadow">
+              <div className="card rgm-card">
                 <div className="card-body text-sm opacity-70">
                   Belum ada dokumen yang diperbarui. Buka sebuah paket untuk mulai menyusun.
                 </div>
               </div>
             ) : (
-              <ul className="card bg-base-100 shadow divide-y divide-base-200">
+              <ul className="card bg-base-100 shadow rounded-2xl overflow-hidden divide-y divide-base-200">
                 {dokumenTerbaru.map((d) => {
                   const Ikon = DOC_ICONS[d.docType] ?? FileText;
                   return (
-                    <li key={`${d.paketId ?? ''}-${d.id}`} className="flex items-center gap-3 p-4">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <li key={`${d.paketId ?? ''}-${d.id}`} className="flex items-center gap-3 p-4 hover:bg-orange-50 dark:hover:bg-white/5 transition-colors">
+                      <div className="w-10 h-10 rounded-full bg-[#FFEEDB] dark:bg-amber-400/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                         <Ikon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -334,23 +343,25 @@ export const Beranda: React.FC<BerandaProps> = ({
             )}
           </section>
 
-          {/* REDESIGN: statistik paket & dokumen */}
+          {/* FRIENDLY: statistik — kartu hangat, angka bernuansa ungu & amber */}
           <section aria-label="Statistik perangkat ajar">
-            <div className="stats stats-vertical sm:stats-horizontal shadow w-full bg-base-100">
-              <div className="stat">
-                <div className="stat-title">Paket aktif</div>
-                <div className="stat-value text-primary">{statistik.totalPaketAktif}</div>
-                <div className="stat-desc">paket sedang disusun</div>
-              </div>
-              <div className="stat">
-                <div className="stat-title">Dokumen final semester ini</div>
-                <div className="stat-value">{statistik.semesterIni}</div>
-                <div className="stat-desc">diperbarui 6 bulan terakhir</div>
-              </div>
-              <div className="stat">
-                <div className="stat-title">Total dokumen</div>
-                <div className="stat-value">{statistik.dokumenSelesai}</div>
-                <div className="stat-desc">dari {statistik.totalDokumen} target dokumen</div>
+            <div className="rgm-card p-1 sm:p-2">
+              <div className="stats stats-vertical sm:stats-horizontal w-full bg-transparent shadow-none">
+                <div className="stat">
+                  <div className="stat-title">Paket aktif</div>
+                  <div className="stat-value text-primary">{statistik.totalPaketAktif}</div>
+                  <div className="stat-desc">paket sedang disusun</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Dokumen final semester ini</div>
+                  <div className="stat-value text-amber-600 dark:text-amber-400">{statistik.semesterIni}</div>
+                  <div className="stat-desc">diperbarui 6 bulan terakhir</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-title">Total dokumen</div>
+                  <div className="stat-value text-purple-700 dark:text-purple-300">{statistik.dokumenSelesai}</div>
+                  <div className="stat-desc">dari {statistik.totalDokumen} target dokumen</div>
+                </div>
               </div>
             </div>
           </section>

@@ -68,12 +68,13 @@ const UserMenu: React.FC<{
         tabIndex={0}
         role="button"
         onClick={(e) => e.currentTarget.focus()}
-        className={`w-full flex items-center gap-2.5 rounded-2xl p-2 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
+        className={`w-full flex items-center gap-2.5 rounded-2xl p-2 hover:bg-orange-100 dark:hover:bg-white/10 transition-colors cursor-pointer ${isCollapsed ? 'justify-center' : ''}`}
         aria-label={`Menu pengguna ${currentUser?.name ?? ''}`}
         aria-haspopup="menu"
       >
         <span className="relative shrink-0">
-          <span className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px]">
+          {/* FRIENDLY: avatar lingkaran gradasi hangat */}
+          <span className="w-9 h-9 rounded-full bg-linear-to-br from-amber-500 to-orange-400 text-white dark:from-amber-300 dark:to-orange-200 dark:text-amber-950 flex items-center justify-center font-semibold text-[14px]">
             {initial}
           </span>
           {/* UX: badge antrean verifikasi tetap terlihat untuk admin */}
@@ -99,7 +100,7 @@ const UserMenu: React.FC<{
       </button>
       <ul
         tabIndex={0}
-        className="dropdown-content menu bg-base-100 rounded-2xl z-[60] w-56 p-2 shadow-xl border border-black/10 dark:border-white/15 mb-2"
+        className="dropdown-content menu bg-base-100 rounded-3xl z-[60] w-56 p-2 shadow-xl border border-amber-200/70 dark:border-white/15 mb-2"
         role="menu"
         aria-label="Menu pengguna"
       >
@@ -181,11 +182,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // UX: tandai item navigasi yang aktif untuk pembaca layar
   const ariaCurrent = (active: boolean) => (active ? { 'aria-current': 'page' as const } : {});
 
+  // FRIENDLY: item aktif bergradasi hangat amber→oranye (bukan hitam polos);
+  // hover bernuansa peach. Varian dark tetap terbaca (teks amber tua di gradasi terang).
   const itemCls = (active: boolean) =>
     `w-full flex items-center gap-3 rounded-2xl text-left transition-all min-h-[52px] px-3 cursor-pointer ${
       active
-        ? 'bg-black text-white dark:bg-white dark:text-black'
-        : 'hover:bg-black/5 dark:hover:bg-white/10'
+        ? 'bg-linear-to-r from-amber-500 to-orange-400 text-white shadow-md shadow-amber-500/25 dark:from-amber-300 dark:to-orange-200 dark:text-amber-950'
+        : 'hover:bg-orange-100 dark:hover:bg-white/10'
     }`;
 
   return (
@@ -208,7 +211,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="h-14 px-4 flex items-center justify-between shrink-0 border-b border-black/10 dark:border-white/15">
           {/* UX: beri nama tombol brand untuk screen reader */}
           <button onClick={() => handleNavClick('beranda')} className="flex items-center gap-2.5 overflow-hidden text-left cursor-pointer" aria-label="Ruang Guru Merdeka — ke Beranda">
-            <div className="w-8 h-8 rounded-[10px] bg-black dark:bg-white dark:text-black text-white flex items-center justify-center shrink-0">
+            {/* FRIENDLY: ikon brand dalam kotak gradasi amber→ungu */}
+            <div className="w-8 h-8 rounded-[10px] bg-linear-to-br from-amber-500 to-purple-600 text-white dark:from-amber-400 dark:to-purple-500 flex items-center justify-center shrink-0">
               <GraduationCap className="w-[18px] h-[18px]" />
             </div>
             {!isCollapsed && (
@@ -220,11 +224,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
           <div className="flex items-center gap-1">
             {/* UX: umumkan status ciut/perluas sidebar ke pembaca layar */}
-            <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer" title={isCollapsed ? 'Perluas' : 'Ciutkan'} aria-label={isCollapsed ? 'Perluas bilah navigasi' : 'Ciutkan bilah navigasi'} aria-expanded={!isCollapsed}>
+            <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex p-2 rounded-full hover:bg-orange-100 dark:hover:bg-white/10 transition-colors cursor-pointer" title={isCollapsed ? 'Perluas' : 'Ciutkan'} aria-label={isCollapsed ? 'Perluas bilah navigasi' : 'Ciutkan bilah navigasi'} aria-expanded={!isCollapsed}>
               {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
             {/* UX: tombol tutup drawer mobile punya label aksesibel + menerima fokus awal */}
-            <button ref={closeBtnRef} onClick={() => setMobileOpen(false)} className="lg:hidden p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer" aria-label="Tutup menu navigasi">
+            <button ref={closeBtnRef} onClick={() => setMobileOpen(false)} className="lg:hidden p-2 rounded-full hover:bg-orange-100 dark:hover:bg-white/10 cursor-pointer" aria-label="Tutup menu navigasi">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -236,11 +240,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const active = activeTarget === item.target;
             return (
               <button key={item.target} onClick={() => handleNavClick(item.target)} className={itemCls(active)} title={isCollapsed ? item.label : undefined} {...ariaCurrent(active)}>
-                <span className={`shrink-0 ${active ? 'text-white dark:text-black' : ''}`}>{item.icon}</span>
+                <span className={`shrink-0 ${active ? 'text-white dark:text-amber-950' : ''}`}>{item.icon}</span>
                 {!isCollapsed && (
                   <span className="flex-1 min-w-0">
-                    <span className={`block text-[14px] font-semibold leading-tight truncate ${active ? 'text-white dark:text-black' : ''}`}>{item.label}</span>
-                    <span className={`block text-[12px] leading-tight ${active ? 'text-white/70 dark:text-black/60' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{item.sub}</span>
+                    <span className={`block text-[14px] font-semibold leading-tight truncate ${active ? 'text-white dark:text-amber-950' : ''}`}>{item.label}</span>
+                    <span className={`block text-[12px] leading-tight ${active ? 'text-white/80 dark:text-amber-950/70' : 'text-[#6e6e73] dark:text-[#98989d]'}`}>{item.sub}</span>
                   </span>
                 )}
               </button>

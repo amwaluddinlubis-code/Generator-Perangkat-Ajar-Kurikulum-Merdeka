@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TeacherUser, Jenjang } from '../types';
+import Maskot from './Maskot';
 import {
   GraduationCap,
   ShieldCheck,
@@ -120,15 +121,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <main className="flex-1 w-full max-w-5xl mx-auto px-5 pt-12 pb-16 sm:pt-16">
         {/* Hero */}
         <div className="text-center max-w-2xl mx-auto">
+          <Maskot varian="wisuda" size={120} melayang={true} className="mx-auto mb-4" />
           <p className="apple-eyebrow mb-2">Generator Perangkat Ajar</p>
-          <h1 className="apple-headline">Ruang Guru Merdeka.</h1>
-          <p className="apple-sub mt-3">
-            Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikbudristek No.&nbsp;12&nbsp;Tahun&nbsp;2024 — dalam hitungan menit, bukan akhir pekan.
+          <h1 className="apple-headline">Halo, Pak Guru! 👋</h1>
+          <p className="apple-sub mt-3 font-semibold text-[#424245] dark:text-[#e8e8ed]">
+            Ruang Guru Merdeka
+          </p>
+          <p className="apple-sub mt-2">
+            Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikbudristek No.&nbsp;12&nbsp;Tahun&nbsp;2024 — dalam hitungan menit, bukan akhir pekan ☕.
           </p>
         </div>
 
         {/* Kartu auth */}
-        <div className="apple-card mt-10 max-w-xl mx-auto p-6 sm:p-8">
+        <div className="apple-card mt-10 max-w-xl mx-auto p-6 sm:p-8 !rounded-3xl !border-[#F5C77E]/50 dark:!border-[#F5C77E]/30 shadow-[0_8px_30px_rgba(245,158,11,0.08)]">
           <div className="flex justify-center">
             <div className="apple-segment" role="tablist" aria-label="Masuk atau daftar">
               {/* UX: tandai tab aktif untuk pembaca layar */}
@@ -176,12 +181,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </button>
 
               <div className="pt-5 border-t border-black/10">
-                <p className="text-[13px] font-semibold text-[#424245] mb-2.5">Coba sekali ketuk</p>
+                <p className="text-[13px] font-semibold text-[#424245] mb-2.5">Masuk sekali ketuk ✨</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {demoUsers.slice(0, 4).map((user) => (
                     // UX: nonaktifkan saat proses login berjalan agar tak terkirim ganda
                     <button key={user.id} type="button" disabled={isLoading} onClick={() => handleQuickLogin(user)}
-                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#0071e3] hover:bg-[#f5f9ff] dark:hover:bg-white/5 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px] disabled:opacity-60 disabled:cursor-not-allowed">
+                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#F59E0B] hover:bg-[#FFEEDB]/60 dark:hover:bg-amber-900/20 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px] disabled:opacity-60 disabled:cursor-not-allowed">
                       <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
                         {user.name.charAt(0)}
                       </div>
@@ -241,8 +246,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* Fitur — grid lega */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 max-w-4xl mx-auto">
           {features.map((f) => (
-            <div key={f.title} className="apple-card p-5 text-left">
-              <div className="w-9 h-9 rounded-xl bg-[#f5f5f7] dark:bg-white/10 flex items-center justify-center mb-3">{f.icon}</div>
+            <div key={f.title} className="apple-card rgm-card ux-lift p-5 text-left">
+              <div className="w-9 h-9 rounded-xl bg-[#FFEEDB] dark:bg-amber-900/30 text-[#B45309] dark:text-amber-300 flex items-center justify-center mb-3">{f.icon}</div>
               <h3 className="text-[14.5px] font-semibold">{f.title}</h3>
               <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-1 leading-relaxed">{f.desc}</p>
             </div>
