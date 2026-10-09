@@ -19,6 +19,8 @@ export interface FallbackParams {
   authorName?: string;
   schoolName?: string;
   catatanTambahan?: any;
+  /** Komposisi soal kustom guru: { pg_biasa, pg_kompleks, menjodohkan, isian, uraian }. */
+  soalConfig?: any;
 }
 
 export function generateFallbackDocument(params: FallbackParams): string {
@@ -153,9 +155,44 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
   }
 
   if (docType === 'soal_ujian') {
+    // FITUR soal kustom: susun butir soal mengikuti komposisi pilihan guru.
+    const _komp = (params.soalConfig?.komposisi && typeof params.soalConfig.komposisi === 'object')
+      ? params.soalConfig.komposisi : { pg_biasa: 5, pg_kompleks: 3, menjodohkan: 2, isian: 2, uraian: 3 };
+    const _n = (k: string) => Math.max(0, Math.round(Number((_komp as any)[k]) || 0));
+    const _jml = { pg_biasa: _n('pg_biasa'), pg_kompleks: _n('pg_kompleks'), menjodohkan: _n('menjodohkan'), isian: _n('isian'), uraian: _n('uraian') };
+    const _total = _jml.pg_biasa + _jml.pg_kompleks + _jml.menjodohkan + _jml.isian + _jml.uraian;
+    let _no = 0;
+    const _pgBiasa = Array.from({ length: _jml.pg_biasa }, () => {
+      _no++;
+      return `**Soal ${_no} (Pilihan Ganda)**\nPenerapan prinsip utama **${topik}** dalam kehidupan sehari-hari paling tepat ditunjukkan oleh contoh...\nA. Mengabaikan prosedur standar karena memakan waktu\nB. Mengintegrasikan pemahaman konsep untuk menyelesaikan tantangan nyata di lingkungan sekitar\nC. Hanya menghafal definisi tanpa mengaitkan fenomena aktual\nD. Menyerahkan pemecahan masalah kepada pihak lain tanpa analisis\n*(Kunci: B)*\n`;
+    }).join('\n');
+    const _pgKompleks = Array.from({ length: _jml.pg_kompleks }, () => {
+      _no++;
+      return `**Soal ${_no} (PG Kompleks — Benar/Salah)**\nTentukan Benar (B) atau Salah (S) untuk setiap pernyataan terkait **${topik}**!\n1. [B / S] Penerapan konsep **${topik}** memperkuat nalar kritis siswa. *(Benar)*\n2. [B / S] Keputusan dalam **${topik}** boleh hanya berdasar perkiraan tanpa data. *(Salah)*\n`;
+    }).join('\n');
+    const _jodoh = Array.from({ length: _jml.menjodohkan }, () => {
+      _no++;
+      return `**Soal ${_no} (Menjodohkan)**\nJodohkan istilah (kiri) dengan deskripsi tepat (kanan) terkait **${topik}**:\n* (1) Konsep Dasar -----> [  ] A. Evaluasi & tindak lanjut\n* (2) Analisis Masalah -----> [  ] B. Fondasi teori yang kuat\n*(Kunci: 1-B, 2-A)*\n`;
+    }).join('\n');
+    const _isian = Array.from({ length: _jml.isian }, () => {
+      _no++;
+      return `**Soal ${_no} (Isian Singkat)**\nLengkapilah kalimat berikut: "Penerapan **${topik}** secara tepat dalam kehidupan sehari-hari bertujuan untuk ........................."\n*(Kunci: memecahkan masalah nyata secara efektif dan berkelanjutan)*\n`;
+    }).join('\n');
+    const _uraian = Array.from({ length: _jml.uraian }, () => {
+      _no++;
+      return `**Soal ${_no} (Uraian HOTS)**\nDi lingkungan sekolah ditemukan persoalan nyata terkait **${topik}**.\n1. Analisislah 2 faktor penyebab utama persoalan tersebut!\n2. Rancanglah gagasan aksi nyata yang dapat dilakukan bersama teman sekelas dengan memanfaatkan prinsip **${topik}**!\n*(Rubrik: analisis logis 5 poin + solusi kreatif 5 poin)*\n`;
+    }).join('\n');
+    const _bagian = [
+      _jml.pg_biasa ? `#### BAGIAN A: PILIHAN GANDA (${_jml.pg_biasa} butir)\n\n${_pgBiasa}` : '',
+      _jml.pg_kompleks ? `#### BAGIAN B: PG KOMPLEKS AKM (${_jml.pg_kompleks} butir)\n\n${_pgKompleks}` : '',
+      _jml.menjodohkan ? `#### BAGIAN C: MENJODOHKAN (${_jml.menjodohkan} butir)\n\n${_jodoh}` : '',
+      _jml.isian ? `#### BAGIAN D: ISIAN SINGKAT (${_jml.isian} butir)\n\n${_isian}` : '',
+      _jml.uraian ? `#### BAGIAN E: URAIAN HOTS (${_jml.uraian} butir)\n\n${_uraian}` : '',
+    ].filter(Boolean).join('\n---\n\n');
     return `# PAKET SOAL ASESMEN SUMATIF (AKM & HOTS)
 ## Standar Asesmen Nasional Kemendikbudristek 2024
 **Satuan Pendidikan: ${schoolName} • Mata Pelajaran: ${mataPelajaran} • Tingkat: ${tingkat} (${fase})**
+*Komposisi pilihan guru: ${_total} butir (PG: ${_jml.pg_biasa}, PG Kompleks: ${_jml.pg_kompleks}, Menjodohkan: ${_jml.menjodohkan}, Isian: ${_jml.isian}, Uraian: ${_jml.uraian})*
 
 ---
 
@@ -163,60 +200,12 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 * **Topik / Lingkup Materi**: ${topik}
 * **Alokasi Waktu Ujian**: 60 - 90 Menit
 * **Komposisi Level Kognitif**: C3 (Aplikasi), C4 (Analisis), C5 (Evaluasi), C6 (Kreasi)
-* **Bentuk Soal**: Pilihan Ganda (PG), Pilihan Ganda Kompleks (Model AKM), Menjodohkan, Isian Singkat, dan Uraian Analitis HOTS.
 
 ---
 
-### II. BUTIR SOAL UJIAN BERBASIS STIMULUS DATA & WACANA
+### II. BUTIR SOAL UJIAN
 
-#### BAGIAN A: PILIHAN GANDA BIASA (Stimulus Wacana 1)
-*Cermatilah wacana kontekstual berikut untuk menjawab soal nomor 1 sampai 3:*
-> *"Dalam era transformasi sains dan teknologi modern, pemahaman mengenai ${topik} menjadi pilar utama dalam pemecahan masalah lingkungan dan industri. Berbagai penelitian terkini menunjukkan bahwa penerapan konsep ini secara tepat mampu meningkatkan efisiensi dan menjaga keberlanjutan sumber daya secara optimal."*
-
-**Soal 1 (Level Kognitif C3 - Aplikasi)**
-Berdasarkan wacana di atas, penerapan prinsip utama dari **${topik}** dalam kehidupan sehari-hari paling tepat ditunjukkan oleh contoh...
-A. Mengabaikan prosedur standar karena memakan waktu lebih lama
-B. Mengintegrasikan pemahaman konsep untuk menyelesaikan tantangan nyata di lingkungan sekitar
-C. Hanya menghafal definisi tanpa mengaitkannya dengan fenomena aktual
-D. Mengandalkan metode konvensional tanpa mempertimbangkan efisiensi
-E. Menyerahkan seluruh pemecahan masalah kepada pihak lain tanpa analisis
-*(Kunci Jawaban: B)*
-
-**Soal 2 (Level Kognitif C4 - Analisis)**
-Apabila terjadi kendala pada implementasi **${topik}**, langkah analisis kritis awal yang harus dilakukan peserta didik adalah...
-A. Menghentikan seluruh proses tanpa mencari akar penyebab masalah
-B. Mengidentifikasi variabel penyebab, mengumpulkan data lapangan, dan merumuskan hipotesis perbaikan
-C. Mengganti seluruh sistem tanpa evaluasi bertahap
-D. Menunggu instruksi tanpa melakukan inisiatif penyelidikan
-*(Kunci Jawaban: B)*
-
----
-
-#### BAGIAN B: PILIHAN GANDA KOMPLEKS (MODEL ASESMEN KOMPETENSI MINIMUM / AKM)
-**Soal 3 (Level Kognitif C4 - AKM Multikunci)**
-Tentukan Benar (B) atau Salah (S) untuk setiap pernyataan berikut terkait **${topik}**!
-1. [B / S] Penerapan konsep **${topik}** berkontribusi langsung pada penguatan nalar kritis siswa. *(Benar)*
-2. [B / S] Pengambilan keputusan dalam **${topik}** hanya boleh didasarkan pada perkiraan tanpa bukti data empiris. *(Salah)*
-3. [B / S] Kolaborasi tim mempercepat penemuan solusi alternatif yang efektif pada persoalan **${topik}**. *(Benar)*
-
----
-
-#### BAGIAN C: SOAL MENJODOHKAN (MATCHING)
-**Soal 4 (Level Kognitif C3)**
-Jodohkan istilah pada Kolom Kiri dengan deskripsi yang paling tepat pada Kolom Kanan:
-* (1) Konsep Dasar ${topik}  -----> [  ] A. Evaluasi hasil dan tindak lanjut perbaikan
-* (2) Analisis Masalah       -----> [  ] B. Fondasi teori dan pemahaman awal yang kuat
-* (3) Solusi & Refleksi      -----> [  ] C. Penguraian komponen tantangan secara objektif
-*(Kunci: 1-B, 2-C, 3-A)*
-
----
-
-#### BAGIAN D: SOAL URAIAN HOTS & STUDI KASUS NYATA
-**Soal 5 (Level Kognitif C5/C6 - Evaluasi & Kreasi)**
-Di suatu lingkungan satuan pendidikan, ditemukan permasalahan nyata terkait **${topik}** yang berdampak pada kegiatan warga sekolah.
-**Pertanyaan**:
-1. Analisislah 2 (dua) faktor penyebab utama timbulnya persoalan tersebut!
-2. Rancanglah sebuah gagasan aksi nyata atau solusi inovatif yang dapat diterapkan bersama teman sekelas dengan memanfaatkan prinsip kerja **${topik}**!
+${_bagian || '*Belum ada butir soal — atur komposisi soal terlebih dahulu.*'}
 
 ---
 
@@ -224,10 +213,8 @@ Di suatu lingkungan satuan pendidikan, ditemukan permasalahan nyata terkait **${
 * **Pilihan Ganda Biasa**: Bobot 2 poin per butir benar.
 * **Pilihan Ganda Kompleks**: Bobot 3 poin jika seluruh opsi tepat.
 * **Menjodohkan**: Bobot 3 poin.
-* **Soal Uraian HOTS**: Bobot maksimum 10 poin dengan kriteria:
-  - Jawaban tepat, analisis logis, dan solusi kreatif: Skor 8 - 10
-  - Jawaban cukup tepat dengan analisis mendasar: Skor 5 - 7
-  - Jawaban kurang relevan: Skor 1 - 4
+* **Isian Singkat**: Bobot 2 poin per jawaban tepat.
+* **Soal Uraian HOTS**: Bobot maksimum 10 poin (analisis 5 + solusi 5).
 * **Nilai Akhir**: (Total Skor Perolehan / Total Skor Maksimum) x 100.`;
   }
 
