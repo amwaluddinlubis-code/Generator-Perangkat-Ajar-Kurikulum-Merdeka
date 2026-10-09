@@ -14,7 +14,6 @@ import {
   DOC_TYPE_INFO,
 } from '../data/curriculumData';
 import { ContextualTopicSuggester } from './ContextualTopicSuggester';
-import { P5ThematicGeneratorSection } from './P5ThematicGeneratorSection';
 import { CurriculumTopicItem } from '../data/topicCatalog';
 import { apiFetch } from '../utils/api';
 import { 
@@ -98,15 +97,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
   const handleDocTypeChange = (newType: DocType) => {
     setDocType(newType);
-    if (newType === 'modul_p5') {
-      if (!alokasiWaktu.includes('JP') || alokasiWaktu.includes('Menit')) {
-        setAlokasiWaktu('36 JP');
-      }
-    } else {
-      if (alokasiWaktu === '36 JP' || alokasiWaktu === '48 JP' || alokasiWaktu === '72 JP') {
-        setAlokasiWaktu(defaultAlokasi(jenjang));
-      }
-    }
     onSelectDocType?.(newType);
   };
 
@@ -143,13 +133,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [jumlahSoal, setJumlahSoal] = useState<number>(15);
   const [levelKognitif, setLevelKognitif] = useState<string>('Kombinasi MOTS & HOTS (C3-C5)');
 
-  // Konfigurasi tema & modul projek P5
+  // Konfigurasi tema projek
   const [temaP5, setTemaP5] = useState<string>('Gaya Hidup Berkelanjutan');
-  const [isuKontekstual, setIsuKontekstual] = useState<string>('');
-  const [bentukAksi, setBentukAksi] = useState<string>('Gelar Karya & Pameran Projek Komunitas Sekolah');
-  const [sistemWaktu, setSistemWaktu] = useState<string>('Sistem Terjadwal Berkala (1 Hari per Minggu)');
-  const [mitraProjek, setMitraProjek] = useState<string>('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   // Identitas kop
   // UX: tanpa default "SD Negeri 01 Menteng Pagi" yang salah jenjang untuk guru SMP;
@@ -225,17 +210,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   // UX: validasi langkah "Materi" dengan pesan di dekat field masing-masing
   const validateMateriStep = (): boolean => {
     const errors: { topik?: string; customMapel?: string; alokasiWaktu?: string } = {};
-    if (!topik.trim()) {
-      errors.topik = docType === 'modul_p5'
-        ? 'Pilih salah satu template tematik atau ketik judul projek P5 di bawah.'
-        : 'Isi topik/materi pokok dulu — contoh: Pecahan, Siklus Air.';
-    }
-    if (docType !== 'modul_p5' && mataPelajaran === 'custom' && !customMapel.trim()) {
-      errors.customMapel = 'Ketik nama mata pelajaran dulu.';
-    }
-    if (!alokasiWaktu.trim()) {
-      errors.alokasiWaktu = docType === 'modul_p5' ? 'Isi alokasi waktu projek — contoh: 36 JP.' : 'Isi alokasi waktu — contoh: 2 JP (2 x 35 Menit).';
-    }
+    if (!topik.trim()) errors.topik = 'Isi topik/materi pokok dulu — contoh: Pecahan, Siklus Air.';
+    if (mataPelajaran === 'custom' && !customMapel.trim()) errors.customMapel = 'Ketik nama mata pelajaran dulu.';
+    if (!alokasiWaktu.trim()) errors.alokasiWaktu = 'Isi alokasi waktu — contoh: 2 JP (2 x 35 Menit).';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -243,10 +220,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   // GEL2: rakit body GeneratorParams sekali — dipakai mode lepas maupun
   // mode paket agar isi request ke /api/generate identik.
   const bangunParams = (): GeneratorParams => {
-    const isP5 = docType === 'modul_p5';
-    const finalMapel = isP5
-      ? 'Projek Penguatan Profil Pelajar Pancasila (P5)'
-      : (customMapel.trim() ? customMapel.trim() : mataPelajaran);
+    const finalMapel = customMapel.trim() ? customMapel.trim() : mataPelajaran;
     return {
       authorId: currentUser.id,
       docType,
@@ -256,7 +230,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       mataPelajaran: finalMapel,
       topik,
       alokasiWaktu,
-      modelPembelajaran: isP5 ? (sistemWaktu || 'Alur 4 Tahap Projek P5') : modelPembelajaran,
+      modelPembelajaran,
       targetPeserta,
       dimensiProfilLulusan,
       soalConfig: {
@@ -268,13 +242,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       schoolName,
       nip,
       catatanTambahan: {
-        temaP5,
-        templateId: selectedTemplateId || undefined,
-        judulProjek: topik,
-        isuKontekstual: isuKontekstual || undefined,
-        bentukAksi: bentukAksi || undefined,
-        sistemWaktu: sistemWaktu || undefined,
-        mitraProjek: mitraProjek || undefined,
+        temaP5
       }
     };
   };
@@ -378,7 +346,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
       {/* Header Form — Apple hero */}
       <div className="p-6 sm:p-10 pb-6 text-center border-b border-black/10">
-        <p className="apple-eyebrow">Draf berbantuan AI</p>
+        <p className="apple-eyebrow">Draf berbantuan AI 🤖</p>
         <h2 className="apple-headline !text-[30px] sm:!text-[38px] mt-1">
           Susun {DOC_TYPE_INFO[docType].label}.
         </h2>
@@ -411,14 +379,14 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       <form onSubmit={paketMode ? handleSubmitPaket : handleSubmit} className="p-5 sm:p-8" aria-busy={isGenerating}>
         {/* UX: banner progres saat generate — beri tahu durasi & larangan tutup/ubah halaman */}
         {isGenerating && (
-          <div role="status" className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-            <Clock className="h-5 w-5 shrink-0 mt-0.5 animate-spin text-blue-700" />
+          <div role="status" className="mb-6 flex items-start gap-3 rounded-3xl border border-[#F5C77E]/60 bg-[#FFEEDB]/70 dark:bg-amber-900/20 p-4">
+            <Clock className="h-5 w-5 shrink-0 mt-0.5 animate-spin text-[#B45309] dark:text-amber-300" />
             <div>
-              <p className="text-[14px] font-semibold text-blue-900">
-                AI sedang menyusun {DOC_TYPE_INFO[docType].label}…
+              <p className="text-[14px] font-semibold text-[#78350F] dark:text-amber-100">
+                Owi 🦉 sedang menyusun {DOC_TYPE_INFO[docType].label} untuk Anda…
               </p>
-              <p className="mt-0.5 text-[12.5px] text-blue-800">
-                Jangan tutup atau mengubah halaman ini — biasanya selesai dalam 30–60 detik.
+              <p className="mt-0.5 text-[12.5px] text-[#92400E] dark:text-amber-200/80">
+                Jangan tutup atau mengubah halaman ini — biasanya selesai dalam 30–60 detik. ☕
               </p>
             </div>
           </div>
@@ -459,7 +427,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {!paketMode && (
-        <div className="mb-6 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 px-5 py-4 text-center">
+        <div className="mb-6 rounded-2xl bg-[#FFEEDB]/50 dark:bg-amber-900/10 px-5 py-4 text-center border border-[#F5C77E]/30">
           <h3 className="text-[15px] font-semibold">
             {formStep === 0 ? 'Mulai dari format dan kelas' : formStep === 1 ? 'Isi kebutuhan pembelajaran' : 'Periksa sebelum menyusun'}
           </h3>
@@ -592,39 +560,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
         {/* GEL2: mode paket menampilkan langkah materi + tinjau bertumpuk (tanpa wizard) */}
         {(formStep === 1 || paketMode) && <>
-        {docType === 'modul_p5' ? (
-          <P5ThematicGeneratorSection
-            jenjang={jenjang}
-            fase={fase}
-            tingkat={tingkat}
-            temaP5={temaP5}
-            setTemaP5={setTemaP5}
-            topik={topik}
-            setTopik={(t) => {
-              setTopik(t);
-              if (fieldErrors.topik) setFieldErrors((prev) => ({ ...prev, topik: undefined }));
-            }}
-            isuKontekstual={isuKontekstual}
-            setIsuKontekstual={setIsuKontekstual}
-            bentukAksi={bentukAksi}
-            setBentukAksi={setBentukAksi}
-            sistemWaktu={sistemWaktu}
-            setSistemWaktu={setSistemWaktu}
-            alokasiWaktu={alokasiWaktu}
-            setAlokasiWaktu={(w) => {
-              setAlokasiWaktu(w);
-              if (fieldErrors.alokasiWaktu) setFieldErrors((prev) => ({ ...prev, alokasiWaktu: undefined }));
-            }}
-            mitraProjek={mitraProjek}
-            setMitraProjek={setMitraProjek}
-            dimensiProfilLulusan={dimensiProfilLulusan}
-            toggleDimensiProfil={toggleDimensiProfil}
-            selectedTemplateId={selectedTemplateId}
-            setSelectedTemplateId={setSelectedTemplateId}
-            topikError={fieldErrors.topik}
-          />
-        ) : (
-          <>
         {/* 3. Mata Pelajaran & Topik */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div>
@@ -651,7 +586,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               {mataPelajaran === 'custom' && (
                 <input
                   type="text"
-                  placeholder="Contoh: Muatan Lokal, Robotika…"
+                  placeholder="Contoh: Muatan Lokal, Robotika, Bahasa Daerah…"
                   value={customMapel}
                   onChange={(e) => {
                     setCustomMapel(e.target.value);
@@ -684,7 +619,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 // UX: bersihkan error begitu pengguna mulai mengetik
                 if (fieldErrors.topik) setFieldErrors((prev) => ({ ...prev, topik: undefined }));
               }}
-              placeholder="Contoh: Pecahan, Siklus Air, Hukum Newton…"
+              placeholder="Contoh: Pecahan, Siklus Air, Hukum Newton — materi apa yang seru hari ini? 🤔"
               aria-invalid={!!fieldErrors.topik}
               aria-describedby={fieldErrors.topik ? 'topik-error' : undefined}
               className={`apple-input ${fieldErrors.topik ? '!border-red-500' : ''}`}
@@ -862,6 +797,53 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           </div>
         )}
 
+        {docType === 'modul_p5' && (
+          <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 space-y-4 mt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-purple-600 text-white shadow-xs">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-purple-950">
+                    Konfigurasi Modul Projek Penguatan Profil Lulusan
+                  </h4>
+                  <p className="text-xs text-purple-800">
+                    Sesuai ketentuan projek kokurikuler Kemendikdasmen
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200 text-purple-900">
+                8 Tema Resmi
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-purple-950 mb-1.5">
+                Pilih Tema Resmi Projek
+              </label>
+              <select
+                value={temaP5}
+                onChange={(e) => setTemaP5(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-purple-300 text-xs sm:text-sm bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-purple-500"
+              >
+                {TEMA_P5.map((t) => (
+                  <option key={t} value={t}>
+                    Tema: {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="bg-white/80 p-3 rounded-xl border border-purple-200 text-xs text-purple-900">
+              <span className="font-bold block mb-1">• Tahapan Alur Projek yang Disusun:</span>
+              <p className="text-[11px] text-purple-800 leading-relaxed">
+                1. Tahap Pengenalan → 2. Tahap Kontekstualisasi Masalah → 3. Tahap Aksi Nyata Murid → 4. Tahap Refleksi & Gelar Karya Pameran.
+              </p>
+            </div>
+          </div>
+        )}
+
         {docType === 'kktp_atp' && (
           <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 space-y-3 mt-3">
             <div className="flex items-center gap-2">
@@ -926,8 +908,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </div>
           </div>
         )}
-          </>
-        )}
 
         </>}
 
@@ -935,7 +915,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         {/* UX: ringkasan tinjau yang lengkap (format, materi, kebutuhan) + tombol Ubah ke langkah terkait */}
         {/* GEL2: tombol Ubah disembunyikan di mode paket — semua parameter sudah tampil bertumpuk */}
         <div className="mb-5 space-y-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rgm-card ux-stagger rounded-2xl border border-[#F5C77E]/40 bg-[#FFFBF5] dark:bg-white/5 p-4" style={{ '--ux-delay': '60ms' } as React.CSSProperties}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase text-slate-500">Format & kelas</h4>
               {!paketMode && (
@@ -956,7 +936,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </dl>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rgm-card ux-stagger rounded-2xl border border-[#F5C77E]/40 bg-[#FFFBF5] dark:bg-white/5 p-4" style={{ '--ux-delay': '140ms' } as React.CSSProperties}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase text-slate-500">Materi & kebutuhan</h4>
               {!paketMode && (
@@ -968,49 +948,29 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-[11px] text-slate-500">Mata pelajaran</dt>
-                <dd className="text-sm font-semibold text-slate-900">
-                  {docType === 'modul_p5' ? 'Projek Penguatan Profil Pelajar Pancasila (P5)' : (customMapel.trim() || mataPelajaran)}
-                </dd>
+                <dd className="text-sm font-semibold text-slate-900">{customMapel.trim() || mataPelajaran}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-slate-500">{docType === 'modul_p5' ? 'Judul / Topik Projek' : 'Topik'}</dt>
+                <dt className="text-[11px] text-slate-500">Topik</dt>
                 <dd className="text-sm font-semibold text-slate-900">{topik || '—'}</dd>
               </div>
               <div>
-                <dt className="text-[11px] text-slate-500">{docType === 'modul_p5' ? 'Sistem Pelaksanaan' : 'Model pembelajaran'}</dt>
-                <dd className="text-sm font-semibold text-slate-900">{docType === 'modul_p5' ? sistemWaktu : modelPembelajaran}</dd>
+                <dt className="text-[11px] text-slate-500">Model pembelajaran</dt>
+                <dd className="text-sm font-semibold text-slate-900">{modelPembelajaran}</dd>
               </div>
               <div>
                 <dt className="text-[11px] text-slate-500">Alokasi waktu</dt>
                 <dd className="text-sm font-semibold text-slate-900">{alokasiWaktu}</dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-[11px] text-slate-500">Dimensi Profil Sasaran ({dimensiProfilLulusan.length})</dt>
+                <dt className="text-[11px] text-slate-500">Dimensi Profil Lulusan ({dimensiProfilLulusan.length})</dt>
                 <dd className="text-sm font-semibold text-slate-900">{dimensiProfilLulusan.join(', ')}</dd>
               </div>
               {docType === 'modul_p5' && (
-                <>
-                  <div>
-                    <dt className="text-[11px] text-slate-500">Tema resmi projek</dt>
-                    <dd className="text-sm font-semibold text-slate-900">{temaP5}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] text-slate-500">Bentuk aksi nyata</dt>
-                    <dd className="text-sm font-semibold text-slate-900">{bentukAksi}</dd>
-                  </div>
-                  {isuKontekstual && (
-                    <div className="sm:col-span-2">
-                      <dt className="text-[11px] text-slate-500">Isu kontekstual sekolah</dt>
-                      <dd className="text-sm font-semibold text-slate-900">{isuKontekstual}</dd>
-                    </div>
-                  )}
-                  {mitraProjek && (
-                    <div className="sm:col-span-2">
-                      <dt className="text-[11px] text-slate-500">Narasumber / mitra luar</dt>
-                      <dd className="text-sm font-semibold text-slate-900">{mitraProjek}</dd>
-                    </div>
-                  )}
-                </>
+                <div>
+                  <dt className="text-[11px] text-slate-500">Tema projek</dt>
+                  <dd className="text-sm font-semibold text-slate-900">{temaP5}</dd>
+                </div>
               )}
               <div className="sm:col-span-2">
                 <dt className="text-[11px] text-slate-500">Target peserta didik</dt>
@@ -1019,8 +979,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </dl>
           </div>
 
-          <p className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600">
-            Dokumen dibuat atas nama <b>{authorName || '—'}</b>{schoolName ? <> · {schoolName}</> : null}. Anda masih dapat mengubah identitas di pengaturan tambahan.
+          <p className="rounded-2xl border border-[#F5C77E]/40 bg-[#FFEEDB]/50 dark:bg-amber-900/10 p-4 text-xs text-slate-600 dark:text-[#c7c7cc]">
+            Dokumen dibuat atas nama <b>{authorName || '—'}</b>{schoolName ? <> · {schoolName}</> : null}. Anda masih dapat mengubah identitas di pengaturan tambahan. 👌
           </p>
         </div>
 
@@ -1127,41 +1087,22 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
               {/* Modul Projek Specific */}
               {docType === 'modul_p5' && (
-                <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 space-y-3">
+                <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-200 space-y-2">
                   <div className="font-bold text-xs text-purple-900 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-purple-700" />
-                    Parameter Tambahan Projek P5 (Kemendikdasmen)
+                    Pilihan Tema Resmi Projek Kokurikuler (Kemendikdasmen)
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-purple-950 mb-1">
-                        Tema Resmi Projek P5
-                      </label>
-                      <select
-                        value={temaP5}
-                        onChange={(e) => setTemaP5(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-purple-200 text-xs bg-white font-medium"
-                      >
-                        {TEMA_P5.map((t) => (
-                          <option key={t} value={t}>
-                            Tema: {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-purple-950 mb-1">
-                        Bentuk Aksi Nyata / Gelar Karya
-                      </label>
-                      <input
-                        type="text"
-                        value={bentukAksi}
-                        onChange={(e) => setBentukAksi(e.target.value)}
-                        placeholder="Gelar Karya & Pameran Produk Siswa"
-                        className="w-full px-3 py-2 rounded-lg border border-purple-200 text-xs bg-white"
-                      />
-                    </div>
-                  </div>
+                  <select
+                    value={temaP5}
+                    onChange={(e) => setTemaP5(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white font-medium"
+                  >
+                    {TEMA_P5.map((t) => (
+                      <option key={t} value={t}>
+                        Tema: {t}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 
@@ -1206,18 +1147,18 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             <button
               type="submit"
               disabled={isGenerating}
-              className="btn-apple flex-1 sm:flex-none sm:min-w-[260px]"
+              className="btn btn-primary btn-lg flex-1 sm:flex-none sm:min-w-[260px] shadow-[0_6px_20px_rgba(245,158,11,0.35)]"
             >
               {isGenerating ? <Clock className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {isGenerating ? 'Menyusun…' : `Susun ${DOC_TYPE_INFO[docType].label}`}
+              {isGenerating ? 'Menyusun…' : `✨ Susun ${DOC_TYPE_INFO[docType].label}`}
             </button>
           )}
         </div>
         )}
 
-        {/* GEL2: bilah aksi mode paket — cegah double-submit saat isGenerating/sedangSimpan */}
+        {/* GEL2: bilah aksi mode paket — sticky agar tombol selalu terlihat; cegah double-submit saat isGenerating/sedangSimpan */}
         {paketMode && (
-          <div className="mt-8">
+          <div className="mt-8 sticky bottom-4 rounded-2xl border border-black/10 dark:border-white/15 bg-white/85 dark:bg-[#1c1c1e]/85 p-3 shadow-lg backdrop-blur-md">
             <button
               type="submit"
               disabled={isGenerating || sedangSimpan}
@@ -1228,7 +1169,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               ) : (
                 <Sparkles className="h-5 w-5" />
               )}
-              {isGenerating || sedangSimpan ? 'Menyusun & menyimpan…' : 'Generate & Simpan sebagai Versi Baru'}
+              {isGenerating || sedangSimpan ? 'Menyusun & menyimpan…' : '✨ Generate & Simpan sebagai Versi Baru'}
             </button>
             <p className="mt-2 text-center text-xs opacity-60">
               Hasil AI otomatis tersimpan sebagai versi baru {DOC_TYPE_INFO[docType].label}.
