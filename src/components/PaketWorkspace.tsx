@@ -33,6 +33,12 @@ import {
 // FRIENDLY: maskot Owi + sapaan hangat untuk empty state
 import { Maskot } from './Maskot';
 import { pesanKosong } from '../utils/sapaan';
+// FITUR 3: presenter slide tayang (dokumen turunan Modul Ajar)
+import { SlidePresenter, Slide } from './SlidePresenter';
+// FITUR 4: modal asesmen diagnostik 5 menit
+import { DiagnostikModal } from './DiagnostikModal';
+// FITUR 2: ekspor Lembar Penilaian KKTP ke .xlsx
+import { unduhLembarPenilaianXlsx } from '../utils/lembarPenilaianXlsx';
 
 // REDESIGN: tipe lokal VersiDokumen/DokumenPaket (view-model workspace);
 // REDESIGN: dipetakan dari respons API server di muatVersi & selesaiGenerate.
@@ -133,6 +139,14 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   // GEL2: profil user & status generate untuk GeneratorForm (paketMode)
   const [pengguna, setPengguna] = useState<TeacherUser | null>(currentUser || null);
   const [sedangGenerate, setSedangGenerate] = useState<boolean>(false);
+  // FITUR 3: slide tayang (turunan Modul Ajar)
+  const [slideTerbuka, setSlideTerbuka] = useState(false);
+  const [slideDeck, setSlideDeck] = useState<Slide[]>([]);
+  const [memuatSlide, setMemuatSlide] = useState(false);
+  // FITUR 4: modal asesmen diagnostik 5 menit
+  const [modalDiagnostik, setModalDiagnostik] = useState<boolean>(false);
+  // FITUR 2: status ekspor Lembar Penilaian (.xlsx)
+  const [mengunduhXlsx, setMengunduhXlsx] = useState(false);
 
   // REDESIGN: toast lokal mengikuti pola DocumentRepository
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -330,6 +344,52 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
       setJudulVersi(DOC_TYPE_INFO[docType].label);
       setIsiVersi('');
       showToast(err instanceof Error ? err.message : 'Gagal memuat versi', 'error');
+    }
+  };
+
+  // FITUR 3: buka slide tayang — GET dulu, bila 404 generate dari isi Modul Ajar aktif.
+  // Slide adalah DOKUMEN TURUNAN Modul Ajar, bukan kartu ke-8.
+  const bukaSlideTayang = async () => {
+    if (memuatSlide) return;
+    setMemuatSlide(true);
+    try {
+      const resGet = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}/slide`);
+      if (resGet.ok) {
+        const data = await resGet.json();
+        const slides: Slide[] = data.slide?.slides ?? data.slides ?? [];
+        if (slides.length > 0) {
+          setSlideDeck(slides);
+          setSlideTerbuka(true);
+          return;
+        }
+      }
+      // Belum ada → generate dari teks Modul Ajar versi aktif
+      const daftar = await muatVersi('modul_ajar');
+      const aktif = daftar[0];
+      if (!aktif?.content) {
+        showToast('Modul Ajar belum punya isi untuk dijadikan slide', 'info');
+        return;
+      }
+      const resPost = await apiFetch(`/api/pakets/${encodeURIComponent(paketId)}/slide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sumberTeks: aktif.content }),
+      });
+      const dataPost = await resPost.json();
+      if (!resPost.ok || !dataPost.success) {
+        throw new Error(dataPost.message || `Server menjawab ${resPost.status}`);
+      }
+      const slides: Slide[] = dataPost.slide?.slides ?? [];
+      if (slides.length === 0) throw new Error('Server tidak mengembalikan slide');
+      setSlideDeck(slides);
+      setSlideTerbuka(true);
+      if (dataPost.dariFallback) {
+        showToast('AI sedang sibuk — slide dibuat dari template cadangan 🌤️', 'info');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal membuat slide tayang', 'error');
+    } finally {
+      setMemuatSlide(false);
     }
   };
 
@@ -572,6 +632,16 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {/* FITUR 4: generator asesmen diagnostik 5 menit */}
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => setModalDiagnostik(true)}
+              aria-label="Buka generator asesmen diagnostik 5 menit"
+              title="Buatkan pertanyaan diagnostik kilat untuk 5 menit pertama"
+            >
+              🧭 Diagnostik 5 Menit
+            </button>
             <button
               type="button"
               className="btn btn-outline btn-sm"
@@ -677,6 +747,22 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                           onClick={() => bukaModalLihat(d.docType)}
                         >
                           <Eye className="w-4 h-4" /> Buka
+                        </button>
+                      )}
+                      {/* FITUR 3: slide adalah DOKUMEN TURUNAN Modul Ajar — bukan kartu ke-8 */}
+                      {d.docType === 'modul_ajar' && adaVersi && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => bukaSlideTayang()}
+                          disabled={memuatSlide}
+                          title="Buat slide tayang kelas dari Modul Ajar ini"
+                        >
+                          {memuatSlide ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>🖥️ Buat Slide Tayang</>
+                          )}
                         </button>
                       )}
                       {d.status === 'draf' && (
@@ -905,6 +991,34 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
               >
                 <FileDown className="w-4 h-4" /> Unduh .md
               </button>
+              {/* FITUR 2: Lembar Penilaian (.xlsx) — hanya dokumen KKTP */}
+              {modalDoc === 'kktp_atp' && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={mengunduhXlsx}
+                  title="Unduh lembar penilaian KKTP (.xlsx): 30 baris nama, rumus interval & rekomendasi otomatis"
+                  onClick={async () => {
+                    if (mengunduhXlsx) return;
+                    setMengunduhXlsx(true);
+                    try {
+                      await unduhLembarPenilaianXlsx({
+                        judulDokumen: judulVersi || 'ATP & KKTP',
+                        mataPelajaran: paket.mataPelajaran,
+                        kelas: paket.tingkat,
+                        sekolah: '',
+                      });
+                      showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
+                    } catch (err) {
+                      showToast('Gagal menyusun .xlsx', 'error');
+                    } finally {
+                      setMengunduhXlsx(false);
+                    }
+                  }}
+                >
+                  {mengunduhXlsx ? <Loader2 className="w-4 h-4 animate-spin" /> : <>📊 Lembar Nilai (.xlsx)</>}
+                </button>
+              )}
               <button type="button" className="btn btn-sm" onClick={() => setModal(null)}>
                 Tutup
               </button>
@@ -944,6 +1058,21 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
           </div>
           <div className="modal-backdrop" onClick={() => !menyimpan && setModal(null)} />
         </div>
+      )}
+
+      {/* FITUR 4: modal asesmen diagnostik 5 menit */}
+      {modalDiagnostik && paket && (
+        <DiagnostikModal paket={paket} onClose={() => setModalDiagnostik(false)} />
+      )}
+
+      {/* FITUR 3: presenter slide tayang (turunan Modul Ajar) */}
+      {slideTerbuka && (
+        <SlidePresenter
+          slides={slideDeck}
+          judulKonteks={paket.topik}
+          infoKonteks={`${paket.mataPelajaran} · ${paket.tingkat}`}
+          onTutup={() => setSlideTerbuka(false)}
+        />
       )}
 
       {/* REDESIGN: toast lokal */}

@@ -6,6 +6,7 @@
 
 export interface FallbackParams {
   docType: string;
+  tiered?: boolean;
   jenjang: string;
   tingkat: string;
   fase: string;
@@ -44,7 +45,7 @@ export function generateFallbackDocument(params: FallbackParams): string {
   if (docType === 'modul_ajar') {
     return `# MODUL AJAR KURIKULUM MERDEKA (STANDAR PPA)
 ## Satuan Pendidikan: ${schoolName}
-**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikdasmen No. 13 Tahun 2025 & Keputusan Kepala BSKAP tentang Capaian Pembelajaran**
+**Tahun Pelajaran 2026/2027 • Berpedoman pada Permendikdasmen No. 13 Tahun 2025 & Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran**
 
 ---
 
@@ -66,7 +67,7 @@ export function generateFallbackDocument(params: FallbackParams): string {
 ### II. KOMPONEN INTI
 
 #### 1. Capaian Pembelajaran (CP)
-Peserta didik mampu memahami konsep esensial, menganalisis keterkaitan fenomena nyata, serta menerapkan penalaran kritis dalam menyelesaikan permasalahan kontekstual terkait **${topik}** sesuai standar capaian pembelajaran **BSKAP No. 032/H/KR/2024**.
+Peserta didik mampu memahami konsep esensial, menganalisis keterkaitan fenomena nyata, serta menerapkan penalaran kritis dalam menyelesaikan permasalahan kontekstual terkait **${topik}** sesuai standar capaian pembelajaran **BSKAP No. 046/H/KR/2025**.
 
 #### 2. Tujuan Pembelajaran (TP)
 1. Melalui pengamatan stimulus masalah kontekstual, peserta didik mampu mengidentifikasi karakteristik dan konsep dasar **${topik}** dengan teliti dan mandiri.
@@ -147,7 +148,7 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
 * **KKTP**: Kriteria Ketercapaian Tujuan Pembelajaran sebagai pedoman evaluasi ketuntasan belajar siswa.
 
 #### 3. Sumber & Daftar Pustaka
-1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2024). *Keputusan Kepala BSKAP No. 032/H/KR/2024 tentang Capaian Pembelajaran*. Kemendikbudristek RI.
+1. Badan Standar, Kurikulum, dan Asesmen Pendidikan (BSKAP). (2025). *Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran*. Kemendikdasmen RI.
 2. Pusat Kurikulum dan Pembelajaran. (2024). *Panduan Pembelajaran dan Asesmen Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah*. BSKAP Kemendikbudristek RI.`;
   }
 
@@ -293,6 +294,182 @@ NIP. ....................................................`;
 
   const temaP5 = (params.catatanTambahan && params.catatanTambahan.temaP5) || 'Gaya Hidup Berkelanjutan';
 
+
+  if (docType === 'lkpd' && params.tiered) {
+    return `# LKPD BERDIFERENSIASI 3 TINGKAT — ${topik}
+## ${mataPelajaran} • ${tingkat} (${fase}) — Siap Cetak
+**Satuan Pendidikan: ${schoolName} • Penyusun: ${authorName}**
+
+---
+
+## 📌 PANDUAN GURU — Cara Memakai 3 Lembar Ini (baca 2 menit!)
+
+Tiga lembar di bawah ini membahas topik yang SAMA (**${topik}**), tetapi dengan kedalaman tugas berbeda. Bagikan sesuai kesiapan tiap kelompok — bukan nilai rapor, bukan label pintar/bodoh.
+
+* **Cara membagi yang manusiawi**: lakukan asesmen diagnostik 5 menit (tanya jawab lisan tentang ${topik}), atau biarkan murid memilih sendiri: *"Pilih lembar yang bikin kamu semangat — bukan yang paling gampang, bukan yang paling susah."*
+* **Boleh naik tingkat!** Murid yang selesai lebih cepat di 🟢 boleh lanjut ke 🟡. Lembar Perintis adalah tangga, bukan vonis.
+* **Estimasi waktu** (total ${alokasiWaktu}): 🟢 ±30 menit • 🟡 ±35 menit • 🟣 ±40 menit (sisa waktu untuk presentasi & refleksi kelas).
+* **Kalimat scaffolding saat berkeliling**:
+  - Ke kelompok 🟢: *"Coba baca contoh yang sudah terisi dulu, lalu ikuti polanya. Bu Guru tunggu di sini."*
+  - Ke kelompok 🟡: *"Datanya sudah lengkap — sekarang tantangannya: kenapa bisa begitu? Tulis alasanmu."*
+  - Ke kelompok 🟣: *"Jawabanmu menarik! Sekarang buktikan — data atau wawancara apa yang mendukungnya?"*
+
+**Profil Lulusan yang disasar**: ${dimensiList} • **Model**: ${modelPembelajaran}
+
+---
+
+# 🟢 LEMBAR 1 — TINGKAT PERINTIS
+## "Pelan-pelan, pasti bisa! 🌱"
+
+### KOP KELOMPOK
+* **Nama Kelompok**: ....................................................  **Kelas**: ${tingkat}
+* **Anggota**: 1. ............................ 2. ............................ 3. ............................ 4. ............................
+* **Hari / Tanggal**: ....................................................
+
+### 👋 Halo, Tim Perintis!
+Hari ini kita berpetualang mengenal **${topik}**. Tenang saja — setiap langkah sudah ada contohnya. Ikuti saja satu per satu, seperti naik tangga. Kalau buntu, angkat tangan dan panggil Bu/Bapak Guru. Kita pecahkan bareng!
+
+### 📖 Cerita Pembuka — Dibaca Bersama
+> *Pagi ini Rizky jajan di kantin. Sambil menunggu gorengan, ia memperhatikan sesuatu yang berhubungan dengan **${topik}**. "Loh, kok bisa begitu, ya?" gumamnya. Sinta yang duduk di sebelahnya menimpali, "Aku juga pernah lihat hal seperti itu di rumah!" Nah — hari ini, kalian jadi detektif seperti Rizky dan Sinta. Kita selidiki **${topik}** langkah demi langkah!*
+
+### 👀 AKTIVITAS 1 — Mari Mengamati (Ikuti Contohnya!)
+Lengkapi tabel di bawah. Baris nomor 1 SUDAH TERISI sebagai contoh — tiru polanya untuk baris 2 dan 3.
+
+| No | Yang Kuamati (tentang ${topik}) | Hasil Pengamatanku | Tanda ✓ |
+| :--- | :--- | :--- | :---: |
+| 1 | *Contoh: satu hal tentang **${topik}** yang kulihat di kantin/sekolah* | *Contoh terisi: aku melihatnya di ............, bentuknya ............* | ☐ |
+| 2 | Satu hal tentang **${topik}** yang kutemukan di sekitarku | .................................................... | ☐ |
+| 3 | Satu hal tentang **${topik}** yang membuatku penasaran | .................................................... | ☐ |
+
+### ✏️ AKTIVITAS 2 — Mari Mencoba (Lingkari & Lengkapi!)
+1. Lingkari jawaban yang menurutmu PALING tepat tentang **${topik}**:
+   a. ....................................................   b. ....................................................   c. ....................................................
+   *(Diskusikan dulu dengan teman sebangkumu sebelum melingkari!)*
+2. Lengkapi kalimat rumpang ini dengan bahasamu sendiri:
+   *"Salah satu contoh **${topik}** yang sering kutemui adalah .................... karena ...................."*
+3. Pasangkan! Tarik garis dari kolom kiri ke jawabannya di kolom kanan:
+   * Ciri 1 dari **${topik}** ............ ↔ ............ Penjelasan sederhananya
+   * Ciri 2 dari **${topik}** ............ ↔ ............ Penjelasan sederhananya
+
+### 💬 AKTIVITAS 3 — Mari Bercerita (Lanjutkan Kalimatnya!)
+Tulis 2-3 kalimat kesimpulan dengan melanjutkan kalimat pembuka ini:
+* *"Hari ini aku menemukan bahwa **${topik}** itu ...................."*
+* *"Aku masih penasaran tentang ...................."*
+
+### 😊 REFLEKSI TIM PERINTIS
+Lingkari perasaanmu hari ini:  😟  😐  😊
+*Aku paling bangga hari ini karena:* ....................................................
+
+---
+
+# 🟡 LEMBAR 2 — TINGKAT REGULER
+## "Sudah cakap, ayo analitis! 🔍"
+
+### KOP KELOMPOK
+* **Nama Kelompok**: ....................................................  **Kelas**: ${tingkat}
+* **Anggota**: 1. ............................ 2. ............................ 3. ............................ 4. ............................
+* **Hari / Tanggal**: ....................................................
+
+### 👋 Halo, Tim Reguler!
+Kalian sudah menguasai dasar **${topik}**. Sekarang saatnya naik level: bukan cuma tahu *apa*, tapi *mengapa* dan *bagaimana jika*. Siapkan nalar kalian!
+
+### 📊 STIMULUS KASUS
+> *Perhatikan data/fenomena berikut tentang **${topik}** yang dikumpulkan dari lingkungan sekolah:*
+> 1. Fakta 1: .................................................... *(isi sesuai temuan nyata di lapangan)*
+> 2. Fakta 2: ....................................................
+> 3. Fakta 3: ....................................................
+> *Tiga fakta di atas saling berkaitan. Tugas kalian: temukan polanya!*
+
+### 🔍 AKTIVITAS 1 — Mari Menyelidiki
+Rancang SENDIRI tabel pengamatan kelompokmu (minimal 3 kolom). Dua contoh nama kolom sebagai pancingan: *"Aspek yang Diamati"* dan *"Dugaan Penyebab"*.
+Lalu isi dengan minimal 4 data hasil penyelidikanmu tentang **${topik}**.
+
+| No | ............................ | ............................ | ............................ |
+| :--- | :--- | :--- | :--- |
+| 1 | | | |
+| 2 | | | |
+| 3 | | | |
+| 4 | | | |
+
+### 🧠 AKTIVITAS 2 — Mari Menganalisis
+Jawab dengan analisis, bukan tebakan. Tulis alasan di setiap jawaban!
+1. Mengapa fenomena **${topik}** pada data di atas bisa terjadi? Jelaskan 2 penyebab yang paling masuk akal!
+   Jawab: ...................................................................................................................................
+2. Bagaimana jika salah satu faktor terkait **${topik}** berubah (misalnya bertambah/berkurang)? Prediksi apa yang akan terjadi!
+   Jawab: ...................................................................................................................................
+3. Bandingkan dua contoh **${topik}** yang kalian temukan: apa persamaan dan perbedaan paling pentingnya?
+   Jawab: ...................................................................................................................................
+
+### 📝 AKTIVITAS 3 — Mari Menyimpulkan
+* **Kesimpulan kelompok** tentang **${topik}**: ...................................................................................................................................
+* **Satu saran solusi nyata** yang bisa dilakukan di sekolah/rumah terkait **${topik}**: ...................................................................................................................................
+
+### 🪞 REFLEKSI 3-2-1
+* **3** hal yang kupelajari hari ini: 1) .................... 2) .................... 3) ....................
+* **2** hal yang paling menarik: 1) .................... 2) ....................
+* **1** pertanyaan yang masih tersisa: ....................
+
+---
+
+# 🟣 LEMBAR 3 — TINGKAT MAHIR
+## "Pengayaan: jelajahi sendiri! 🚀"
+
+### KOP KELOMPOK
+* **Nama Kelompok**: ....................................................  **Kelas**: ${tingkat}
+* **Anggota**: 1. ............................ 2. ............................ 3. ............................ 4. ............................
+* **Hari / Tanggal**: ....................................................
+
+### 👋 Halo, Tim Mahir!
+Lembar ini tidak punya kunci jawaban. Ada masalah nyata tentang **${topik}** yang belum terpecahkan — dan kalian diminta memecahkannya seperti ilmuwan sungguhan. Berani?
+
+### 📰 STUDI KASUS TERBUKA
+> *Di lingkungan sekitar (sekolah, kampung, atau kota), ada persoalan nyata yang berkaitan dengan **${topik}** dan belum ada solusi bakunya. Contohnya bisa soal sampah, air, energi, pangan lokal, atau kebiasaan warga — pilih yang paling dekat dengan keseharianmu.*
+>
+> **Tugas kalian**:
+> 1. Rumuskan masalahnya dalam **1 kalimat tajam**: *"Masalahnya adalah ...................."*
+> 2. Ajukan **3 pertanyaan penyelidikan** yang akan kalian jawab lewat observasi/wawancara:
+>    a. .................... b. .................... c. ....................
+> 3. Rancang **solusimu sendiri** — boleh berbeda dari kelompok lain. Tidak ada jawaban benar/salah; yang dinilai adalah keberanian bernalar dan kelengkapan bukti.
+>    Solusi kami: ...................................................................................................................................
+
+### 🕵️ MISI RAHASIA 1 — Detektif Lapangan
+Wawancarai SATU narasumber (guru, orang tua, atau pedagang di kantin) tentang **${topik}**:
+* Apa yang ia ketahui tentang **${topik}**? ....................
+* Masalah apa yang pernah ia alami terkait hal itu? ....................
+* **3 temuan terpentingku**: 1) .................... 2) .................... 3) ....................
+
+### 🎨 MISI RAHASIA 2 — Kreator
+Pilih SATU dan buat dengan serius: **poster edukasi** • **video 1 menit** • **prototipe/model sederhana** • **naskah drama mini** — semuanya tentang **${topik}** dan ditujukan untuk mengedukasi adik kelas.
+*Judul karyaku: .................... • Bentuk karya: ....................*
+
+### 🔬 CATATAN PENEMUAN (ala ilmuwan cilik)
+* Hipotesis awalku: ....................
+* Ternyata faktanya: ....................
+* Kalau diberi waktu seminggu lagi, aku akan menyelidiki: ....................
+
+### 🎤 PRESENTASI 3 MENIT
+Siapkan presentasi kelompok: 1 menit masalah, 1 menit temuan/bukti, 1 menit solusi. Boleh pakai karyamu dari Misi 2!
+
+### ⭐ PENILAIAN DIRI (lingkari 1–5)
+* Keberanian bertanya & berpendapat: 1 2 3 4 5
+* Kelengkapan bukti/data: 1 2 3 4 5
+* Kreativitas solusi: 1 2 3 4 5
+
+---
+
+## 📊 RUBRIK PENILAIAN 3 TINGKAT (untuk Guru)
+
+| Tingkat | Pemahaman ${topik} | Proses & Kolaborasi | Produk / Kesimpulan |
+| :--- | :--- | :--- | :--- |
+| 🟢 Perintis | Mampu melengkapi contoh terpandu dan menjelaskan ulang dengan bahasa sendiri (dengan bimbingan). | Aktif mengikuti langkah, berani bertanya saat buntu, menghargai giliran bicara teman. | Melengkapi tabel & kalimat rumpang dengan tepat; kesimpulan 2-3 kalimat sesuai panduan. |
+| 🟡 Reguler | Mampu menganalisis data, menjelaskan sebab-akibat, dan membandingkan contoh secara mandiri. | Merancang tabel sendiri, berdiskusi argumentatif, membagi tugas secara adil. | Kesimpulan utuh + 1 saran solusi nyata yang masuk akal untuk sekolah/rumah. |
+| 🟣 Mahir | Mampu merumuskan masalah terbuka, mengajukan pertanyaan penyelidikan, dan mempertahankan solusi dengan bukti. | Melakukan wawancara/observasi mandiri, mengelola waktu misi, memimpin presentasi. | Produk kreator selesai & komunikatif; Catatan Penemuan menunjukkan alur berpikir ilmiah. |
+
+*Disusun oleh ${authorName} • ${schoolName} • ${mataPelajaran} ${tingkat} (${fase}) • Model: ${modelPembelajaran} • Alokasi: ${alokasiWaktu}*
+*Target peserta didik: ${targetPeserta}*`;
+  }
+
+
   if (docType === 'lkpd') {
     return `# LEMBAR KERJA PESERTA DIDIK (LKPD) KURIKULUM MERDEKA
 ## ${mataPelajaran} • ${tingkat} (${fase}) — Siap Cetak
@@ -358,7 +535,7 @@ Lengkapi tabel pengamatan berikut berdasarkan hasil penyelidikan kelompokmu:
 ---
 
 ### I. RASIONAL & CAPAIAN PEMBELAJARAN (CP)
-Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik menguasai konsep esensial **${topik}** dan mampu menerapkannya dalam konteks nyata. Dokumen ini disusun berdasarkan Keputusan Kepala BSKAP No. 032/H/KR/2024 sebagai pijakan perencanaan, pelaksanaan, dan evaluasi pembelajaran selama satu tahun ajaran.
+Pembelajaran **${mataPelajaran}** pada **${fase}** diarahkan agar peserta didik menguasai konsep esensial **${topik}** dan mampu menerapkannya dalam konteks nyata. Dokumen ini disusun berdasarkan Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran sebagai pijakan perencanaan, pelaksanaan, dan evaluasi pembelajaran selama satu tahun ajaran.
 
 ### II. MATRIKS ALUR TUJUAN PEMBELAJARAN (ATP)
 
@@ -518,7 +695,7 @@ ${catatanTambahan?.mitraProjek ? `* **Mitra kolaborasi / narasumber**: ${catatan
 ---
 
 ### II. URAIAN CAPAIAN & TUJUAN PEMBELAJARAN
-Berdasarkan Keputusan Kepala BSKAP tentang Capaian Pembelajaran dan Panduan Pembelajaran dan Asesmen, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.
+Berdasarkan Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran dan Panduan Pembelajaran dan Asesmen, pembelajaran materi **${topik}** diarahkan untuk mengembangkan kompetensi esensial, kemampuan memecahkan masalah kontekstual, serta pembiasaan karakter bernalar kritis dan kreatif pada peserta didik.
 
 ### III. SINTAKS & AKTIVITAS PEMBELAJARAN
 1. **Kegiatan Awal**: Apersepsi, pengenalan tujuan, dan asesmen awal kesiapan siswa.
