@@ -63,6 +63,7 @@ export interface MonthlyProductivityData {
 export interface GeneratorParams {
   authorId?: string;
   docType: DocType;
+  tiered?: boolean; // FITUR 1: LKPD 3 tingkat diferensiasi (hanya dipakai saat docType==='lkpd')
   jenjang: Jenjang;
   tingkat: string;
   fase: string;

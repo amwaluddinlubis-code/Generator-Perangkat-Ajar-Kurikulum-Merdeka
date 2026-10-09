@@ -17,6 +17,11 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | Arsip & Statistik | Bank dokumen (cari + filter), dashboard D3.js (kurva/batang + donat), lencana guru |
 | Panduan | Halaman + modal regulasi (fase A–F, komponen modul, diferensiasi, KKTP, 8 Dimensi Profil Lulusan) |
 | Tema | Terang/gelap ala Apple, tersimpan otomatis, grafik adaptif |
+| 🎯 LKPD 3 Tingkat | Sakelar di form LKPD → satu dokumen berisi 3 lembar siap cetak: 🟢 Perintis (scaffolding bertahap), 🟡 Reguler (analitis), 🟣 Mahir (HOTS terbuka). Prompt `lkpd_tiered` + fallback; flag `tiered` di body `/api/generate` |
+| 📊 Lembar Penilaian .xlsx | Tombol di viewer dokumen KKTP → unduh `.xlsx` (exceljs, client-side): 30 baris nama, rumus IF otomatis Interval (Baru Berkembang/Layak/Cakap/Mahir) & Rekomendasi, sheet Rubrik KKTP, freeze header, siap cetak |
+| 🖥️ Slide Tayang Kelas | Tombol di kartu Modul Ajar → AI/fallback rangkum modul jadi 5–7 slide JSON → `SlidePresenter` fullscreen (keyboard/klik, nomor slide, ekspor PDF via print). Tersimpan sebagai turunan Modul Ajar: koleksi `slidePaket`, `POST/GET /api/pakets/:id/slide` |
+| 🧭 Diagnostik 5 Menit | Tombol di header workspace → `POST /api/pakets/:id/diagnostik` → 3–5 pertanyaan diagnostik + panduan fasilitasi "bila menjawab A → …". Modal `DiagnostikModal`, unduh .md |
+| 🤝 Ulasan Rekan Sejawat | Di Perpustakaan: modal detail paket + `<UlasanPaket>` (👍 apresiasi / 💡 saran, 1–500 karakter). Koleksi `ulasanPaket`, `GET/POST /api/pakets/:id/ulasan` (hanya paket terpublikasi) |
 
 ---
 

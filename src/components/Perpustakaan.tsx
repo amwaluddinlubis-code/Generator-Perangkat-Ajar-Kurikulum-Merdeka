@@ -6,6 +6,8 @@ import { TeacherUser } from '../types';
 import { apiFetch } from '../utils/api';
 import Maskot from './Maskot';
 import { pesanKosong } from '../utils/sapaan';
+// FITUR 5: telaah & umpan balik rekan sejawat
+import UlasanPaket from './UlasanPaket';
 
 // GEL2: mengikuti kontrak API GET /api/perpustakaan (Worker C).
 interface PaketPublik {
@@ -34,6 +36,8 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [duplikatId, setDuplikatId] = useState<string | null>(null);
+  // FITUR 5: paket yang sedang dilihat detail + ulasannya
+  const [paketAktif, setPaketAktif] = useState<PaketPublik | null>(null);
 
   const muatPerpustakaan = async () => {
     setLoading(true);
@@ -160,6 +164,14 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
                   </p>
                 </div>
                 <div className="card-actions justify-end mt-4">
+                  {/* FITUR 5: lihat detail + telaah rekan sejawat */}
+                  <button
+                    className="btn btn-ghost btn-sm rounded-full"
+                    onClick={() => setPaketAktif(p)}
+                    title="Lihat detail & beri ulasan"
+                  >
+                    💬 Ulasan
+                  </button>
                   <button
                     className="btn btn-primary btn-sm rounded-full"
                     onClick={() => handleDuplikat(p)}
@@ -177,6 +189,41 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* FITUR 5: modal detail paket + telaah rekan sejawat */}
+      {paketAktif && (
+        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Detail ${paketAktif.topik}`}>
+          <div className="modal-box max-w-2xl rounded-3xl ux-pop-in max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="font-bold text-lg leading-snug">{paketAktif.topik}</h3>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-circle shrink-0"
+                onClick={() => setPaketAktif(null)}
+                aria-label="Tutup detail"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <div className="badge rgm-badge-warm">{paketAktif.mataPelajaran}</div>
+              <div className="badge badge-ghost">
+                {paketAktif.jenjang}{paketAktif.tingkat ? ` · ${paketAktif.tingkat}` : ''}
+              </div>
+              <div className="badge badge-ghost">oleh {paketAktif.pemilikNama}</div>
+              <div className="badge badge-ghost">{paketAktif.jumlahDokumen} dokumen</div>
+            </div>
+            <div className="divider" />
+            <UlasanPaket paketId={paketAktif.id} />
+            <div className="modal-action">
+              <button type="button" className="btn btn-ghost rounded-full" onClick={() => setPaketAktif(null)}>
+                Tutup
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={() => setPaketAktif(null)} />
         </div>
       )}
     </div>

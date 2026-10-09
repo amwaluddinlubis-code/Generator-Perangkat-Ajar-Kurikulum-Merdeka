@@ -693,7 +693,7 @@ export default function App() {
                         🧩 3 komponen esensial Modul Ajar
                       </h4>
                       <ol className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
-                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 032/H/KR/2024.</li>
+                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 046/H/KR/2025.</li>
                         <li>2. <b>Langkah pembelajaran</b> berdiferensiasi.</li>
                         <li>3. <b>Rencana asesmen</b> + rubrik KKTP.</li>
                       </ol>
