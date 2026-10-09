@@ -733,9 +733,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       {/* Modal Ilustrasi AI */}
       {imgModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-          <div className="apple-card max-w-md w-full p-6">
+          <div className="apple-card max-w-md w-full p-6 ux-pop-in !rounded-3xl !border-[#F5C77E]/50 dark:!border-[#F5C77E]/30">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-[17px] font-semibold tracking-tight">Ilustrasi AI</h3>
+              <h3 className="text-[17px] font-semibold tracking-tight">Ilustrasi AI 🎨</h3>
               <button
                 onClick={() => setImgModalOpen(false)}
                 className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
@@ -745,7 +745,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               </button>
             </div>
             <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mb-4">
-              Dibuat dengan Gemini dari deskripsi Anda, lalu disisipkan ke dokumen.
+              Dibuatkan Gemini dari deskripsi Anda, lalu disisipkan rapi ke dokumen. 🖼️
             </p>
 
             <label className="block text-[13px] font-semibold mb-1.5">Deskripsi gambar</label>

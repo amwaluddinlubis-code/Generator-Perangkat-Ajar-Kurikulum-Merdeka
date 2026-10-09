@@ -19,7 +19,6 @@ import {
   Download,
   Archive,
   ArchiveRestore,
-  Plus,
   Eye,
   CheckCircle2,
   XCircle,
@@ -28,10 +27,12 @@ import {
   Loader2,
   History,
   PackageOpen,
-  AlertTriangle,
   FileDown,
   Clock,
 } from 'lucide-react';
+// FRIENDLY: maskot Owi + sapaan hangat untuk empty state
+import { Maskot } from './Maskot';
+import { pesanKosong } from '../utils/sapaan';
 
 // REDESIGN: tipe lokal VersiDokumen/DokumenPaket (view-model workspace);
 // REDESIGN: dipetakan dari respons API server di muatVersi & selesaiGenerate.
@@ -479,9 +480,10 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
       .slice(0, 10);
   }, [versiCache]);
 
+  // FRIENDLY: "Draf" memakai badge hangat khas RGM; "Final" tetap success
   const badgeStatus = (status: StatusDokumen): string => {
     if (status === 'final') return 'badge-success';
-    if (status === 'draf') return 'badge-warning';
+    if (status === 'draf') return 'rgm-badge-warm';
     return 'badge-neutral';
   };
 
@@ -514,14 +516,17 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   if (galat || !paket) {
     return (
       <div className="p-4 md:p-6 flex justify-center">
-        <div className="card bg-base-100 shadow max-w-md w-full">
-          <div className="card-body items-center text-center">
-            <AlertTriangle className="w-10 h-10 text-warning" />
-            <h2 className="card-title">Paket tidak dapat dimuat</h2>
+        {/* FRIENDLY: maskot Owi menenangkan + microcopy ramah */}
+        <div className="rgm-card max-w-md w-full p-6 sm:p-8 ux-pop-in">
+          <div className="flex flex-col items-center text-center gap-2">
+            <Maskot size={96} />
+            <h2 className="text-lg font-black tracking-tight mt-2">
+              Ups, paketnya tidak ketemu 😅
+            </h2>
             <p className="text-sm opacity-70">
-              {galat ?? 'Data paket tidak ditemukan.'} Periksa koneksi lalu coba lagi.
+              {galat ?? 'Data paket tidak ditemukan.'} Periksa koneksi lalu coba lagi ya.
             </p>
-            <div className="card-actions mt-2">
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
               <button type="button" className="btn btn-primary btn-sm" onClick={muatPaket}>
                 Coba lagi
               </button>
@@ -542,58 +547,60 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* REDESIGN: header workspace */}
-      <div className="flex flex-wrap items-start gap-3">
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm mt-1"
-          onClick={onKembali}
-          aria-label="Kembali ke daftar paket"
-        >
-          <ArrowLeft className="w-4 h-4" /> Kembali
-        </button>
-        <div className="flex-1 min-w-52">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <PackageOpen className="w-6 h-6 shrink-0 text-primary" />
-            {paket.topik}
-          </h1>
-          <div className="flex flex-wrap gap-2 mt-2">
-            <span className="badge badge-outline">{paket.jenjang}</span>
-            <span className="badge badge-outline">{paket.fase}</span>
-            <span className="badge badge-outline">{paket.tingkat}</span>
-            <span className="badge badge-outline">{paket.mataPelajaran}</span>
-            {paketDiarsip && <span className="badge badge-neutral">Diarsipkan</span>}
+      {/* FRIENDLY: header workspace dalam hero hangat yang ringkas */}
+      <div className="rgm-hero-warm rounded-3xl p-4 sm:p-5 ux-pop-in">
+        <div className="flex flex-wrap items-start gap-3">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm mt-1"
+            onClick={onKembali}
+            aria-label="Kembali ke daftar paket"
+          >
+            <ArrowLeft className="w-4 h-4" /> Kembali
+          </button>
+          <div className="flex-1 min-w-52">
+            <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2">
+              <PackageOpen className="w-6 h-6 shrink-0 text-primary" />
+              {paket.topik}
+            </h1>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="badge rgm-badge-warm">{paket.jenjang}</span>
+              <span className="badge badge-outline">{paket.fase}</span>
+              <span className="badge rgm-badge-warm">{paket.mataPelajaran}</span>
+              <span className="badge badge-outline">{paket.tingkat}</span>
+              {paketDiarsip && <span className="badge badge-neutral">Diarsipkan</span>}
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={unduhBundle}
-            disabled={mengunduhBundle}
-          >
-            {mengunduhBundle ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            Unduh Bundle
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => setModal('arsip')}
-          >
-            {paketDiarsip ? (
-              <>
-                <ArchiveRestore className="w-4 h-4" /> Keluarkan dari Arsip
-              </>
-            ) : (
-              <>
-                <Archive className="w-4 h-4" /> Arsipkan
-              </>
-            )}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={unduhBundle}
+              disabled={mengunduhBundle}
+            >
+              {mengunduhBundle ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              Unduh Bundle
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setModal('arsip')}
+            >
+              {paketDiarsip ? (
+                <>
+                  <ArchiveRestore className="w-4 h-4" /> Keluarkan dari Arsip
+                </>
+              ) : (
+                <>
+                  <Archive className="w-4 h-4" /> Arsipkan
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -621,17 +628,26 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         <>
           {/* REDESIGN: pipeline 7 kartu dokumen */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            {dokumen.map((d) => {
+            {dokumen.map((d, idx) => {
               const info = DOC_TYPE_INFO[d.docType];
               const Ikon = PETA_IKON[info.icon] ?? FileText;
               const adaVersi = d.versiAktif > 0;
               const sibuk = aksiDoc === d.docType;
+              // FRIENDLY: lingkaran ikon selang-seling peach / ungu lembut
+              const lingkaran =
+                idx % 2 === 0
+                  ? 'bg-[#FFEEDB] text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200';
               return (
-                <div key={d.docType} className="card bg-base-100 shadow-sm border border-base-200">
+                <div
+                  key={d.docType}
+                  className="rgm-card ux-lift ux-stagger"
+                  style={{ '--ux-delay': `${(idx % 7) * 70}ms` } as React.CSSProperties}
+                >
                   <div className="card-body p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                        <span className={`p-2 rounded-2xl shrink-0 ${lingkaran}`}>
                           <Ikon className="w-5 h-5" />
                         </span>
                         <h2 className="font-semibold text-sm leading-tight">{info.label}</h2>
@@ -651,8 +667,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                           className="btn btn-primary btn-sm"
                           onClick={() => bukaModalGenerate(d.docType)}
                         >
-                          <Plus className="w-4 h-4" />
-                          {adaVersi ? 'Versi baru' : 'Generate'}
+                          {adaVersi ? '+ Versi baru ✨' : '+ Generate ✨'}
                         </button>
                       )}
                       {adaVersi && (
@@ -676,7 +691,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                           ) : (
                             <CheckCircle2 className="w-4 h-4" />
                           )}
-                          Tandai Final
+                          Tandai Final 🎉
                         </button>
                       )}
                       {adaVersi && (
@@ -703,11 +718,17 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
               <History className="w-5 h-5" /> Aktivitas Terbaru
             </h2>
             {timeline.length === 0 ? (
-              <div className="alert">
-                <Info className="w-5 h-5 shrink-0" />
-                <span className="text-sm">
-                  Belum ada aktivitas. Buat versi pertama lewat tombol Generate di salah satu kartu dokumen.
-                </span>
+              /* FRIENDLY: empty state aktivitas bersama Owi */
+              <div className="rgm-card p-5 sm:p-6 ux-pop-in">
+                <div className="flex items-center gap-4">
+                  <Maskot size={76} className="shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold">{pesanKosong('aktivitas')}</p>
+                    <p className="text-xs opacity-60 mt-1">
+                      Buat versi pertama lewat tombol “+ Generate ✨” di salah satu kartu dokumen.
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <ul className="timeline timeline-vertical">
@@ -725,7 +746,8 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                         <FileText className="w-5 h-5 text-primary" />
                       )}
                     </div>
-                    <div className="timeline-end timeline-box text-sm">
+                    {/* FRIENDLY: item timeline dalam kartu hangat membulat */}
+                    <div className="timeline-end rounded-2xl bg-[#FFFBF5] dark:bg-base-200 border border-[#F6E7D3] dark:border-base-300 p-3 text-sm shadow-sm">
                       <p className="font-medium">{e.judul}</p>
                       <p className="text-xs opacity-60 truncate">{e.deskripsi}</p>
                     </div>
@@ -748,12 +770,15 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
               ))}
             </div>
           ) : semuaVersi.length === 0 ? (
-            <div className="alert">
-              <Info className="w-5 h-5 shrink-0" />
-              <span className="text-sm">Belum ada versi tersimpan untuk paket ini.</span>
+            /* FRIENDLY: empty state versi bersama Owi */
+            <div className="rgm-card p-5 sm:p-6 ux-pop-in">
+              <div className="flex items-center gap-4">
+                <Maskot size={76} className="shrink-0" />
+                <p className="text-sm font-semibold">{pesanKosong('dokumen')}</p>
+              </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="rgm-card overflow-x-auto p-2 sm:p-3">
               <table className="table table-zebra">
                 <thead>
                   <tr>
@@ -809,7 +834,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
           lalu onSelesai menyegarkan state workspace. */}
       {modal === 'generate' && modalDoc && infoModal && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Generate ${infoModal.label}`}>
-          <div className="modal-box max-w-4xl p-0">
+          <div className="modal-box max-w-4xl p-0 rounded-3xl ux-pop-in">
             <div className="flex items-start justify-between gap-2 p-4 md:p-6 pb-0 md:pb-0">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <IkonModal className="w-5 h-5 text-primary" />
@@ -848,7 +873,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
       {/* REDESIGN: modal baca isi versi aktif */}
       {modal === 'lihat' && modalDoc && infoModal && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Lihat dokumen">
-          <div className="modal-box max-w-3xl">
+          <div className="modal-box max-w-3xl rounded-3xl ux-pop-in">
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <IkonModal className="w-5 h-5 text-primary" />
@@ -892,7 +917,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
       {/* REDESIGN: modal konfirmasi arsip */}
       {modal === 'arsip' && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi arsip">
-          <div className="modal-box max-w-md">
+          <div className="modal-box max-w-md rounded-3xl ux-pop-in">
             <h3 className="font-bold text-lg flex items-center gap-2">
               <Archive className="w-5 h-5" />
               {paketDiarsip ? 'Keluarkan dari arsip?' : 'Arsipkan paket?'}
