@@ -281,7 +281,7 @@ let documents: EducationalDocument[] = [
 
 ### III. KOMPONEN INTI
 
-#### A. Capaian Pembelajaran (CP) — Keputusan Kepala BSKAP tentang Capaian Pembelajaran
+#### A. Capaian Pembelajaran (CP) — Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran
 Peserta didik menganalisis hubungan antara bentuk serta fungsi bagian tubuh pada tumbuhan (akar, batang, daun, bunga, dan buah) serta mengaitkannya dengan kebutuhan hidup tumbuhan dalam ekosistem.
 
 #### B. Tujuan Pembelajaran (TP) & Indikator Ketercapaian
@@ -451,13 +451,38 @@ let pakets: Paket[] = [];
 let dokumenPaket: DokumenPaket[] = [];
 let versiDokumen: VersiDokumen[] = [];
 
+// FITUR 3 — koleksi deck slide tayang (dokumen turunan Modul Ajar, 1 deck aktif per paket).
+export interface SlideTayangItem { judul: string; poin: string[]; catatan?: string }
+export interface SlideTayang {
+  id: string;
+  paketId: string;
+  modulAjarDokumenId: string;
+  slides: SlideTayangItem[];
+  dibuatPada: string;
+  dibuatOleh: string;
+}
+let slidePaket: SlideTayang[] = [];
+
+// FITUR 5 — koleksi ulasan paket (Telaah Rekan Sejawat).
+export interface UlasanPaket {
+  id: string;
+  paketId: string;
+  paketTopik?: string;
+  namaPemberi: string;
+  userId: string;
+  tipe: 'apresiasi' | 'saran';
+  isi: string;
+  waktu: string;
+}
+let ulasanPaket: UlasanPaket[] = [];
+
 // ---- Persistensi file JSON (data/db.json) ----
 const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
 
 function saveDBNow() {
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, sessions: getSessions() }, null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, slidePaket, ulasanPaket, sessions: getSessions() }, null, 2));
   } catch (err) {
     console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
   }
@@ -486,6 +511,8 @@ function loadDB() {
     if (Array.isArray(raw.pakets)) pakets = raw.pakets; // REDESIGN
     if (Array.isArray(raw.dokumenPaket)) dokumenPaket = raw.dokumenPaket; // REDESIGN
     if (Array.isArray(raw.versiDokumen)) versiDokumen = raw.versiDokumen; // REDESIGN
+    if (Array.isArray(raw.slidePaket)) slidePaket = raw.slidePaket; // FITUR 3
+    if (Array.isArray(raw.ulasanPaket)) ulasanPaket = raw.ulasanPaket; // FITUR 5
     if (Array.isArray(raw.sessions)) setSessions(raw.sessions);
     const pruned = pruneExpiredSessions();
     if (pruned > 0) console.log(`[Auth] ${pruned} session kedaluwarsa dibersihkan saat start`);
@@ -1450,6 +1477,7 @@ app.post('/api/generate', requireAuth, requireVerified, generateRateLimit, async
 
     const {
       docType,
+      tiered,
       jenjang,
       tingkat,
       fase,
@@ -1513,7 +1541,7 @@ STRUKTUR RESMI & MUATAN OPERASIONAL:
    - Model Pembelajaran: ${modelPembelajaran || 'Problem Based Learning (PBL)'} dengan moda tatap muka interaktif.
 
 2. **KOMPONEN INTI**:
-   - Capaian Pembelajaran (CP) Resmi BSKAP untuk ${mataPelajaran} pada ${calculatedFase}.
+   - Capaian Pembelajaran (CP) Resmi BSKAP — edisi Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran (mencabut 032/H/KR/2024) — untuk ${mataPelajaran} pada ${calculatedFase}.
    - Tujuan Pembelajaran (TP): Rumusan operasional yang jelas, terukur, dan bermakna bagi murid (mengandung Audience, Behavior, Condition, Degree).
    - Indikator Ketercapaian Tujuan Pembelajaran (IKTP): Poin-poin spesifik bukti pencapaian murid.
    - Pemahaman Bermakna: Hubungkan langsung materi **${topik}** dengan kehidupan nyata murid sehari-hari (mengapa materi ini penting bagi masa depan mereka).
@@ -1613,6 +1641,59 @@ KOMPONEN WAJIB:
 7. **Aktivitas 3: Mari Berkreasi & Menyimpulkan** (Menuliskan penemuan utama kelompok).
 8. **Refleksi Diri & Kelompok**: Lembar emotikon atau centang refleksi belajar hari ini.
 `,
+
+      lkpd_tiered: `
+TUGAS SPESIFIK DOKUMEN: Susunlah **LEMBAR KERJA PESERTA DIDIK (LKPD) BERDIFERENSIASI 3 TINGKAT** siap cetak untuk ${mataPelajaran} ${tingkat} (${calculatedFase}), Topik: ${topik}.
+Ini BUKAN satu LKPD biasa — melainkan SATU dokumen berisi TIGA lembar kerja terpisah yang materinya setara (${topik}) tetapi berbeda KEDALAMAN TUGASNYA, sehingga guru dapat membagikannya sesuai kesiapan tiap kelompok murid dalam satu kelas yang heterogen. Tiga lembar, tiga pintu masuk, satu tujuan belajar yang sama.
+Acuan kurikulum: Capaian Pembelajaran (CP) edisi Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran (bukan 032/H/KR/2024).
+
+Nada penulisan SETIAP lembar: **langsung berbicara kepada murid** — hangat, memotivasi, jelas langkah kerjanya, menyenangkan dikerjakan. Hindari bahasa kaku ("peserta didik diharapkan untuk..."); ganti dengan "Kalian akan..." / "Coba tebak...". Sesekali selipkan sapaan guru yang hidup ("Nah, keren! Sekarang naik satu level lagi, ya?"). Bahasa untuk ${jenjang}: ${jenjang === 'SD' ? 'ceria, eksploratif, penuh apresiasi, kalimat pendek dan konkret' : jenjang === 'SMP' ? 'dialogis, menggugah rasa ingin tahu remaja, memupuk kerja sama teman sebaya' : 'kritis, bernalar mendalam, kontekstual dengan isu nyata'}.
+
+STRUKTUR DOKUMEN (urut persis seperti ini):
+
+## 0. 📌 PANDUAN GURU (di paling atas, ringkas — maksimal setengah halaman)
+- Cara membagi tingkat secara manusiawi TANPA label "bodoh/pintar": sarankan asesmen diagnostik 5 menit di awal, atau biarkan murid memilih sendiri ("Pilih lembar yang bikin kamu semangat — bukan yang paling gampang, bukan yang paling susah").
+- Tegaskan: murid BOLEH pindah/naik tingkat di tengah jalan; lembar Perintis bukan vonis, melainkan tangga.
+- Estimasi waktu tiap lembar dalam ${alokasiWaktu || '2 JP'} + 3 contoh kalimat scaffolding guru saat berkeliling (satu per tingkat, dengan tutur langsung yang empatik).
+
+## 🟢 LEMBAR 1 — TINGKAT PERINTIS ("Pelan-pelan, pasti bisa!")
+Untuk murid yang masih butuh bimbingan langkah demi langkah. Prinsip: TIDAK ADA halaman kosong yang menakutkan.
+- **Petunjuk VISUAL**: tandai tiap langkah dengan emoji (👀 amati, ✏️ tulis, 💬 diskusi, ✅ cek), nomor langkah besar dan jelas.
+- **SCAFFOLDING BERTAHAP**: pecah setiap tugas menjadi 3-4 langkah mikro. Tiap langkah diawali CONTOH YANG SUDAH TERISI SEBAGIAN — murid tinggal melengkapi, bukan mengarang dari nol.
+- **Stimulus**: satu cerita/fenomena nyata yang SANGAT dekat dengan keseharian murid Indonesia (warung, sawah, hujan deras, HP, jajanan kantin, angkot) yang mengantar ke ${topik}. Tulis sebagai cerita mini 4-6 kalimat dengan tokoh bernama (mis. Sinta, Rizky).
+- **Aktivitas 1 — Mari Mengamati** 👁️: tabel isian terpandu 3 baris, baris pertama SUDAH TERISI sebagai contoh.
+- **Aktivitas 2 — Mari Mencoba** ✏️: tugas terbantu — melingkari jawaban, memasangkan, atau melengkapi kalimat rumpang terkait ${topik} (3-4 soal, tiap soal satu langkah berpikir).
+- **Aktivitas 3 — Mari Bercerita** 💬: menuliskan 2-3 kalimat kesimpulan DENGAN kalimat pembuka yang disediakan ("Hari ini aku menemukan bahwa ...", "Aku masih penasaran tentang ...").
+- **Refleksi**: skala emotikon 😟 😐 😊 yang dilingkari + satu kalimat "Aku paling bangga hari ini karena...".
+
+## 🟡 LEMBAR 2 — TINGKAT REGULER ("Sudah cakap, ayo analitis!")
+Untuk murid yang sudah menguasai dasar dan siap berpikir analitis standar.
+- **Stimulus**: kasus nyata yang sedikit lebih kompleks dari lembar Perintis terkait ${topik} — boleh berupa data sederhana, grafik mini, atau kutipan berita. Tuliskan datanya LENGKAP, bukan sekadar "perhatikan grafik berikut".
+- **Aktivitas 1 — Mari Menyelidiki** 🔍: pengamatan & pengumpulan data mandiri; murid MERANCANG SENDIRI kolom tabel pengamatannya (beri 2 contoh nama kolom sebagai pancingan).
+- **Aktivitas 2 — Mari Menganalisis** 🧠: 3-4 pertanyaan pemecahan masalah standar terkait ${topik} yang menuntut penalaran — "mengapa", "bagaimana jika ... berubah", "bandingkan ... dengan ...", "apa buktinya".
+- **Aktivitas 3 — Mari Menyimpulkan** 📝: menulis kesimpulan utuh + SATU saran solusi nyata yang bisa dilakukan di sekolah/rumah terkait ${topik}.
+- **Refleksi 3-2-1**: 3 hal yang kupelajari, 2 hal yang menarik, 1 pertanyaan yang masih tersisa.
+
+## 🟣 LEMBAR 3 — TINGKAT MAHIR ("Pengayaan: jelajahi sendiri!")
+Untuk murid yang cepat paham dan haus tantangan. Prinsip: pertanyaan terbuka, jawaban tidak tunggal.
+- **STUDI KASUS TERBUKA**: satu masalah nyata yang BELUM ada jawaban bakunya terkait ${topik} (isu lingkungan/sosial/teknologi di Indonesia — mis. sampah, energi, air, pangan lokal). Murid merumuskan SENDIRI masalahnya dalam 1 kalimat, mengajukan 3 pertanyaan penyelidikan, lalu merancang solusinya. Tegaskan: tidak ada jawaban benar/salah — yang dinilai keberanian bernalar dan kelengkapan bukti.
+- **MISI RAHASIA 1 — Detektif Lapangan** 🕵️: eksplorasi mandiri — mewawancarai satu narasumber (guru, orang tua, pedagang kantin) TENTANG ${topik}: apa yang ia ketahui, masalah apa yang pernah ia alami. Catat 3 temuan.
+- **MISI RAHASIA 2 — Kreator** 🎨: membuat produk — pilih satu: poster edukasi, video 1 menit, prototipe/model sederhana, atau naskah drama mini tentang ${topik}.
+- **Catatan Penemuan** ala ilmuwan cilik: "Hipotesis awalku... / Ternyata... / Kalau diberi waktu seminggu lagi, aku akan menyelidiki..."
+- **Presentasi 3 menit** di depan kelas + rubrik penilaian diri skala 1-5 (keberanian bertanya, kelengkapan bukti, kreativitas solusi).
+
+## KOP SETIAP LEMBAR (rapi, siap cetak — ulangi di tiap lembar)
+Nama Sekolah (${schoolName}), Nama Kelompok: ............, Anggota (4 baris titik-titik), Kelas: ${tingkat}, Hari/Tanggal: ............, badge tingkat (🟢/🟡/🟣) besar di judul lembar.
+
+## RUBRIK PENILAIAN 3 TINGKAT (satu tabel di akhir dokumen)
+Tabel markdown: baris = 3 tingkat, kolom = Aspek (Pemahaman ${topik} | Proses & Kolaborasi | Produk/Kesimpulan), deskriptor perilaku konkret yang bisa diamati guru — BUKAN kata sifat abstrak.
+
+ATURAN ANTI-KOSONG (wajib dipatuhi!):
+- Setiap aktivitas berisi instruksi konkret + contoh nyata terkait ${topik}. DILARANG KERAS placeholder seperti "[tulis di sini]", "[isi penjelasan]", atau tabel kosong tanpa panduan pengisian.
+- Minimal SATU baris contoh terisi / satu kalimat pancingan di setiap tabel dan setiap tugas menulis.
+- Jangan mengulang kalimat yang sama di tiga lembar — tiap tingkat punya suara dan tantangannya sendiri.
+`,
+
       prota_promes: `
 TUGAS SPESIFIK DOKUMEN: Susunlah **PROGRAM TAHUNAN (PROTA) & PROGRAM SEMESTER (PROMES)** Kurikulum Merdeka untuk mata pelajaran ${mataPelajaran} kelas ${tingkat} (${calculatedFase}) tahun ajaran berjalan.
 
@@ -1649,7 +1730,9 @@ KOMPONEN WAJIB:
 `
     };
 
-    const specificInstructions = promptInstructions[docType] || promptInstructions.modul_ajar;
+    // FITUR 1: LKPD 3 tingkat diferensiasi — flag `tiered` dari body.
+    const tieredLkpd = docType === 'lkpd' && (tiered as any) === true;
+    const specificInstructions = tieredLkpd ? promptInstructions.lkpd_tiered : (promptInstructions[docType] || promptInstructions.modul_ajar);
 
     const fullPrompt = `
 PERAN & NADA SUARA (ROLE & VOICE OF A REAL HUMAN TEACHER):
@@ -1712,6 +1795,7 @@ INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Nama Penyusun: ${authorName || 'Bapak/Ibu Guru'}
 - Nama Sekolah: ${schoolName || 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'}
 ${catatanTambahan ? `- Catatan Khusus Guru: ${JSON.stringify(catatanTambahan)}` : ''}
+${tieredLkpd ? '- Mode LKPD: DIFERENSIASI 3 TINGKAT (Perintis / Reguler / Mahir) — satu dokumen berisi 3 lembar siap cetak' : ''}
 
 ${specificInstructions}
 
@@ -1780,7 +1864,8 @@ STANDAR OUTPUT MARKDOWN:
         dimensiProfilLulusan,
         authorName,
         schoolName,
-        catatanTambahan
+        catatanTambahan,
+        tiered: tieredLkpd
       });
       modelUsed = 'kurikulum-merdeka-verified-engine';
     }
@@ -1791,7 +1876,7 @@ STANDAR OUTPUT MARKDOWN:
       docType === 'rpp' ? 'RPP Ringkas' :
       docType === 'soal_ujian' ? 'Paket Soal & Asesmen Ujian' :
       docType === 'kktp_atp' ? 'ATP & KKTP' :
-      docType === 'lkpd' ? 'LKPD Peserta Didik' :
+      docType === 'lkpd' ? (tieredLkpd ? 'LKPD Diferensiasi 3 Tingkat' : 'LKPD Peserta Didik') :
       docType === 'prota_promes' ? 'Prota & Promes' : 'Modul Projek P5'
     } - ${mataPelajaran} ${tingkat} (${topik})`;
 
@@ -1825,6 +1910,296 @@ STANDAR OUTPUT MARKDOWN:
       message: 'Gagal membuat perangkat ajar: ' + (error?.message || 'Terjadi kesalahan sistem.'),
     });
   }
+});
+
+
+// ============================================================================
+// FITUR BARU (Okt 2026): helper panggilAI + Fitur 3 (Slide Tayang Kelas) +
+// Fitur 4 (Asesmen Diagnostik 5 Menit) + Fitur 5 (Ulasan Rekan Sejawat).
+// ============================================================================
+
+/** Helper ringkas: panggil AI multi-model dengan retry 503/429 (pola /api/generate). */
+async function panggilAI(prompt: string): Promise<{ text: string; modelUsed: string }> {
+  const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
+  for (const m of candidateModels) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({ model: m, contents: prompt });
+        if (response && response.text) return { text: response.text, modelUsed: m };
+        break;
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        const isTransient = msg.includes('503') || msg.includes('high demand') || msg.includes('UNAVAILABLE') || msg.includes('429');
+        console.warn(`[AI Fitur] Model ${m} attempt ${attempt + 1} error:`, msg);
+        if (isTransient) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        else break;
+      }
+    }
+  }
+  return { text: '', modelUsed: '' };
+}
+
+// ---------------- FITUR 3: Slide Tayang Kelas (dokumen turunan Modul Ajar) ----------------
+
+function bangunPromptSlide(ctx: { topik: string; mataPelajaran: string; tingkat: string; fase: string; sumberTeks: string }): string {
+  const { topik, mataPelajaran, tingkat, fase, sumberTeks } = ctx;
+  return `TUGAS SPESIFIK DOKUMEN: Ubahlah MODUL AJAR berikut menjadi DEK SLIDE TAYANG KELAS — 5 sampai 7 slide yang siap diproyeksikan di depan kelas: huruf BESAR, poin PENDEK, dan bahasa yang MEMIKAT perhatian 30 murid bahkan dari bangku paling belakang.
+
+KONTEKS PEMBELAJARAN:
+- Topik: ${topik}
+- Mata Pelajaran: ${mataPelajaran} | Kelas: ${tingkat} (${fase})
+- Acuan kurikulum: Capaian Pembelajaran (CP) edisi Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran (bukan 032/H/KR/2024).
+
+TEKS MODUL AJAR (sumber isi — sederhanakan bahasanya, JANGAN mengarang fakta/konsep baru di luar teks ini):
+${sumberTeks}
+
+STRUKTUR WAJIB (urut persis seperti ini):
+1. Judul + Identitas — judul topik yang bikin penasaran + info singkat mapel/kelas. Satu kalimat penyambut yang hangat.
+2. Pertanyaan Pemantik & Apersepsi — 1 pertanyaan pembuka yang menggugah rasa ingin tahu + 2-3 poin apersepsi yang mengaitkan materi dengan pengalaman murid kemarin/tadi pagi.
+3. Tantangan / Masalah Kontekstual — SATU skenario masalah nyata yang dekat dengan hidup murid (di sekolah, di rumah, di lingkungan sekitar). Tulis seperti cerita mini, bukan definisi.
+4. Konsep Kunci & Ilustrasi — 3-5 poin konsep esensial dengan bahasa paling sederhana; tiap poin boleh ditemani contoh mini/ilustrasi verbal yang membumi.
+5. Petunjuk Kerja Kelompok — langkah kerja yang jelas dan bernomor; setelah membaca slide ini murid tahu PERSIS apa yang harus dilakukan tanpa bertanya ulang.
+6. Kuis Refleksi / Cek Pemahaman — 2-3 pertanyaan cek pemahaman singkat + 1 pertanyaan refleksi ("hal apa yang paling berkesan hari ini?").
+7. (OPSIONAL — hanya jika materi memang membutuhkannya) Penutup & Tindak Lanjut — pesan penutup yang hangat + ajakan eksplorasi/tugas lanjutan yang seru.
+
+ATURAN BAHASA & KETERBACAAN (slide dibaca dari jarak 5-8 meter!):
+- Tiap slide: MAKSIMAL 5 poin, tiap poin MAKSIMAL sekitar 15 kata — pendek, patah, berani. DILARANG paragraf panjang.
+- Nada bicara guru favorit: sapa murid dengan "kalian"/"kita", pakai kalimat ajakan, sesekali humor sehat khas kelas Indonesia.
+- Bayangkan konkret: slide ini dipakai mengajar BESOK PAGI untuk 30 murid nyata. Tulis untuk MEREKA.
+- HINDARI bahasa robotik dan klise AI (JANGAN tulis "Pada era globalisasi yang semakin maju…", "Adapun…", "Tentu, berikut ini…").
+
+FORMAT OUTPUT — WAJIB JSON MURNI, tanpa blok kode, tanpa teks pembuka/penutup apa pun:
+{"slides":[{"judul":"...","poin":["...","..."],"catatan":"..."}]}`;
+}
+
+/** F3: deck cadangan bila AI gagal / respons tak bisa di-parse (6 slide, nyambung topik). */
+function fallbackSlideDeck(p: { topik: string; mataPelajaran: string; tingkat: string; fase?: string; namaGuru?: string }): SlideTayangItem[] {
+  const bersih = (t: any, maks = 80) => String(t ?? '').replace(/\s+/g, ' ').trim().slice(0, maks) || 'materi kita';
+  const topik = bersih(p.topik), mapel = bersih(p.mataPelajaran), tingkat = bersih(p.tingkat, 40);
+  const fase = p.fase ? ` (${bersih(p.fase, 20)})` : '';
+  const emoji = ['🚀', '🌟', '🔍', '💡', '🎯', '🌈'][topik.length % 6];
+  return [
+    { judul: `${emoji} ${topik}`, poin: [`Selamat datang di kelas ${mapel}!`, `Kita belajar: ${tingkat}${fase}`, 'Siapkan senyum terbaikmu — kita mulai petualangan baru! 😊'], catatan: 'Sapa murid dengan hangat dan sebutkan tujuan besar pertemuan ini dalam satu kalimat.' },
+    { judul: '🤔 Pertanyaan Pemantik', poin: [`Pernahkah kalian penasaran tentang ${topik}?`, 'Coba ingat-ingat: kapan terakhir kalian menemukannya dalam kehidupan sehari-hari?', 'Bisikkan jawabanmu ke teman sebangku — 30 detik saja!'], catatan: 'Biarkan 2–3 murid menjawab spontan sebelum lanjut.' },
+    { judul: '🧩 Tantangan Hari Ini', poin: [`Bayangkan: ada masalah nyata tentang ${topik} di sekitar kita.`, 'Contohnya di sekolah, di rumah, atau di lingkungan tempat tinggalmu.', 'Misi kita hari ini: pecahkan bersama-sama! 🕵️'], catatan: 'Ceritakan satu contoh masalah kontekstual yang dekat dengan murid sebelum masuk ke konsep.' },
+    { judul: '💡 Konsep Kunci', poin: [`Inti dari ${topik} sebenarnya sederhana — kita bedah pelan-pelan.`, 'Perhatikan contoh yang Bapak/Ibu berikan, lalu temukan polanya.', 'Catat dengan bahasamu sendiri — tidak harus sama persis dengan buku! ✏️'], catatan: 'Jelaskan konsep esensial dengan bahasa sehari-hari + satu ilustrasi verbal yang membumi.' },
+    { judul: '👥 Kerja Kelompok', poin: ['1. Bentuk kelompok 4–5 orang — campur yang cepat dan yang teliti.', `2. Diskusikan tantangan tentang ${topik} yang tadi kita temukan.`, '3. Tuliskan temuan kelompokmu dengan rapi.', '4. Siapkan satu juru bicara untuk presentasi. 🎤'], catatan: 'Beri batas waktu yang jelas (mis. 15 menit) dan berkelilinglah mendampingi.' },
+    { judul: '✅ Cek Pemahaman', poin: [`Satu hal penting tentang ${topik} yang kamu pelajari hari ini?`, 'Satu hal yang masih bikin kamu penasaran?', 'Acungkan jempol 👍 kalau kamu semakin paham!'], catatan: 'Pakai sebagai exit ticket 3 menit terakhir. Apresiasi setiap jawaban dengan tulus.' },
+  ];
+}
+
+/** F3: parse defensif output JSON AI → SlideTayangItem[] | null (tidak pernah throw). */
+function parseSlideDeckJson(teks: unknown): SlideTayangItem[] | null {
+  try {
+    if (typeof teks !== 'string' || !teks.trim()) return null;
+    const fence = teks.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const kandidat = fence ? fence[1] : teks;
+    const awal = kandidat.indexOf('{'), akhir = kandidat.lastIndexOf('}');
+    if (awal === -1 || akhir === -1 || akhir <= awal) return null;
+    const obj = JSON.parse(kandidat.slice(awal, akhir + 1)) as any;
+    const mentah = obj?.slides;
+    if (!Array.isArray(mentah)) return null;
+    const slides: SlideTayangItem[] = [];
+    for (const s of mentah.slice(0, 7)) {
+      const judul = String(s?.judul ?? '').replace(/\s+/g, ' ').trim().slice(0, 140);
+      const poin = (Array.isArray(s?.poin) ? s.poin : []).map((x: any) => String(x ?? '').replace(/\s+/g, ' ').trim().slice(0, 220)).filter((x: string) => x.length > 0).slice(0, 6);
+      if (!judul || poin.length === 0) continue;
+      const item: SlideTayangItem = { judul, poin };
+      const catatan = String(s?.catatan ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      if (catatan) item.catatan = catatan;
+      slides.push(item);
+    }
+    return slides.length >= 3 ? slides : null;
+  } catch { return null; }
+}
+
+// POST /api/pakets/:id/slide — buat/refresh deck slide dari Modul Ajar (upsert 1 deck per paket).
+app.post('/api/pakets/:id/slide', requireAuth, generateRateLimit, async (req: Request, res: Response) => {
+  try {
+    const paket = paketAkses(req, res);
+    if (!paket) return;
+    const sumberTeks = String((req.body || {}).sumberTeks || '').slice(0, 20000);
+    if (!sumberTeks.trim()) {
+      return res.status(400).json({ success: false, message: 'Teks Modul Ajar wajib diisi' });
+    }
+    const dpModul = dokumenPaket.find(d => d.paketId === paket.id && d.docType === 'modul_ajar');
+    const guru = currentDbUser(req);
+    const prompt = bangunPromptSlide({
+      topik: paket.topik, mataPelajaran: paket.mataPelajaran, tingkat: paket.tingkat,
+      fase: paket.fase || '', sumberTeks,
+    });
+    const { text, modelUsed } = await panggilAI(prompt);
+    let slides = parseSlideDeckJson(text);
+    let dariFallback = false;
+    if (!slides) {
+      slides = fallbackSlideDeck({ topik: paket.topik, mataPelajaran: paket.mataPelajaran, tingkat: paket.tingkat, fase: paket.fase, namaGuru: guru?.name });
+      dariFallback = true;
+    }
+    const now = new Date().toISOString();
+    const deck: SlideTayang = {
+      id: newRedesignId('slide'), paketId: paket.id,
+      modulAjarDokumenId: dpModul?.id || '', slides,
+      dibuatPada: now, dibuatOleh: guru?.id || req.user!.id,
+    };
+    const idx = slidePaket.findIndex(s => s.paketId === paket.id);
+    if (idx >= 0) slidePaket[idx] = deck; else slidePaket.push(deck);
+    saveDB();
+    auditLog('paket_slide_generate', req.user!.id, { paketId: paket.id, jumlahSlide: slides.length, modelUsed: modelUsed || 'fallback' });
+    res.json({ success: true, slide: deck, dariFallback });
+  } catch (err: any) {
+    console.error('Error membuat slide:', err);
+    res.status(500).json({ success: false, message: 'Gagal membuat slide tayang: ' + (err?.message || '') });
+  }
+});
+
+// GET /api/pakets/:id/slide — ambil deck aktif (404 bila belum ada).
+app.get('/api/pakets/:id/slide', requireAuth, (req: Request, res: Response) => {
+  const paket = paketAkses(req, res);
+  if (!paket) return;
+  const deck = slidePaket.find(s => s.paketId === paket.id);
+  if (!deck) return res.status(404).json({ success: false, message: 'Belum ada slide tayang untuk paket ini' });
+  res.json({ success: true, slide: deck });
+});
+
+// ---------------- FITUR 4: Asesmen Diagnostik 5 Menit ----------------
+
+function bangunPromptDiagnostik(ctx: { mataPelajaran: string; topik: string; tingkat: string; fase: string; jenjang: string }): string {
+  const { mataPelajaran, topik, tingkat, fase, jenjang } = ctx;
+  return `TUGAS SPESIFIK: Buatkan ASESMEN DIAGNOSTIK KILAT untuk 5 menit pertama pembelajaran mata pelajaran **${mataPelajaran}** dengan topik **${topik}** (${jenjang} · ${tingkat} · ${fase}, Kurikulum Merdeka).
+
+Tujuan: mengetahui (1) sejauh mana murid menguasai KONSEP PRASYARAT sebelum masuk topik hari ini, dan (2) KONDISI NON-KOGNITIF murid (minat, pengalaman, kesiapan emosi) — supaya guru bisa langsung menyesuaikan pembelajaran.
+
+SYARAT MUTLAK:
+- Hasilkan 3–5 butir pertanyaan saja — singkat, lisan, tanpa alat tulis. Tiap pertanyaan bisa dijawab < 30 detik (jawab singkat / tunjuk tangan / acungkan jari / skala 1–5 dengan jari).
+- 2–3 pertanyaan kognitif menguji konsep prasyarat topik ini. Harus SPESIFIK terhadap ${mataPelajaran} dan topik **${topik}** — rancang agar jawaban murid menyingkap miskonsepsi umum, bukan sekadar hafalan.
+- 1–2 pertanyaan non-kognitif pemantik minat/kesiapan: kaitkan topik dengan pengalaman sehari-hari murid Indonesia (rumah, warung, sawah, hujan, HP) atau cek energi belajar dengan cara menyenangkan.
+- Bahasa Indonesia hangat dan memanggil — seolah guru menyapa 30 anak nyata pagi ini.
+- Setelah daftar pertanyaan, tulis PANDUAN FASILITASI CEPAT: untuk tiap pertanyaan kognitif, pola "Bila murid menjawab A → fasilitasi dengan…; bila menjawab B → lanjutkan ke…". Konkret dan langsung bisa dipakai.
+- Total maksimal 5 menit. Sertakan saran pembagian waktu singkat.
+- Acuan konsep prasyarat: Capaian Pembelajaran (CP) edisi Keputusan Kepala BSKAP No. 046/H/KR/2025 tentang Capaian Pembelajaran (bukan 032/H/KR/2024).
+
+FORMAT KELUARAN (markdown sederhana):
+## 🧭 Asesmen Diagnostik 5 Menit — ${topik}
+*${mataPelajaran} · ${tingkat} (${fase})*
+### 🎯 Cek Konsep Prasyarat
+(daftar bernomor, tiap butir: pertanyaan + dalam kurung konsep prasyarat yang dicek)
+### 💛 Pemantik Minat & Kesiapan
+(daftar bernomor)
+### ⚡ Panduan Fasilitasi Cepat
+(untuk tiap pertanyaan kognitif: "Bila murid menjawab … → …")
+### ⏱️ Saran Alur 5 Menit
+(3–4 baris singkat)`;
+}
+
+function fallbackDiagnostik(ctx: { mataPelajaran: string; topik: string; tingkat: string; fase: string }): string {
+  const { mataPelajaran, topik, tingkat, fase } = ctx;
+  return `## 🧭 Asesmen Diagnostik 5 Menit — ${topik}
+*${mataPelajaran} · ${tingkat} (${fase})*
+
+> Laksanakan lisan di 5 menit pertama. Murid menjawab singkat / tunjuk tangan / acungkan jari — tanpa alat tulis.
+
+### 🎯 Cek Konsep Prasyarat
+
+1. **Sebelum belajar ${topik} hari ini, coba ingat-ingat:** pelajaran atau pengalaman apa yang menurutmu paling berhubungan dengan **${topik}**? Sebutkan satu saja!
+   *(Mengecek: pengetahuan awal & kemampuan mengaitkan konsep — fondasi prasyarat untuk ${mataPelajaran}.)*
+
+2. **Tunjuk tangan kalau setuju, diam kalau tidak:** "Untuk memahami **${topik}**, aku harus sudah paham dulu tentang ______." Lengkapi titik-titiknya dengan versimu, lalu kita cocokkan bersama!
+   *(Mengecek: kesadaran murid tentang prasyarat materi.)*
+
+### 💛 Pemantik Minat & Kesiapan
+
+3. **Skala jari 1–5:** Seberapa penasaran kamu dengan topik **${topik}** hari ini? Acungkan jarimu — 1 = "biasa saja", 5 = "penasaran banget, Bu/Pak!" 🙋
+   *(Mengecek: minat awal & energi kelas.)*
+
+4. **Coba hubungkan dengan hidupmu:** Di mana kamu pernah melihat / mengalami sesuatu yang mirip dengan **${topik}** di rumah atau lingkunganmu? Ceritakan singkat dalam satu kalimat!
+   *(Mengecek: koneksi pengalaman nyata.)*
+
+### ⚡ Panduan Fasilitasi Cepat
+
+- **Bila jawaban 1–2 menunjukkan banyak murid lupa / salah konsep prasyarat** → jangan langsung masuk materi inti. Luangkan 3–5 menit mengulang prasyarat dengan analogi sehari-hari, lalu lanjutkan.
+- **Bila sebagian besar sudah menjawab tepat dan percaya diri** → beri penguatan singkat ("Hebat, fondasinya sudah kuat!"), lalu lanjut ke materi inti dengan tantangan sedikit lebih tinggi.
+- **Bila skala minat (no. 3) rendah (rata-rata ≤ 2)** → mulai dengan cerita / demonstrasi / tebak-tebakan tentang ${topik} sebelum menjelaskan konsep.
+- **Bila ada murid pendiam / tak menjawab sama sekali** → jangan dipaksa di depan kelas. Catat namanya, sapa personal saat kerja kelompok.
+
+### ⏱️ Saran Alur 5 Menit
+
+1. **Menit 1** — Sapa + lempar pertanyaan 3 (skala jari): baca energi kelas.
+2. **Menit 2–4** — Pertanyaan 1, 2, 4 bergantian cepat; catat pola jawaban.
+3. **Menit 5** — Simpulkan: "Berarti hari ini kita mulai dari …" — arahkan ekspektasi murid.
+
+---
+*Dibuat otomatis oleh Owi 🦉 — Asesmen Diagnostik 5 Menit, Ruang Guru Merdeka.*`;
+}
+
+// POST /api/pakets/:id/diagnostik — hasilkan asesmen diagnostik (AI, fallback bila gagal).
+app.post('/api/pakets/:id/diagnostik', requireAuth, generateRateLimit, async (req: Request, res: Response) => {
+  try {
+    const paket = paketAkses(req, res);
+    if (!paket) return;
+    const ctx = { mataPelajaran: paket.mataPelajaran, topik: paket.topik, tingkat: paket.tingkat, fase: paket.fase || '', jenjang: paket.jenjang || '' };
+    const { text, modelUsed } = await panggilAI(bangunPromptDiagnostik(ctx));
+    const content = text.trim() || fallbackDiagnostik(ctx);
+    auditLog('paket_diagnostik_generate', req.user!.id, { paketId: paket.id, modelUsed: modelUsed || 'fallback' });
+    res.json({ success: true, content, modelUsed: modelUsed || 'template-cadangan' });
+  } catch (err: any) {
+    console.error('Error membuat asesmen diagnostik:', err);
+    res.status(500).json({ success: false, message: 'Gagal membuat asesmen diagnostik: ' + (err?.message || '') });
+  }
+});
+
+// ---------------- FITUR 5: Telaah & Umpan Balik Rekan Sejawat ----------------
+
+// GET /api/pakets/:id/ulasan — daftar ulasan satu paket, terbaru dulu.
+app.get('/api/pakets/:id/ulasan', requireAuth, (req: Request, res: Response) => {
+  const paket = pakets.find(p => p.id === req.params.id);
+  if (!paket) {
+    return res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
+  }
+  const me = req.user!;
+  const milikSendiri = paket.pemilikId === me.id;
+  if (paket.publikasiSekolah !== true && !milikSendiri) {
+    return res.status(403).json({ success: false, message: 'Paket ini belum dipublikasikan' });
+  }
+  const daftar = ulasanPaket
+    .filter(u => u.paketId === paket.id)
+    .sort((a, b) => b.waktu.localeCompare(a.waktu));
+  res.json({ success: true, ulasan: daftar });
+});
+
+// POST /api/pakets/:id/ulasan — kirim ulasan (nama pemberi dari user login aktif).
+app.post('/api/pakets/:id/ulasan', requireAuth, (req: Request, res: Response) => {
+  const paket = pakets.find(p => p.id === req.params.id);
+  if (!paket) {
+    return res.status(404).json({ success: false, message: 'Paket tidak ditemukan' });
+  }
+  const me = req.user!;
+  const milikSendiri = paket.pemilikId === me.id;
+  if (paket.publikasiSekolah !== true && !milikSendiri) {
+    return res.status(403).json({ success: false, message: 'Hanya paket terpublikasi yang bisa diberi ulasan' });
+  }
+  const { tipe, isi } = (req.body || {}) as { tipe?: unknown; isi?: unknown };
+  if (tipe !== 'apresiasi' && tipe !== 'saran') {
+    return res.status(400).json({ success: false, message: "Tipe ulasan harus 'apresiasi' atau 'saran'" });
+  }
+  const teks = String(isi ?? '').trim();
+  if (teks.length < 1 || teks.length > 500) {
+    return res.status(400).json({ success: false, message: 'Isi ulasan wajib 1–500 karakter' });
+  }
+  const pengirim = currentDbUser(req);
+  const ulasan: UlasanPaket = {
+    id: newRedesignId('ulasan'),
+    paketId: paket.id,
+    paketTopik: paket.topik,
+    namaPemberi: pengirim?.name || me.name || 'Guru',
+    userId: me.id,
+    tipe,
+    isi: teks,
+    waktu: new Date().toISOString(),
+  };
+  ulasanPaket.push(ulasan);
+  saveDB();
+  auditLog('paket_ulasan', me.id, { paketId: paket.id, tipe, ulasanId: ulasan.id });
+  res.status(201).json({ success: true, message: 'Terima kasih! Ulasanmu sudah terkirim 💬', ulasan });
 });
 
 // 7b. AI Image Generator (ilustrasi dokumen) — model gemini-2.5-flash-image,
