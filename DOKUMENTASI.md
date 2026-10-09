@@ -22,15 +22,16 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 | 🖥️ Slide Tayang Kelas | Tombol di kartu Modul Ajar → AI/fallback rangkum modul jadi 5–7 slide JSON → `SlidePresenter` fullscreen (keyboard/klik, nomor slide, ekspor PDF via print). Tersimpan sebagai turunan Modul Ajar: koleksi `slidePaket`, `POST/GET /api/pakets/:id/slide` |
 | 🧭 Diagnostik 5 Menit | Tombol di header workspace → `POST /api/pakets/:id/diagnostik` → 3–5 pertanyaan diagnostik + panduan fasilitasi "bila menjawab A → …". Modal `DiagnostikModal`, unduh .md |
 | 🤝 Ulasan Rekan Sejawat | Di Perpustakaan: modal detail paket + `<UlasanPaket>` (👍 apresiasi / 💡 saran, 1–500 karakter). Koleksi `ulasanPaket`, `GET/POST /api/pakets/:id/ulasan` (hanya paket terpublikasi) |
+| 🎨 Modul P5 Tematik | Generator tematik Projek Penguatan Profil Pelajar Pancasila lintas jenjang (SD, SMP, SMA, SMK) dengan tema resmi, isu kontekstual, bentuk aksi, alokasi JP, sistem waktu, mitra, dan rubrik asesmen profil lulusan (`src/data/p5Templates.ts`, `P5ThematicGeneratorSection.tsx`) |
 
 ---
 
 ## 2. Teknologi
 
-- **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + D3.js + `marked`
+- **Frontend:** React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + D3.js + `marked` + `exceljs`
 - **Backend:** Express 5 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
 - **AI:** `@google/genai` (teks: `gemini-2.5-flash` → `gemini-3-flash-preview` → `gemini-2.5-flash-lite` → `gemini-2.5-pro`, fallback berurutan; gambar: `gemini-2.5-flash-image`)
-- **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), salin clipboard
+- **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), `exceljs` (.xlsx lembar nilai KKTP), salin clipboard
 - **Data:** JSON file `data/db.json` (di-gitignore), dimuat saat start + disimpan debounce tiap mutasi
 
 ---
@@ -40,7 +41,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 ```
 PerangkatAjar/
 ├── server.ts              # API Express + serve frontend
-├── serverFallback.ts      # Template cadangan 7 tipe dokumen
+├── serverFallback.ts      # Template cadangan 7 tipe dokumen + tiered LKPD & P5
 ├── data/db.json           # Data runtime (dibuat otomatis, jangan di-commit)
 ├── .env                   # Kunci API (dibuat dari .env.example)
 ├── index.html
@@ -52,19 +53,30 @@ PerangkatAjar/
 │   ├── types/index.ts     # TeacherUser, EducationalDocument, GeneratorParams, ...
 │   ├── data/
 │   │   ├── curriculumData.ts  # DOC_TYPE_INFO, JENJANG_CONFIGS, DIMENSI_P5, ...
-│   │   └── topicCatalog.ts    # Katalog topik per fase/kelas + pencarian
+│   │   ├── topicCatalog.ts    # Katalog topik per fase/kelas + pencarian
+│   │   └── p5Templates.ts     # Katalog template projek P5 tematik SD/SMP/SMA/SMK
 │   ├── components/
 │   │   ├── Sidebar.tsx / TopHeader.tsx   # Navigasi (profil hanya di header)
 │   │   ├── LoginPage.tsx                 # Masuk/daftar + akun demo 1-ketuk
-│   │   ├── GeneratorForm.tsx             # Wizard 3 langkah 7 tipe dokumen
+│   │   ├── GeneratorForm.tsx             # Wizard 3 langkah 7 tipe dokumen + LKPD tiered
+│   │   ├── P5ThematicGeneratorSection.tsx# Generator tematik spesifik P5 & katalog ide
 │   │   ├── ContextualTopicSuggester.tsx  # Saran topik kontekstual + semester
-│   │   ├── DocumentViewer.tsx            # Pratinjau A4 + edit + ilustrasi AI + ekspor
+│   │   ├── DocumentViewer.tsx            # Pratinjau A4 + edit + ilustrasi AI + ekspor .docx/.xlsx
 │   │   ├── DocumentRepository.tsx        # Arsip (cari/filter/buka/unduh/hapus)
+│   │   ├── PaketWorkspace.tsx            # Workspace paket 7 dokumen + status + slide + diagnostik
+│   │   ├── SlidePresenter.tsx            # Presentasi kelas interaktif fullscreen + print PDF
+│   │   ├── DiagnostikModal.tsx           # Modal instrumen asesmen diagnostik 5 menit
+│   │   ├── Perpustakaan.tsx              # Galeri paket terpublikasi sekolah
+│   │   ├── UlasanPaket.tsx               # Komponen umpan balik/peer-review guru
+│   │   ├── Maskot.tsx                    # Maskot Owi (burung hantu pendamping guru)
 │   │   ├── TeacherVerificationPanel.tsx  # Verifikasi guru + KPI + tambah manual
 │   │   ├── UserProfileStatsDashboard.tsx # Profil + KPI + grafik D3 + riwayat
 │   │   ├── ProductivityD3Chart.tsx / DocumentTypeD3Donut.tsx
 │   │   └── BelajarIdAuthModal.tsx / CurriculumGuideModal.tsx / LogoutConfirmModal.tsx
-│   └── utils/exportUtils.ts  # Markdown→HTML, docx, pdf, .doc legacy, clipboard
+│   └── utils/
+│       ├── exportUtils.ts                # Markdown→HTML, docx, pdf, .doc legacy, clipboard
+│       ├── lembarPenilaianXlsx.ts        # Ekspor Excel .xlsx nilai KKTP rumus otomatis
+│       └── sapaan.ts                     # Generator sapaan kontekstual waktu
 └── dist/                  # Hasil build produksi
 ```
 
@@ -124,6 +136,11 @@ Menu pengguna (avatar kanan atas): Profil, Statistik Saya, Admin, Keluar. View l
 | `GET /api/pakets/:id/bundle` | Unduh .docx gabungan versi aktif (draf/final) | GEL2: halaman judul + daftar isi + page break |
 | `POST /api/pakets/:id/publikasi` | `{publikasi:boolean}` toggle publikasi sekolah | GEL2: pemilik/admin |
 | `GET /api/perpustakaan` | Paket terpublikasi satu sekolah | GEL2: ringkas + pemilikNama + jumlahDokumen |
+| `POST /api/pakets/:id/slide` | Buat/refresh deck slide tayang kelas dari Modul Ajar | AI / fallback (JSON 5–7 slide), upsert 1 deck per paket |
+| `GET /api/pakets/:id/slide` | Ambil deck slide tayang aktif paket | 404 bila belum dibuat |
+| `POST /api/pakets/:id/diagnostik` | Hasilkan asesmen diagnostik 5 menit | AI / fallback Markdown + pemetaan miskonsepsi |
+| `GET /api/pakets/:id/ulasan` | Daftar ulasan rekan sejawat (terbaru dulu) | Hanya paket terpublikasi |
+| `POST /api/pakets/:id/ulasan` | Kirim ulasan `{tipe: 'apresiasi'\|'saran', isi}` | Maks 500 karakter |
 
 **Migrasi otomatis:** saat server start, tiap `EducationalDocument` lama tanpa `paketId` dibungkus menjadi Paket `"Arsip — <judul>"` berisi 1 DokumenPaket `final` v1 (idempoten via `paketId`).
 
@@ -482,3 +499,19 @@ Sebelum implementasi Fase 1, pemilik produk perlu menetapkan:
 7. Di mana wilayah penyimpanan data dan backup akan ditempatkan?
 
 Keputusan tersebut memengaruhi schema database, authorization policy, biaya operasional, dan desain onboarding.
+
+---
+
+## 18. Roadmap Ide Pengembangan Strategis Berikutnya
+
+Rencana peningkatan fitur strategis berdasarkan kebutuhan nyata guru di kelas dan regulasi Kurikulum Merdeka (Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen):
+
+| No | Inisiatif Fitur | Deskripsi & Nilai Manfaat bagi Guru | Area Terdampak |
+|---|---|---|---|
+| 1 | **📋 Generator Kisi-Kisi & Kartu Soal Standar Asesmen (AKM & Sumatif)** | Menghasilkan tabel matriks kisi-kisi resmi (Capaian Pembelajaran, Indikator Soal, Level Kognitif L1/L2/L3, Bentuk Soal: PG, PG Kompleks, Menjodohkan, Isian, Uraian) serta Kartu Soal per butir berformat dinas siap lampirkan di portofolio asesmen sekolah. | `GeneratorForm.tsx`, `server.ts` (prompt soal), ekspor `.docx` |
+| 2 | **🗓️ Kalkulator Rincian Minggu Efektif (RME) Interaktif pada Prota & Promes** | Widget penghitung otomatis kalender pendidikan: guru memasukkan semester dan minggu libur/ujian, sistem menghitung total JP efektif dan mendistribusikan alokasi waktu per bab/TP secara proporsional. | `GeneratorForm.tsx`, `server.ts` (prota_promes), `serverFallback.ts` |
+| 3 | **🧩 Matriks Diferensiasi Terpadu (Konten · Proses · Produk) di Modul Ajar** | Sakelar untuk merinci strategi diferensiasi 3 pilar pada Modul Ajar: diferensiasi konten (auditori/visual/kinestetik), proses (kelompok terbimbing vs mandiri), dan produk (opsi luaran tugas murid: infografis, podcast, laporan, unjuk kerja). | `GeneratorForm.tsx`, `server.ts` (modul_ajar prompt) |
+| 4 | **🖋️ Lembar Pengesahan Resmi Supervisi (Kepala Sekolah & Pengawas)** | Penyisipan otomatis halaman Pengesahan Resmi di halaman awal dokumen / bundle paket (berisi nama & NIP Kepala Sekolah, NIP Pengawas Pembina, tanggal penetapan, dan kop dinas) untuk kebutuhan bukti fisik SKP di PMM (Platform Merdeka Mengajar). | `types/index.ts`, `UserProfileStatsDashboard.tsx`, `exportUtils.ts` |
+| 5 | **📖 Jurnal Refleksi Pasca-Mengajar Guru (Portofolio Kinerja PMM)** | Tab pencatatan refleksi setelah pembelajaran selesai di kelas (menggunakan kerangka 4F: *Facts, Feelings, Findings, Future*), tersimpan di paket dan dapat diekspor sebagai jurnal rekam jejak guru untuk supervisi. | `PaketWorkspace.tsx`, API `/api/pakets/:id/refleksi`, DB |
+| 6 | **🌿 Kurikulum Muatan Lokal & Kontekstualisasi Kearifan Budaya** | Pemilih konteks daerah (Sumatera, Jawa, Bali-Nusa Tenggara, Kalimantan, Sulawesi, Maluku-Papua, serta ekosistem Pesisir/Agraris/Perkotaan) untuk mengadaptasi studi kasus, stimulus fenomena nyata, dan proyek murid sesuai budaya setempat. | `GeneratorForm.tsx`, `data/curriculumData.ts`, `server.ts` |
+

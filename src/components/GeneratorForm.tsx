@@ -914,20 +914,22 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         )}
 
         {docType === 'lkpd' && (
-          <div className="p-4 rounded-2xl bg-[#f5f5f7] dark:bg-white/5 flex items-start gap-3 mt-3">
-            <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-sm text-emerald-950">
-                Format Lembar Kerja Peserta Didik (LKPD) Siap Cetak
-              </h4>
-              <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
-                Dilengkapi kop isian kelompok, instruksi keselamatan/petunjuk kerja, kasus stimulus fenomena nyata, tabel pengamatan, dan rubrik penilaian diri siswa.
-              </p>
+          <div className="mt-3 space-y-3">
+            <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200/70 dark:bg-emerald-950/20 dark:border-emerald-800/40 flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-emerald-950 dark:text-emerald-100">
+                  Format Lembar Kerja Peserta Didik (LKPD) Siap Cetak
+                </h4>
+                <p className="text-xs text-emerald-800 dark:text-emerald-200/80 mt-0.5 leading-relaxed">
+                  Dilengkapi kop isian kelompok, instruksi keselamatan/petunjuk kerja, kasus stimulus fenomena nyata, tabel pengamatan, dan rubrik penilaian diri siswa.
+                </p>
+              </div>
             </div>
             {/* FITUR 1: sakelar 3 tingkat diferensiasi — hanya tampil untuk LKPD */}
-            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 p-4 dark:bg-white/5">
+            <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30 dark:border-emerald-700/60 p-4 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/30">
               <input
                 type="checkbox"
                 className="toggle toggle-success mt-0.5"
@@ -935,12 +937,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 onChange={(e) => setLkpdTiered(e.target.checked)}
                 aria-label="Buat 3 tingkat diferensiasi"
               />
-              <span>
+              <span className="flex-1">
                 <span className="block text-sm font-extrabold text-emerald-950 dark:text-emerald-100">
-                  🎯 Buat 3 tingkat diferensiasi
+                  🎯 Buat 3 tingkat diferensiasi (Diferensiasi Pembelajaran)
                 </span>
-                <span className="mt-0.5 block text-xs leading-relaxed text-emerald-800 dark:text-emerald-200/80">
-                  Satu dokumen berisi 3 lembar siap cetak: 🟢 Perintis (butuh bimbingan, scaffolding bertahap), 🟡 Reguler (cakap, tugas analitis), 🟣 Mahir (pengayaan HOTS &amp; studi kasus terbuka).
+                <span className="mt-1 block text-xs leading-relaxed text-emerald-800 dark:text-emerald-200/90">
+                  Satu dokumen berisi 3 lembar kerja berjenjang siap cetak: 🟢 <strong>Perintis</strong> (butuh perancah/bimbingan), 🟡 <strong>Reguler</strong> (mandiri &amp; analitis), 🟣 <strong>Mahir</strong> (pengayaan HOTS &amp; studi kasus terbuka).
                 </span>
               </span>
             </label>
