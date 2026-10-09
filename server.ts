@@ -1526,6 +1526,29 @@ app.post('/api/generate', requireAuth, requireVerified, generateRateLimit, async
       ['Kelas 10'].includes(tingkat) ? 'Fase E' : 'Fase F'
     );
 
+    // FITUR soal kustom: susun daftar komposisi soal dari pilihan guru.
+    // Format komposisi: { pg_biasa, pg_kompleks, menjodohkan, isian, uraian }.
+    const KOMPOSISI_LABEL: Record<string, string> = {
+      pg_biasa: 'Pilihan Ganda Biasa (4-5 opsi jawaban logis)',
+      pg_kompleks: 'Pilihan Ganda Kompleks (Model AKM: centang Benar/Salah atau pilih lebih dari satu pernyataan tepat)',
+      menjodohkan: 'Menjodohkan (pasangan konsep/pernyataan dengan jawaban tepat)',
+      isian: 'Isian Singkat / Melengkapi Kalimat Konsep',
+      uraian: 'Uraian HOTS Penalaran Kasus (analisis masalah + solusi orisinal)'
+    };
+    const komposisiSoal = (soalConfig?.komposisi && typeof soalConfig.komposisi === 'object')
+      ? soalConfig.komposisi as Record<string, unknown>
+      : null;
+    const daftarKomposisi = komposisiSoal
+      ? Object.entries(KOMPOSISI_LABEL)
+          .map(([k, label]) => ({ label, n: Math.max(0, Math.round(Number(komposisiSoal[k]) || 0)) }))
+          .filter(x => x.n > 0)
+      : [];
+    const totalKomposisi = daftarKomposisi.reduce((a, x) => a + x.n, 0);
+    const teksKomposisi = daftarKomposisi.length > 0
+      ? daftarKomposisi.map((x, i) => `  ${i + 1}. ${x.label}: **${x.n} butir**`).join('\n')
+      : `  1. Pilihan Ganda Biasa (4-5 opsi jawaban logis): **5 butir**\n  2. Pilihan Ganda Kompleks (Model AKM): **3 butir**\n  3. Menjodohkan: **2 butir**\n  4. Isian Singkat: **2 butir**\n  5. Uraian HOTS: **3 butir**`;
+    const jumlahSoalFinal = totalKomposisi > 0 ? totalKomposisi : (soalConfig?.jumlahSoal || 15);
+
     const promptInstructions: Record<string, string> = {
       modul_ajar: `
 TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen (PPA)**.
@@ -1598,14 +1621,11 @@ STRUKTUR RESMI:
 TUGAS SPESIFIK DOKUMEN: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Kompetensi Minimum (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
 Gunakan **stimulus nyata dan membumi khas Indonesia** (artikel informatif, infografis data, studi kasus lingkungan/sosial, atau cerita naratif menarik) sehingga soal mengukur daya nalar murid, bukan sekadar hafalan rumus atau definisi kering.
 
-KONFIGURASI SOAL:
-- Jumlah Soal: ${soalConfig?.jumlahSoal || 15} butir soal berkualitas tinggi.
-- Variasi Bentuk Soal Sesuai Standar Asesmen Nasional:
-  1. Pilihan Ganda Biasa (4-5 opsi jawaban logis).
-  2. Pilihan Ganda Kompleks (Model AKM: Centang Benar/Salah atau memilih lebih dari satu pernyataan yang tepat berdasarkan stimulus).
-  3. Menjodohkan (Memasangkan konsep/pernyataan dengan jawaban yang tepat).
-  4. Isian Singkat / Melengkapi Kalimat Konsep.
-  5. Uraian HOTS Penalaran Kasus (Menganalisis masalah dan memberikan solusi orisinal).
+KONFIGURASI SOAL (PILIHAN GURU — WAJIB DIIKUTI TEPAT):
+- Total: **${jumlahSoalFinal} butir** soal berkualitas tinggi.
+- Komposisi bentuk soal (hanya buat jenis yang terdaftar di bawah, dengan jumlah TEPAT seperti tertulis):
+${teksKomposisi}
+- Jangan menambah jenis soal di luar daftar di atas. Jangan mengubah jumlah per jenis.
 
 SUSUNAN DOKUMEN:
 1. **KOP NASKAH PENILAIAN SUMATIF RESMI**: Satuan Pendidikan, Mata Pelajaran (${mataPelajaran}), Kelas (${tingkat} / ${calculatedFase}), Topik: ${topik}, Waktu: ${alokasiWaktu || '90 Menit'}.
@@ -1865,7 +1885,8 @@ STANDAR OUTPUT MARKDOWN:
         authorName,
         schoolName,
         catatanTambahan,
-        tiered: tieredLkpd
+        tiered: tieredLkpd,
+        soalConfig
       });
       modelUsed = 'kurikulum-merdeka-verified-engine';
     }
