@@ -1622,22 +1622,30 @@ KOMPONEN WAJIB:
 3. **Tabel Program Semester (Promes) Semester 1 & 2**: Pemetaan alokasi waktu per minggu efektif, jadwal asesmen formatif, asesmen sumatif lingkup materi, asesmen sumatif akhir semester, jeda pekan remedial, dan libur kalender pendidikan.
 `,
       modul_p5: `
-TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL PROJEK PENGUATAN PROFIL LULUSAN** sesuai ketentuan projek kokurikuler Kemendikdasmen.
+TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)** sesuai pedoman resmi projek kokurikuler Kemendikdasmen & Kurikulum Merdeka.
 
-Tema Proyek: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan / Kewirausahaan / Kearifan Lokal / Suara Demokrasi / Rekayasa Teknologi'}
-Topik Proyek: ${topik}
-Jenjang / Fase: ${jenjang} / ${calculatedFase}
+Tema Proyek Resmi: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan'}
+Judul / Topik Projek: ${topik}
+Jenjang / Fase: ${jenjang} / ${calculatedFase} (${tingkat})
+${catatanTambahan?.isuKontekstual ? `Latar Belakang Isu Kontekstual: ${catatanTambahan.isuKontekstual}` : ''}
+${catatanTambahan?.bentukAksi ? `Bentuk Aksi Nyata / Gelar Karya: ${catatanTambahan.bentukAksi}` : ''}
+${catatanTambahan?.sistemWaktu ? `Sistem Pelaksanaan Waktu: ${catatanTambahan.sistemWaktu}` : ''}
+${catatanTambahan?.mitraProjek ? `Narasumber / Mitra Kolaborasi: ${catatanTambahan.mitraProjek}` : ''}
+Alokasi Waktu: ${alokasiWaktu || '36 JP'}
 
 KOMPONEN WAJIB:
-1. Profil Modul: Tema, Judul Projek yang Inspiratif, Fase/Kelas, Durasi Total JP.
-2. Dimensi, Elemen, dan Subelemen Profil Lulusan yang Dikembangkan (Lengkap dengan matriks target capaian di akhir fase).
-3. Alur Aktivitas Projek Humanis (4 Tahap):
-   - Tahap Pengenalan: Membuka wawasan murid terhadap isu lingkungan/sosial di sekitar.
-   - Tahap Kontekstualisasi: Meneliti dan mengidentifikasi masalah nyata di sekolah/lingkungan tempat tinggal.
-   - Tahap Aksi: Merancang karya, produk nyata, atau aksi sosial kolaboratif.
-   - Tahap Refleksi & Tindak Lanjut: Evaluasi proses, pameran hasil karya (Gelar Karya Projek), dan komitmen keberlanjutan.
-4. Instrumen Asesmen Projek: Asesmen diagnostik awal, formatif lembar pengamatan proses, dan rubrik sumatif perkembangan murid (Mulai Berkembang, Sedang Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
-5. Lampiran: Lembar jurnal harian murid dan panduan pameran gelar karya.
+1. **Profil Modul**: Tema Resmi, Judul Projek yang Inspiratif & Kontekstual, Fase/Kelas, Alokasi Total JP, dan Model Pelaksanaan (Blok / Terjadwal).
+2. **Pemetaan Dimensi, Elemen, dan Subelemen Profil Pelajar Pancasila**:
+   - Sajikan dalam TABEL MATRIKS Capaian Akhir Fase: Dimensi Sasaran, Elemen Kunci, Subelemen, dan Target Capaian Fase ${calculatedFase}.
+3. **Alur Rangkaian Aktivitas Projek Humanis (4 Tahap Nyata)**:
+   - **Tahap Pengenalan**: Membuka wawasan murid terhadap isu nyata, pertanyaan pemantik inspiratif guru.
+   - **Tahap Kontekstualisasi**: Investigasi lapangan di sekolah/lingkungan tempat tinggal, wawancara/audit masalah, perumusan ide solusi.
+   - **Tahap Aksi Nyata**: Praktik pembuatan karya / produk nyata / kampanye kolaboratif, pendampingan empati guru.
+   - **Tahap Refleksi & Tindak Lanjut**: Evaluasi proses, pameran hasil karya (Gelar Karya Projek), umpan balik mitra/orang tua, dan komitmen keberlanjutan.
+4. **Asesmen Holistik Projek**:
+   - Asesmen Formatif (lembar observasi proses dan catatan anekdotal).
+   - Rubrik Asesmen Sumatif Perkembangan (Tabel 4 Kriteria: Mulai Berkembang, Sedang Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
+5. **Lampiran Praktis**: Lembar jurnal refleksi harian murid, panduan teknis gelar karya/pameran, dan rubrik evaluasi diri antarteman.
 `
     };
 

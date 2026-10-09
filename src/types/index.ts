@@ -84,6 +84,13 @@ export interface GeneratorParams {
   nipKepalaSekolah?: string;
   catatanTambahan?: {
     temaP5?: string;
+    templateId?: string;
+    judulProjek?: string;
+    isuKontekstual?: string;
+    bentukAksi?: string;
+    sistemWaktu?: string;
+    mitraProjek?: string;
+    subelemenTarget?: string[];
     instruksiKhusus?: string;
   };
 }

@@ -33,7 +33,8 @@ export function generateFallbackDocument(params: FallbackParams): string {
     targetPeserta = 'Peserta Didik Reguler / Tipikal dengan Diferensiasi Gaya Belajar',
     dimensiProfilLulusan = ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian'],
     authorName = 'Bapak/Ibu Guru Mata Pelajaran',
-    schoolName = 'Satuan Pendidikan Pelaksana Kurikulum Merdeka'
+    schoolName = 'Satuan Pendidikan Pelaksana Kurikulum Merdeka',
+    catatanTambahan
   } = params;
 
   const dimensiList = Array.isArray(dimensiProfilLulusan) && dimensiProfilLulusan.length 
@@ -454,8 +455,10 @@ Sesuaikan distribusi di atas dengan kalender pendidikan daerah: hari efektif, je
 * **Tema resmi**: ${temaP5}
 * **Topik projek**: ${topik}
 * **Fase / Kelas**: ${fase} / ${tingkat}
-* **Alokasi waktu**: ${alokasiWaktu} (dapat direntang beberapa pertemuan)
-* **Model fasilitasi**: ${modelPembelajaran}
+* **Alokasi waktu**: ${alokasiWaktu} (${catatanTambahan?.sistemWaktu || 'Sistem Terjadwal'})
+* **Bentuk aksi nyata / luaran**: ${catatanTambahan?.bentukAksi || 'Gelar Karya Projek & Pameran Komunitas Sekolah'}
+* **Isu kontekstual sekolah**: ${catatanTambahan?.isuKontekstual || 'Tantangan riil di lingkungan belajar yang dipecahkan bersama oleh murid'}
+${catatanTambahan?.mitraProjek ? `* **Mitra kolaborasi / narasumber**: ${catatanTambahan.mitraProjek}\n` : ''}* **Model fasilitasi**: ${modelPembelajaran}
 
 ### II. DIMENSI, ELEMEN & SUBELEMEN PROFIL PELAJAR PANCASILA
 
