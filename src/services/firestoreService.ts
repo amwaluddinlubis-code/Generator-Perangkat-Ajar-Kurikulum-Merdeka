@@ -37,7 +37,7 @@ export async function getTeachersFromFirestore(): Promise<TeacherUser[]> {
     const teachersCol = collection(db, TEACHERS_COLLECTION);
     const snapshot = await getDocs(teachersCol);
     if (snapshot.empty) return [];
-    return snapshot.docs.map(docSnap => docSnap.data() as TeacherUser);
+    return snapshot.docs.map((docSnap: { data: () => unknown }) => docSnap.data() as TeacherUser);
   } catch (error) {
     console.warn('Firestore getTeachers warning:', error);
     return [];
@@ -98,9 +98,9 @@ export async function getDocumentsFromFirestore(): Promise<EducationalDocument[]
     const docsCol = collection(db, DOCUMENTS_COLLECTION);
     const snapshot = await getDocs(docsCol);
     if (snapshot.empty) return [];
-    const list = snapshot.docs.map(docSnap => docSnap.data() as EducationalDocument);
+    const list = snapshot.docs.map((docSnap: { data: () => unknown }) => docSnap.data() as EducationalDocument);
     // Sort descending by createdAt
-    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list.sort((a: EducationalDocument, b: EducationalDocument) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (error) {
     console.warn('Firestore getDocuments warning:', error);
     return [];
