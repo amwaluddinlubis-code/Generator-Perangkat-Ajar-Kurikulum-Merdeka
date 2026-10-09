@@ -8,6 +8,8 @@ import {
   copyToClipboard 
 } from '../utils/exportUtils';
 import { apiFetch } from '../utils/api';
+// FITUR 2: ekspor Lembar Penilaian KKTP ke .xlsx
+import { unduhLembarPenilaianXlsx } from '../utils/lembarPenilaianXlsx';
 import { 
   Printer, 
   Download, 
@@ -181,6 +183,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [justSaved, setJustSaved] = useState<boolean>(isSaved);
   const [isExportingDocx, setIsExportingDocx] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  // FITUR 2: status ekspor Lembar Penilaian (.xlsx)
+  const [isExportingXlsx, setIsExportingXlsx] = useState<boolean>(false);
   // UX: toast lokal untuk umpan balik salin / unduh / simpan
   const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' | 'info' } | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -310,6 +314,26 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       showToast('PDF gagal dibuat, membuka dialog cetak browser', 'error');
     } finally {
       setIsExportingPdf(false);
+    }
+  };
+
+  // FITUR 2: unduh Lembar Penilaian KKTP (.xlsx) — 30 baris nama + rumus interval otomatis.
+  const handleUnduhLembarXlsx = async () => {
+    if (!document) return;
+    setIsExportingXlsx(true);
+    try {
+      await unduhLembarPenilaianXlsx({
+        judulDokumen: document.title,
+        mataPelajaran: document.mataPelajaran || '',
+        kelas: document.tingkat || '',
+        sekolah: document.schoolName || '',
+      });
+      showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal menyusun .xlsx', 'error');
+    } finally {
+      setIsExportingXlsx(false);
     }
   };
 
@@ -572,6 +596,23 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             )}
             <span>{isExportingPdf ? 'Menyusun .pdf...' : '.pdf'}</span>
           </button>
+
+          {/* FITUR 2: Unduh Lembar Penilaian (.xlsx) — hanya dokumen KKTP */}
+          {(document?.docType === 'kktp_atp' || (document?.title || '').toUpperCase().includes('KKTP')) && (
+            <button
+              onClick={handleUnduhLembarXlsx}
+              disabled={isExportingXlsx}
+              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
+              title="Unduh lembar penilaian KKTP (.xlsx): 30 baris nama, rumus interval & rekomendasi otomatis"
+            >
+              {isExportingXlsx ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <span aria-hidden>📊</span>
+              )}
+              <span>{isExportingXlsx ? 'Menyusun .xlsx...' : 'Lembar Penilaian (.xlsx)'}</span>
+            </button>
+          )}
 
           {/* Print Button */}
           <button

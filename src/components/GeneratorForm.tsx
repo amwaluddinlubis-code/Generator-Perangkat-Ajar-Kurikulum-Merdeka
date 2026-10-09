@@ -65,6 +65,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 }) => {
   // GEL2: docType dikunci mengikuti kartu yang diklik bila paketMode ada.
   const [docType, setDocType] = useState<DocType>(paketMode?.docType || activeDocType || 'modul_ajar');
+  // FITUR 1: sakelar LKPD 3 tingkat diferensiasi (hanya relevan saat docType==='lkpd').
+  const [lkpdTiered, setLkpdTiered] = useState(false);
 
   useEffect(() => {
     if (paketMode) {
@@ -75,7 +77,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     if (activeDocType && activeDocType !== docType) {
       setDocType(activeDocType);
     }
-  }, [activeDocType, paketMode, docType]);
+    // FITUR 1: matikan sakelar tiered begitu docType bukan lkpd.
+    if (docType !== 'lkpd' && lkpdTiered) setLkpdTiered(false);
+  }, [activeDocType, paketMode, docType, lkpdTiered]);
 
   // Sinkronkan form bila akun berganti (mis. demo SD -> SMP) agar
   // fase/kelas/mapel selalu valid untuk jenjang pengguna aktif.
@@ -250,6 +254,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     return {
       authorId: currentUser.id,
       docType,
+      // FITUR 1: flag tiered — hanya dikirim saat LKPD + sakelar aktif.
+      tiered: docType === 'lkpd' && lkpdTiered ? true : undefined,
       jenjang,
       tingkat,
       fase,
@@ -924,6 +930,24 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 Dilengkapi kop isian kelompok, instruksi keselamatan/petunjuk kerja, kasus stimulus fenomena nyata, tabel pengamatan, dan rubrik penilaian diri siswa.
               </p>
             </div>
+            {/* FITUR 1: sakelar 3 tingkat diferensiasi — hanya tampil untuk LKPD */}
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50/60 p-4 dark:bg-white/5">
+              <input
+                type="checkbox"
+                className="toggle toggle-success mt-0.5"
+                checked={lkpdTiered}
+                onChange={(e) => setLkpdTiered(e.target.checked)}
+                aria-label="Buat 3 tingkat diferensiasi"
+              />
+              <span>
+                <span className="block text-sm font-extrabold text-emerald-950 dark:text-emerald-100">
+                  🎯 Buat 3 tingkat diferensiasi
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-emerald-800 dark:text-emerald-200/80">
+                  Satu dokumen berisi 3 lembar siap cetak: 🟢 Perintis (butuh bimbingan, scaffolding bertahap), 🟡 Reguler (cakap, tugas analitis), 🟣 Mahir (pengayaan HOTS &amp; studi kasus terbuka).
+                </span>
+              </span>
+            </label>
           </div>
         )}
           </>
@@ -949,6 +973,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                 <dt className="text-[11px] text-slate-500">Format</dt>
                 <dd className="text-sm font-semibold text-slate-900">{DOC_TYPE_INFO[docType].label}</dd>
               </div>
+              {docType === 'lkpd' && lkpdTiered && (
+                <div>
+                  <dt className="text-[11px] text-slate-500">Diferensiasi</dt>
+                  <dd className="text-sm font-semibold text-slate-900">🎯 3 Tingkat (🟢 Perintis · 🟡 Reguler · 🟣 Mahir)</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-[11px] text-slate-500">Kelas</dt>
                 <dd className="text-sm font-semibold text-slate-900">{jenjang} · {tingkat} · {fase}</dd>
