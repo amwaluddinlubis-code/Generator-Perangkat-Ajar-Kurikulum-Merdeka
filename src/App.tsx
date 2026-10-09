@@ -643,20 +643,20 @@ export default function App() {
           {activeTarget === 'guide' && (
             <div className="space-y-4 ux-view-enter">
               <div className="text-center max-w-xl mx-auto mb-2">
-                <p className="apple-eyebrow">Regulasi resmi</p>
+                <p className="apple-eyebrow">Regulasi resmi 📜</p>
                 <h2 className="apple-headline !text-[28px] sm:!text-[34px] mt-1">Panduan Kurikulum Merdeka.</h2>
-                <p className="apple-sub mt-2 !text-[15px]">Rujukan penyusunan Modul Ajar, RPP, Soal, dan perangkat kelas.</p>
+                <p className="apple-sub mt-2 !text-[15px]">Bacaan ringan untuk menyusun Modul Ajar, RPP, Soal, dan perangkat kelas — biar makin pede! 💪</p>
               </div>
               <div className="apple-card p-6 sm:p-10 max-w-4xl mx-auto">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FFEEDB] text-[#B45309] dark:bg-amber-900/30 dark:text-amber-300 flex items-center justify-center font-bold">
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900">
-                      Panduan & Regulasi Kurikulum Merdeka Terbaru
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-[#f5f5f7]">
+                      Panduan & Regulasi Kurikulum Merdeka Terbaru 📖
                     </h2>
-                    <p className="text-xs sm:text-sm text-slate-500">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-[#a1a1a6]">
                       Rujukan resmi penyusunan Modul Ajar, RPP, Soal Ujian, dan Perangkat Kelas untuk Guru Indonesia
                     </p>
                   </div>
@@ -664,9 +664,9 @@ export default function App() {
 
                 <div className="prose-educational space-y-4">
                   {/* UX: panel ikut dark mode agar konsisten */}
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
+                  <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
                     <h3 className="text-[14.5px] font-semibold mb-1">
-                      Landasan hukum kurikulum nasional 2024
+                      ⚖️ Landasan hukum kurikulum nasional 2024
                     </h3>
                     <p className="!text-[13.5px] !text-[#424245] dark:!text-[#e8e8ed]">
                       Berdasarkan <b>Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, mendalam (berkesadaran, bermakna, menggembirakan), dan berorientasi Profil Lulusan 8 dimensi.
@@ -674,9 +674,9 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
+                    <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
                       <h4 className="font-semibold text-[14px] mb-2">
-                        Fase pembelajaran
+                        🗺️ Fase pembelajaran
                       </h4>
                       <ul className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
                         <li><b>Fase A</b>: Kelas 1–2 SD</li>
@@ -688,9 +688,9 @@ export default function App() {
                       </ul>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
+                    <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
                       <h4 className="font-semibold text-[14px] mb-2">
-                        3 komponen esensial Modul Ajar
+                        🧩 3 komponen esensial Modul Ajar
                       </h4>
                       <ol className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
                         <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 032/H/KR/2024.</li>
@@ -700,12 +700,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#f5f5f7] dark:bg-white/10">
+                  <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
                     <h4 className="font-semibold text-[14px] mb-1.5">
-                      Alur verifikasi guru
+                      ✅ Alur verifikasi guru
                     </h4>
                     <p className="!text-[13px] !text-[#424245] dark:!text-[#e8e8ed] leading-relaxed">
-                      Guru dengan akun <code>@guru.sd/smp/sma.belajar.id</code> terdaftar otomatis, lalu divalidasi verifikator kurikulum sebelum mendapat akses penuh pembuatan perangkat.
+                      Guru dengan akun <code>@guru.sd/smp/sma.belajar.id</code> terdaftar otomatis, lalu divalidasi verifikator kurikulum sebelum mendapat akses penuh pembuatan perangkat. Santai — pendaftaran hanya butuh semenit! ⏱️
                     </p>
                   </div>
                 </div>

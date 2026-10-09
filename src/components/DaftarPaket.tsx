@@ -8,12 +8,16 @@ import {
   ArchiveRestore,
   Copy,
   Trash2,
-  ArrowRight,
+  Sparkles,
+  AlertTriangle,
   X,
 } from 'lucide-react';
 import { TeacherUser, Jenjang, Paket, DokumenPaket, VersiDokumen } from '../types';
 import { JENJANG_CONFIGS } from '../data/curriculumData';
 import { apiFetch, extractErrorMessage } from '../utils/api';
+// FRIENDLY: maskot Owi + sapaan hangat untuk empty state
+import { Maskot } from './Maskot';
+import { pesanKosong } from '../utils/sapaan';
 
 // GEL2: duplikasi tipe lokal (tech debt Gelombang 1) dihapus — pakai tipe
 // kanonik dari ../types. GET /api/pakets menyertakan ringkasan progress per
@@ -190,45 +194,49 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
           ))}
         </div>
       ) : tersaring.length === 0 ? (
-        <div className="hero rounded-3xl border border-dashed border-base-300 py-12">
-          <div className="hero-content text-center">
-            <div className="max-w-md">
-              <h2 className="text-xl font-black tracking-tight">
-                {pencarian
-                  ? 'Tidak ada paket yang cocok'
-                  : tab === 'aktif'
-                    ? 'Belum ada paket aktif'
-                    : 'Arsip masih kosong'}
-              </h2>
-              <p className="py-3 text-sm opacity-70">
-                {pencarian
-                  ? 'Coba kata kunci lain, atau buat paket baru dengan topik tersebut.'
-                  : tab === 'aktif'
-                    ? 'Buat paket pertama Anda dan susun 7 dokumen Kurikulum Merdeka dengan bantuan AI.'
-                    : 'Paket yang diarsipkan akan muncul di sini dan bisa dikembalikan kapan saja.'}
-              </p>
-              {!pencarian && tab === 'aktif' && (
-                <button
-                  type="button"
-                  onClick={() => setModalBuatTerbuka(true)}
-                  className="btn btn-primary mt-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  Buat Paket Baru
-                </button>
-              )}
-            </div>
+        /* FRIENDLY: empty state hangat bersama maskot Owi */
+        <div className="rgm-card p-8 sm:p-12 ux-pop-in">
+          <div className="flex flex-col items-center text-center max-w-md mx-auto">
+            <Maskot size={pencarian ? 88 : 110} />
+            <h2 className="text-xl font-black tracking-tight mt-4">
+              {pencarian
+                ? 'Hmm, tidak ketemu — coba kata kunci lain 🔍'
+                : tab === 'aktif'
+                  ? pesanKosong('paket')
+                  : 'Arsip masih kosong 📦'}
+            </h2>
+            <p className="py-3 text-sm opacity-70">
+              {pencarian
+                ? `Tidak ada paket yang cocok dengan “${pencarian}”. Coba ejaan lain, atau buat paket baru sekalian!`
+                : tab === 'aktif'
+                  ? 'Susun 7 dokumen Kurikulum Merdeka dengan bantuan AI — semuanya beres dalam hitungan menit.'
+                  : 'Paket yang diarsipkan akan muncul di sini dan bisa dikembalikan kapan saja.'}
+            </p>
+            {!pencarian && tab === 'aktif' && (
+              <button
+                type="button"
+                onClick={() => setModalBuatTerbuka(true)}
+                className="btn btn-primary mt-2"
+              >
+                <Plus className="w-5 h-5" />
+                Buat Paket Baru 🎒
+              </button>
+            )}
           </div>
         </div>
       ) : (
         /* REDESIGN: grid kartu responsif */
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {tersaring.map((p) => {
+          {tersaring.map((p, i) => {
             const selesai = p.progress?.selesai ?? 0;
             const total = p.progress?.totalDokumen ?? 7;
             const sibuk = aksiId === p.id;
             return (
-              <div key={p.id} className="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+              <div
+                key={p.id}
+                className="rgm-card ux-lift ux-stagger"
+                style={{ '--ux-delay': `${(i % 6) * 70}ms` } as React.CSSProperties}
+              >
                 <div className="card-body">
                   <h3 className="card-title text-base line-clamp-2">{p.topik}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-1">
@@ -254,8 +262,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
                       className="btn btn-primary btn-sm"
                       disabled={sibuk}
                     >
-                      Buka
-                      <ArrowRight className="w-4 h-4" />
+                      Yuk, Buka 🚀
                     </button>
                     <button
                       type="button"
@@ -318,11 +325,18 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
       {/* REDESIGN: modal konfirmasi hapus DaisyUI (tanpa window.confirm) */}
       {targetHapus && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus paket">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">Hapus paket?</h3>
+          {/* FRIENDLY: serius tapi ramah — sudut membulat, ikon peringatan lembut */}
+          <div className="modal-box rounded-3xl ux-pop-in">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <span className="p-2 rounded-2xl bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300">
+                <AlertTriangle className="w-5 h-5" />
+              </span>
+              Hapus paket?
+            </h3>
             <p className="py-4 text-sm opacity-80">
               Paket <span className="font-semibold">“{targetHapus.topik}”</span> beserta
               seluruh dokumennya akan dihapus permanen dan tidak bisa dikembalikan.
+              Pastikan dulu ya — keputusan ini tidak bisa dibatalkan.
             </p>
             <div className="modal-action">
               <button
@@ -408,7 +422,7 @@ const BuatPaketModal: React.FC<{
     e.preventDefault();
     // REDESIGN: validasi — topik wajib diisi.
     if (!form.topik.trim()) {
-      setGalat('Topik wajib diisi.');
+      setGalat('Ups, topiknya masih kosong — yuk diisi dulu ✏️');
       return;
     }
     setGalat('');
@@ -441,9 +455,15 @@ const BuatPaketModal: React.FC<{
 
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Buat paket baru">
-      <div className="modal-box max-w-lg">
+      <div className="modal-box max-w-lg rounded-3xl ux-pop-in">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-lg">Buat Paket Baru</h3>
+          {/* FRIENDLY: header hangat dengan ikon berkilau */}
+          <h3 className="font-bold text-lg flex items-center gap-2">
+            <span className="p-2 rounded-2xl bg-[#FFEEDB] text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+              <Sparkles className="w-5 h-5" />
+            </span>
+            Buat Paket Baru
+          </h3>
           <button
             type="button"
             className="btn btn-ghost btn-sm btn-circle"
@@ -555,7 +575,7 @@ const BuatPaketModal: React.FC<{
             </button>
             <button type="submit" className="btn btn-primary" disabled={menyimpan}>
               {menyimpan && <span className="loading loading-spinner loading-sm" />}
-              Simpan & Buka Paket
+              Simpan & Buka Paket 🎉
             </button>
           </div>
         </form>
