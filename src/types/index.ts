@@ -75,6 +75,14 @@ export interface GeneratorParams {
   dimensiProfilLulusan: string[];
   soalConfig?: {
     jumlahSoal: number;
+    /** Komposisi kustom per jenis soal: { pg_biasa, pg_kompleks, menjodohkan, isian, uraian }. */
+    komposisi?: {
+      pg_biasa: number;
+      pg_kompleks: number;
+      menjodohkan: number;
+      isian: number;
+      uraian: number;
+    };
     bentukSoal: string[];
     levelKognitif: string;
   };
