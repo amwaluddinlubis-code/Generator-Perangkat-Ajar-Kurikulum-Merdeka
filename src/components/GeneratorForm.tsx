@@ -14,6 +14,7 @@ import {
   DOC_TYPE_INFO,
 } from '../data/curriculumData';
 import { ContextualTopicSuggester } from './ContextualTopicSuggester';
+import { KomposisiSoal, KomposisiSoalState, KOMPOSISI_DEFAULT } from './KomposisiSoal';
 import { P5ThematicGeneratorSection } from './P5ThematicGeneratorSection';
 import { CurriculumTopicItem } from '../data/topicCatalog';
 import { apiFetch } from '../utils/api';
@@ -143,9 +144,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     'Kemandirian'
   ]);
   
-  // Soal config
-  const [jumlahSoal, setJumlahSoal] = useState<number>(15);
+  // Soal config — guru bebas kustom komposisi tiap jenis soal (FITUR: soal kustom)
+  const [komposisiSoal, setKomposisiSoal] = useState<KomposisiSoalState>({ ...KOMPOSISI_DEFAULT });
+  const jumlahSoal = Object.values(komposisiSoal).reduce((a, b) => a + (Number(b) || 0), 0);
   const [levelKognitif, setLevelKognitif] = useState<string>('Kombinasi MOTS & HOTS (C3-C5)');
+  const [pesanValidasi, setPesanValidasi] = useState<string | null>(null);
 
   // Konfigurasi tema & modul projek P5
   const [temaP5, setTemaP5] = useState<string>('Gaya Hidup Berkelanjutan');
@@ -267,6 +270,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       dimensiProfilLulusan,
       soalConfig: {
         jumlahSoal,
+        komposisi: { ...komposisiSoal },
         bentukSoal: ['Pilihan Ganda', 'Pilihan Ganda Kompleks (AKM)', 'Menjodohkan', 'Isian Singkat', 'Uraian HOTS'],
         levelKognitif
       },
@@ -292,6 +296,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       setFormStep(1);
       return;
     }
+    // FITUR soal kustom: jangan generate bila total butir 0
+    if (docType === 'soal_ujian' && jumlahSoal < 1) {
+      setPesanValidasi('Tambah minimal 1 butir soal pada komposisi di atas ya, Guru! 🎯');
+      return;
+    }
+    setPesanValidasi(null);
 
     onGenerate(bangunParams());
   };
@@ -826,22 +836,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-              <div>
-                <label className="block text-xs font-bold text-amber-950 mb-1.5">
-                  Jumlah Butir Soal Ujian
-                </label>
-                <select
-                  value={jumlahSoal}
-                  onChange={(e) => setJumlahSoal(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-xs sm:text-sm bg-white font-medium text-slate-800 focus:ring-2 focus:ring-amber-500"
-                >
-                  <option value={10}>10 Butir Soal (Kuis / Asesmen Formatif)</option>
-                  <option value={15}>15 Butir Soal (Standar Penilaian Tengah Semester)</option>
-                  <option value={20}>20 Butir Soal (Lengkap Penilaian Akhir Semester)</option>
-                  <option value={25}>25 Butir Soal (Ujian Sekolah / Asesmen Sumatif Akhir Jenjang)</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-1 gap-3.5 pt-1">
+              <KomposisiSoal nilai={komposisiSoal} onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }} />
 
               <div>
                 <label className="block text-xs font-bold text-amber-950 mb-1.5">
@@ -1121,22 +1117,8 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     <HelpCircle className="w-4 h-4 text-amber-700" />
                     Konfigurasi Khusus Paket Soal Ujian (AKM & HOTS)
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Jumlah Soal Ujian
-                      </label>
-                      <select
-                        value={jumlahSoal}
-                        onChange={(e) => setJumlahSoal(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white"
-                      >
-                        <option value={10}>10 Butir Soal (Format Singkat)</option>
-                        <option value={15}>15 Butir Soal (Standar Ujian Tengah Semester)</option>
-                        <option value={20}>20 Butir Soal (Lengkap Sumatif Akhir Semester)</option>
-                        <option value={25}>25 Butir Soal (Ujian Sekolah / Try Out Komprehensif)</option>
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <KomposisiSoal nilai={komposisiSoal} onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }} />
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Komposisi Level Berpikir
@@ -1211,6 +1193,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
           )}
         </div>
         </>}
+
+        {/* FITUR soal kustom: pesan validasi komposisi */}
+        {pesanValidasi && (
+          <p role="alert" className="mt-3 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            {pesanValidasi}
+          </p>
+        )}
 
         {/* Bar navigasi — selalu tampil di langkah 1, 2, 3 (mode lepas saja) */}
         {/* GEL2: mode paket memakai tombol "Generate & Simpan sebagai Versi Baru" di bawah */}
