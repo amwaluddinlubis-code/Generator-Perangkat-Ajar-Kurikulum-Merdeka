@@ -1622,30 +1622,22 @@ KOMPONEN WAJIB:
 3. **Tabel Program Semester (Promes) Semester 1 & 2**: Pemetaan alokasi waktu per minggu efektif, jadwal asesmen formatif, asesmen sumatif lingkup materi, asesmen sumatif akhir semester, jeda pekan remedial, dan libur kalender pendidikan.
 `,
       modul_p5: `
-TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)** sesuai pedoman resmi projek kokurikuler Kemendikdasmen & Kurikulum Merdeka.
+TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL PROJEK PENGUATAN PROFIL LULUSAN** sesuai ketentuan projek kokurikuler Kemendikdasmen.
 
-Tema Proyek Resmi: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan'}
-Judul / Topik Projek: ${topik}
-Jenjang / Fase: ${jenjang} / ${calculatedFase} (${tingkat})
-${catatanTambahan?.isuKontekstual ? `Latar Belakang Isu Kontekstual: ${catatanTambahan.isuKontekstual}` : ''}
-${catatanTambahan?.bentukAksi ? `Bentuk Aksi Nyata / Gelar Karya: ${catatanTambahan.bentukAksi}` : ''}
-${catatanTambahan?.sistemWaktu ? `Sistem Pelaksanaan Waktu: ${catatanTambahan.sistemWaktu}` : ''}
-${catatanTambahan?.mitraProjek ? `Narasumber / Mitra Kolaborasi: ${catatanTambahan.mitraProjek}` : ''}
-Alokasi Waktu: ${alokasiWaktu || '36 JP'}
+Tema Proyek: ${catatanTambahan?.temaP5 || 'Gaya Hidup Berkelanjutan / Kewirausahaan / Kearifan Lokal / Suara Demokrasi / Rekayasa Teknologi'}
+Topik Proyek: ${topik}
+Jenjang / Fase: ${jenjang} / ${calculatedFase}
 
 KOMPONEN WAJIB:
-1. **Profil Modul**: Tema Resmi, Judul Projek yang Inspiratif & Kontekstual, Fase/Kelas, Alokasi Total JP, dan Model Pelaksanaan (Blok / Terjadwal).
-2. **Pemetaan Dimensi, Elemen, dan Subelemen Profil Pelajar Pancasila**:
-   - Sajikan dalam TABEL MATRIKS Capaian Akhir Fase: Dimensi Sasaran, Elemen Kunci, Subelemen, dan Target Capaian Fase ${calculatedFase}.
-3. **Alur Rangkaian Aktivitas Projek Humanis (4 Tahap Nyata)**:
-   - **Tahap Pengenalan**: Membuka wawasan murid terhadap isu nyata, pertanyaan pemantik inspiratif guru.
-   - **Tahap Kontekstualisasi**: Investigasi lapangan di sekolah/lingkungan tempat tinggal, wawancara/audit masalah, perumusan ide solusi.
-   - **Tahap Aksi Nyata**: Praktik pembuatan karya / produk nyata / kampanye kolaboratif, pendampingan empati guru.
-   - **Tahap Refleksi & Tindak Lanjut**: Evaluasi proses, pameran hasil karya (Gelar Karya Projek), umpan balik mitra/orang tua, dan komitmen keberlanjutan.
-4. **Asesmen Holistik Projek**:
-   - Asesmen Formatif (lembar observasi proses dan catatan anekdotal).
-   - Rubrik Asesmen Sumatif Perkembangan (Tabel 4 Kriteria: Mulai Berkembang, Sedang Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
-5. **Lampiran Praktis**: Lembar jurnal refleksi harian murid, panduan teknis gelar karya/pameran, dan rubrik evaluasi diri antarteman.
+1. Profil Modul: Tema, Judul Projek yang Inspiratif, Fase/Kelas, Durasi Total JP.
+2. Dimensi, Elemen, dan Subelemen Profil Lulusan yang Dikembangkan (Lengkap dengan matriks target capaian di akhir fase).
+3. Alur Aktivitas Projek Humanis (4 Tahap):
+   - Tahap Pengenalan: Membuka wawasan murid terhadap isu lingkungan/sosial di sekitar.
+   - Tahap Kontekstualisasi: Meneliti dan mengidentifikasi masalah nyata di sekolah/lingkungan tempat tinggal.
+   - Tahap Aksi: Merancang karya, produk nyata, atau aksi sosial kolaboratif.
+   - Tahap Refleksi & Tindak Lanjut: Evaluasi proses, pameran hasil karya (Gelar Karya Projek), dan komitmen keberlanjutan.
+4. Instrumen Asesmen Projek: Asesmen diagnostik awal, formatif lembar pengamatan proses, dan rubrik sumatif perkembangan murid (Mulai Berkembang, Sedang Berkembang, Berkembang Sesuai Harapan, Sangat Berkembang).
+5. Lampiran: Lembar jurnal harian murid dan panduan pameran gelar karya.
 `
     };
 
@@ -1654,6 +1646,7 @@ KOMPONEN WAJIB:
     const fullPrompt = `
 PERAN & NADA SUARA (ROLE & VOICE OF A REAL HUMAN TEACHER):
 Anda adalah seorang **Guru Penggerak & Pendidik Praktisi Berpengalaman di Indonesia**. Anda telah bertahun-tahun mengajar langsung di ruang kelas nyata, sangat memahami psikologi dan dinamika murid-murid Indonesia, serta berdedikasi menciptakan pembelajaran yang memerdekakan, bermakna, dan menyenangkan.
+Bayangkan dengan konkret: dokumen yang Anda tulis ini akan dipakai mengajar **BESOK PAGI** di kelas nyata berisi 30 murid yang berbeda-beda — ada yang cepat paham, ada yang malu bertanya, ada yang baru sarapan gorengan di kantin. **Tulis untuk mereka, bukan untuk arsip.**
 
 PANDUAN BAHASA & GAYA PENULISAN "GURU MANUSIAWI SEJATI":
 1. **GAYA BAHASA ALAMI & PEDAGOGIS**:
@@ -1676,6 +1669,27 @@ PANDUAN BAHASA & GAYA PENULISAN "GURU MANUSIAWI SEJATI":
 4. **ANTI-TEMPLATE KOSONG**:
    - Jangan pernah menyajikan placeholder kosong seperti "[tuliskan materi di sini]" atau "[isi penjelasan]". Tuliskan materi pokok nyata yang kaya konsep, mendalam, akurat, dan edukatif.
    - Rubrik penilaian harus memiliki deskriptor perilaku yang konkret dan dapat diamati (observable) langsung oleh guru di kelas.
+
+5. **RITME & NAPAS TULISAN MANUSIA**:
+   - Variasikan panjang kalimat. Sesekali tulis kalimat pendek. Patah. Untuk penekanan. Lalu kembali mengalir panjang seperti guru bercerita di depan kelas.
+   - Jangan menulis semua paragraf dengan panjang dan pola yang sama — keseragaman yang sempurna adalah ciri tulisan mesin, bukan manusia.
+
+6. **DETAIL HIDUP KHAS KELAS INDONESIA**:
+   - Selipkan detail autentik yang hanya diketahui orang yang pernah mengajar: nama murid (mis. "Sinta", "Rizky", "Dewi"), situasi nyata (hujan deras di luar jendela, listrik padam, anak yang malu angkat tangan, papan tulis yang sudah penuh di jam terakhir).
+   - Ambil analogi dari dapur, sawah, warung, angkot, HP — dunia yang benar-benar dikenal murid, bukan contoh generik dari buku.
+
+7. **STRUKTUR ADALAH PANDUAN, BUKAN BELENGGU**:
+   - Ikuti struktur dokumen resmi di bawah, tetapi atur penekanan seperti guru sungguhan: bagian yang paling penting untuk topik ini boleh lebih panjang dan hidup; bagian administratif tetap ringkas dan lugas.
+   - Setiap dokumen harus terasa ditulis untuk situasi kelas yang spesifik — jangan mengulang pola kalimat dan urutan yang identik setiap kali.
+
+8. **CONTOH SUARA GURU — TIRU NADA INI**:
+   > "Anak-anak, coba lihat keluar jendela. Daun mangga di halaman itu — kenapa warnanya hijau? Nah, hari ini kita jadi detektif. Kita bongkar rahasia daun itu."
+   >
+   > "Bu Guru tidak akan memberi tahu jawabannya langsung. Diskusikan dulu dengan teman sebangkumu. Lima menit. Kalau buntu, panggil Bu Guru — kita pecahkan bareng."
+   - Tiru nada di atas: hangat, langsung, mengajak, kadang memotong kalimat, sesekali menyapa dengan nama. Bukan bahasa pidato, bukan bahasa laporan.
+
+9. **RESTRAIN FORMAT**:
+   - Bold, italic, dan heading dipakai seperlunya untuk navigasi, bukan di setiap kalimat. Dokumen yang baik enak dibaca mengalir — halaman yang penuh cetak tebal justru melelahkan dan terasa seperti keluaran mesin.
 
 INFORMASI PERANGKAT AJAR YANG DIMINTA:
 - Jenis Dokumen: ${docType.toUpperCase()}
