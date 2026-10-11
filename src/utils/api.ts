@@ -1,7 +1,9 @@
 /**
  * Utilitas API Fetch terpadu untuk Ruang Guru Merdeka.
- * Mendukung autentikasi berbasis cookie, Authorization Bearer,
- * dan header pemulihan sesi otomatis untuk lingkungan iframe/sandbox.
+ * Autentikasi HANYA via bukti sesi: cookie (credentials: include),
+ * Authorization Bearer, atau x-session-token.
+ * Header x-user-id/x-user-email SENGAJA tidak dikirim — server tidak lagi
+ * memakainya sebagai bukti autentikasi (anti-spoofing, issue #2).
  */
 
 export function getAuthHeaders(): Record<string, string> {
@@ -11,12 +13,6 @@ export function getAuthHeaders(): Record<string, string> {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
       headers['x-session-token'] = token;
-    }
-    const userStr = localStorage.getItem('ruang_guru_current_user');
-    if (userStr) {
-      const user = JSON.parse(userStr);
-      if (user?.id) headers['x-user-id'] = String(user.id);
-      if (user?.email) headers['x-user-email'] = String(user.email);
     }
   } catch {
     // Abaikan kegagalan baca data lokal
