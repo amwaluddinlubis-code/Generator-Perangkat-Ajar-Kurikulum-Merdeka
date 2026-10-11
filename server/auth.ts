@@ -183,13 +183,17 @@ export function unauthorized(res: Response) {
 }
 
 /**
- * requireAuth — membaca cookie `rgm_session`, header Authorization: Bearer,
- * x-session-token, atau fallback identitas sesi pengguna (x-user-id/x-user-email).
- * Mengisi `req.user` (tanpa passwordHash). 401 bila tidak valid.
+ * requireAuth — identitas user HANYA dari bukti sesi yang tervalidasi:
+ * cookie `rgm_session`, header `Authorization: Bearer <token>`, atau
+ * header `x-session-token`. Mengisi `req.user` (tanpa passwordHash).
+ * 401 bila tidak ada bukti sesi yang valid (fail closed).
+ *
+ * Header `x-user-id` / `x-user-email` SENGAJA TIDAK dipakai sebagai bukti
+ * autentikasi — keduanya dapat dipalsukan client dan sebelumnya
+ * memungkinkan penyamaran sebagai pengguna lain (issue #2).
  */
 export function createRequireAuth(
-  resolveUser: (userId: string) => AuthUser | undefined,
-  resolveUserByEmail?: (email: string) => AuthUser | undefined
+  resolveUser: (userId: string) => AuthUser | undefined
 ) {
   return function requireAuth(req: Request, res: Response, next: NextFunction) {
     let token = parseCookies(req)[SESSION_COOKIE];
@@ -208,22 +212,6 @@ export function createRequireAuth(
         return next();
       }
       destroySession(token);
-    }
-
-    // Fallback: Jika cookie/token terhalang kebijakan iframe browser, gunakan identitas pengguna aktif
-    const headerUserId = req.headers['x-user-id'] ? String(req.headers['x-user-id']).trim() : '';
-    const headerUserEmail = req.headers['x-user-email'] ? String(req.headers['x-user-email']).trim().toLowerCase() : '';
-
-    if (headerUserId || headerUserEmail) {
-      const user = (headerUserId ? resolveUser(headerUserId) : undefined) ||
-                   (headerUserEmail && resolveUserByEmail ? resolveUserByEmail(headerUserEmail) : undefined);
-      if (user) {
-        const newToken = createSession(user.id);
-        res.setHeader('Set-Cookie', sessionCookieHeader(newToken));
-        res.setHeader('x-new-session-token', newToken);
-        req.user = publicUser(user);
-        return next();
-      }
     }
 
     return unauthorized(res);
