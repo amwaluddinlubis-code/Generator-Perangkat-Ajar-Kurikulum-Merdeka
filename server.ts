@@ -733,6 +733,14 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
   let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
 
   if (existingUser) {
+    // Samakan dengan /api/auth/login: akun non-VERIFIED tidak boleh dapat sesi baru (issue #2 P1).
+    if (existingUser.status !== 'VERIFIED') {
+      auditLog('login_belajar_id_blocked', existingUser.id, { email: cleanEmail, status: existingUser.status });
+      return res.status(403).json({
+        success: false,
+        error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin atau sudah dinonaktifkan. Hubungi administrator.' }
+      });
+    }
     const token = createSession(existingUser.id);
     saveDB();
     auditLog('login_belajar_id', existingUser.id, { email: existingUser.email });
@@ -839,6 +847,9 @@ app.post('/api/users/verify', requireAuth, requireAdmin, (req: Request, res: Res
   } else {
     user.verifiedAt = undefined;
     user.verifiedBy = undefined;
+    // Cabut semua sesi aktif user yang statusnya diturunkan (issue #2 P1):
+    // tanpa ini, sesi lama tetap bisa dipakai sampai kedaluwarsa (7 hari).
+    destroyUserSessions(user.id);
   }
 
   saveDB();
