@@ -6,6 +6,10 @@
 import {
   createRequireAuth,
   createSession,
+  destroySession,
+  destroyUserSessions,
+  getSessions,
+  requireRole,
   setSessions,
   type AuthUser,
 } from '../server/auth.ts';
@@ -130,6 +134,87 @@ const requireAuth = createRequireAuth((id: string) => USERS.get(id));
   requireAuth(mockReq({}), res, (() => { nextCalled = true; }) as any);
   check('tanpa kredensial -> 401', res.statusCode === 401);
   check('tanpa kredensial -> next() tidak dipanggil', !nextCalled);
+}
+
+console.log('\n--- Issue #2 P1: status akun & pencabutan sesi ---\n');
+
+// 9. P1: sesi valid, lalu status diubah jadi REJECTED → request ditolak 403 dan sesi dicabut
+{
+  setSessions([]);
+  VICTIM.status = 'VERIFIED';
+  const token = createSession(VICTIM.id);
+  // simulasi /api/users/verify mengubah status → REJECTED
+  VICTIM.status = 'REJECTED';
+  let nextCalled = false;
+  const req = mockReq({ authorization: `Bearer ${token}` });
+  const res = mockRes();
+  requireAuth(req, res, (() => { nextCalled = true; }) as any);
+  check('status REJECTED -> 403 ACCOUNT_NOT_ACTIVE', res.statusCode === 403 && res.body?.error?.code === 'ACCOUNT_NOT_ACTIVE');
+  check('status REJECTED -> next() tidak dipanggil', !nextCalled);
+  check('status REJECTED -> sesi ikut dicabut', getSessions().find(s => s.token === token) === undefined);
+  VICTIM.status = 'VERIFIED'; // kembalikan untuk tes berikutnya
+}
+
+// 10. P1: user PENDING dengan sesi valid → 403 (fail closed)
+{
+  setSessions([]);
+  ATTACKER.status = 'PENDING';
+  const token = createSession(ATTACKER.id);
+  let nextCalled = false;
+  const req = mockReq({ cookie: `rgm_session=${token}` });
+  const res = mockRes();
+  requireAuth(req, res, (() => { nextCalled = true; }) as any);
+  check('status PENDING -> 403', res.statusCode === 403);
+  check('status PENDING -> next() tidak dipanggil', !nextCalled);
+  ATTACKER.status = 'VERIFIED';
+}
+
+// 11. P1: destroyUserSessions mencabut SEMUA sesi milik user (dipakai /api/users/verify)
+{
+  setSessions([]);
+  const t1 = createSession(VICTIM.id);
+  const t2 = createSession(VICTIM.id);
+  const t3 = createSession(ATTACKER.id);
+  destroyUserSessions(VICTIM.id);
+  const remaining = getSessions();
+  check('destroyUserSessions -> sesi korban habis', !remaining.some(s => s.userId === VICTIM.id));
+  check('destroyUserSessions -> sesi user lain utuh', remaining.some(s => s.token === t3));
+  void t1; void t2;
+}
+
+console.log('\n--- Issue #2 P2: sesi kedaluwarsa & kontrol role ---\n');
+
+// 12. P2: sesi kedaluwarsa → 401 dan sesi dibersihkan
+{
+  setSessions([{
+    token: 'token-kedaluarsa',
+    userId: VICTIM.id,
+    createdAt: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() - 1000).toISOString(),
+  }]);
+  let nextCalled = false;
+  const res = mockRes();
+  requireAuth(mockReq({ authorization: 'Bearer token-kedaluarsa' }), res, (() => { nextCalled = true; }) as any);
+  check('sesi kedaluwarsa -> 401', res.statusCode === 401);
+  check('sesi kedaluwarsa -> next() tidak dipanggil', !nextCalled);
+  check('sesi kedaluwarsa -> sesi dibersihkan', getSessions().length === 0);
+}
+
+// 13. P2: requireRole — GURU ditolak di rute ADMIN (403), ADMIN lolos
+{
+  const requireAdmin = requireRole('ADMIN', 'SUPER_ADMIN');
+  let nextCalled = false;
+  const resGuru = mockRes();
+  requireAdmin({ user: { ...VICTIM, role: 'GURU' } } as any, resGuru, (() => { nextCalled = true; }) as any);
+  check('requireRole: GURU -> 403 FORBIDDEN', resGuru.statusCode === 403 && !nextCalled);
+  nextCalled = false;
+  const resAdmin = mockRes();
+  requireAdmin({ user: { ...ATTACKER, role: 'ADMIN' } } as any, resAdmin, (() => { nextCalled = true; }) as any);
+  check('requireRole: ADMIN -> next() dipanggil', nextCalled && resAdmin.statusCode === 0);
+  nextCalled = false;
+  const resAnon = mockRes();
+  requireAdmin({} as any, resAnon, (() => { nextCalled = true; }) as any);
+  check('requireRole: tanpa user -> 403', resAnon.statusCode === 403 && !nextCalled);
 }
 
 console.log(`\nHasil: ${passed} lolos, ${failed} gagal`);

@@ -208,6 +208,18 @@ export function createRequireAuth(
       const userId = getSessionUserId(token);
       const user = userId ? resolveUser(userId) : undefined;
       if (user) {
+        // Pertahanan berlapis (issue #2 P1): sesi yang masih valid tidak boleh
+        // dipakai bila status akun sudah tidak aktif. Sesi ikut dicabut.
+        if (user.status === 'REJECTED' || user.status === 'PENDING') {
+          destroySession(token);
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'ACCOUNT_NOT_ACTIVE',
+              message: 'Akun Anda tidak aktif atau belum diverifikasi. Hubungi administrator.'
+            }
+          });
+        }
         req.user = publicUser(user);
         return next();
       }
