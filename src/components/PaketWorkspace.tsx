@@ -160,6 +160,16 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
   }, []);
 
+  // FRIENDLY: tutup modal Generate dengan Escape (jangan tutup saat AI sedang generate)
+  useEffect(() => {
+    if (modal !== 'generate') return;
+    const tangani = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !sedangGenerate) setModal(null);
+    };
+    window.addEventListener('keydown', tangani);
+    return () => window.removeEventListener('keydown', tangani);
+  }, [modal, sedangGenerate]);
+
   // REDESIGN: normalisasi respons GET /api/pakets/:id — terima bentuk
   // REDESIGN: { ...paket, dokumen: [...] } maupun { paket, dokumen }
   const muatPaket = useCallback(async () => {

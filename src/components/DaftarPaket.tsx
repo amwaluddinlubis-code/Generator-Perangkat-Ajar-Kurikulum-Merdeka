@@ -398,6 +398,15 @@ const BuatPaketModal: React.FC<{
   const [galat, setGalat] = useState('');
   const [menyimpan, setMenyimpan] = useState(false);
 
+  // FRIENDLY: tutup dengan Escape (jangan tutup saat sedang menyimpan)
+  useEffect(() => {
+    const tangani = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !menyimpan) onTutup();
+    };
+    window.addEventListener('keydown', tangani);
+    return () => window.removeEventListener('keydown', tangani);
+  }, [onTutup, menyimpan]);
+
   const daftarMapel = JENJANG_CONFIGS[form.jenjang].defaultMapel;
   const daftarFase = JENJANG_CONFIGS[form.jenjang].fases;
   const faseAktif = daftarFase.find((f) => f.fase === form.fase) ?? daftarFase[0];
