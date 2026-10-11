@@ -600,8 +600,7 @@ ensurePasswordHashes();
 // Middleware auth: identitas user SELALU dari session cookie server-side,
 // bukan dari header/body yang dikirim client.
 const requireAuth = createRequireAuth(
-  (id: string) => users.find(u => u.id === id) as AuthUser | undefined,
-  (email: string) => users.find(u => u.email.toLowerCase() === email.toLowerCase()) as AuthUser | undefined
+  (id: string) => users.find(u => u.id === id) as AuthUser | undefined
 );
 const requireAdmin = requireRole('ADMIN', 'SUPER_ADMIN');
 
