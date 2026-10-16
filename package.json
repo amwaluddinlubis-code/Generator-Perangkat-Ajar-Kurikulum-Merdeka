@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx test/auth-header-spoofing.test.ts && tsx test/soal-terstruktur.test.ts && tsx test/soal-pipeline.test.ts",
+    "test": "tsx test/auth-header-spoofing.test.ts && tsx test/soal-terstruktur.test.ts && tsx test/soal-pipeline.test.ts && tsx test/kop-pengesahan.test.ts && tsx test/naskah-admin-ujian.test.ts && tsx test/kertas-namafile.test.ts && tsx test/prompt-fase2.test.ts",
     "check:ci": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
