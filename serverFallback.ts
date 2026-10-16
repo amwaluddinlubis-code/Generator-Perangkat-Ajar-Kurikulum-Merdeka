@@ -155,6 +155,10 @@ Pemahaman terhadap **${topik}** memberikan bekal kepada peserta didik untuk meng
   }
 
   if (docType === 'soal_ujian') {
+    // FASE 1 ("Paket soal terpercaya"): fallback offline SENGAJA tetap memakai
+    // format markdown legacy agar kompatibel mundur — hanya jalur AI online di
+    // /api/generate yang memakai kontrak JSON terstruktur (PENANDA_SOAL_V1).
+    // Jangan ubah format fallback ini ke format terstruktur.
     // FITUR soal kustom: susun butir soal mengikuti komposisi pilihan guru.
     const _komp = (params.soalConfig?.komposisi && typeof params.soalConfig.komposisi === 'object')
       ? params.soalConfig.komposisi : { pg_biasa: 5, pg_kompleks: 3, menjodohkan: 2, isian: 2, uraian: 3 };
