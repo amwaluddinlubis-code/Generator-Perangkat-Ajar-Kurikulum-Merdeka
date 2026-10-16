@@ -20,6 +20,9 @@ import {
   jalankanPipelineSoalTerstruktur,
   SoalPipelineError,
 } from './server/soalPipeline.js';
+// FASE 2 (F2-6 & F2-7): potongan prompt refleksi/pengayaan/remedial + dua kolom,
+// dipisah ke modul agar server.ts tetap di bawah batas push konektor.
+import { bagianRefleksiPengayaan, instruksiDuaKolom } from './server/promptFase2.js';
 // GEL2 — docx dipakai server-side untuk unduh bundle paket sebagai satu .docx.
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } from 'docx';
 import {
@@ -1626,6 +1629,7 @@ STRUKTUR RESMI & MUATAN OPERASIONAL:
      * Penyampaian tujuan pembelajaran dan peta alur aktivitas dengan bahasa yang ramah anak.
    - **Kegiatan Inti (50 - 60 Menit) - Sintaks ${modelPembelajaran || 'PBL'}**:
      * Uraikan langkah-langkah pembelajaran sintaks model secara bertahap.
+     * ${instruksiDuaKolom()}
      * Sertakan panduan **Diferensiasi Pembelajaran Nyata**:
        - *Diferensiasi Konten*: Bagaimana guru menyajikan materi untuk murid yang suka membaca visual vs objek konkret/video pendek.
        - *Diferensiasi Proses (Scaffolding)*: Uraikan apa yang dilakukan guru saat berkeliling mendampingi murid yang butuh bimbingan intensif vs memberikan keleluasaan eksplorasi pada murid yang sudah cepat paham.
@@ -1639,6 +1643,7 @@ STRUKTUR RESMI & MUATAN OPERASIONAL:
    - Asesmen Diagnostik (Awal), Asesmen Formatif (Observasi proses diskusi & LKPD), Asesmen Sumatif Lingkup Materi.
    - **Tabel Rubrik KKTP**: Buat TABEL MARKDOWN LENGKAP dengan 4 skala (*Baru Berkembang*, *Layak*, *Cakap*, *Mahir*). Deskriptor wajib berupa perilaku/bukti nyata yang dapat dilihat atau didengar langsung oleh guru, bukan sekadar kata sifat abstrak.
    - Rencana Tindak Lanjut: Panduan remedial yang ramah dan pengayaan yang menantang rasa ingin tahu.
+   - ${bagianRefleksiPengayaan(jenjang)}
 
 5. **LAMPIRAN LENGKAP & SIAP PAKAI**:
    - **Lembar Kerja Peserta Didik (LKPD)**: Siap dibagikan, memuat identitas, petunjuk kerja ramah murid, stimulus masalah, kolom eksplorasi, dan pertanyaan analisis.
@@ -1657,11 +1662,13 @@ STRUKTUR RESMI:
 4. **LANGKAH-LANGKAH PEMBELAJARAN (RINCI ALOKASI WAKTU)**:
    - Pendahuluan (10 Menit): Sapaan ramah, doa, asesmen awal kesiapan belajar, apersepsi kontekstual, pertanyaan pemantik.
    - Kegiatan Inti (60 Menit): Penerapan sintaks ${modelPembelajaran || 'Problem Based Learning'} yang dipadukan dengan sentuhan diferensiasi proses dan kolaborasi murid.
+   - ${instruksiDuaKolom()}
    - Penutup (10 Menit): Rangkuman bersama, refleksi murid (exit ticket), apresiasi dari guru, dan doa penutup.
 5. **ASESMEN HASIL PEMBELAJARAN**:
    - Asesmen Sikap: Observasi dimensi Profil Lulusan selama kerja tim.
    - Asesmen Pengetahuan: Kuis lisan/tulisan singkat pada lembar kerja.
    - Asesmen Keterampilan: Unjuk kerja presentasi atau produk hasil diskusi.
+   - ${bagianRefleksiPengayaan(jenjang)}
 6. **LEMBAR PENGESAHAN**: Tempat & Tanggal, Tanda Tangan Mengetahui Kepala Sekolah dan Guru Mata Pelajaran.
 `,
       soal_ujian: `
