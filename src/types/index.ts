@@ -1,5 +1,8 @@
 export type Jenjang = 'SD' | 'SMP' | 'SMA' | 'SMK';
 
+// F1-4: komposisi kognitif (C1–C6) dalam GeneratorParams.soalConfig.
+import type { KomposisiKognitifState } from '../../shared/soalTerstruktur';
+
 export type DocType = 
   | 'modul_ajar' 
   | 'rpp' 
@@ -85,6 +88,8 @@ export interface GeneratorParams {
     };
     bentukSoal: string[];
     levelKognitif: string;
+    /** F1-4: komposisi kognitif per level (C1–C6) yang diminta guru. */
+    komposisiKognitif?: KomposisiKognitifState;
   };
   authorName: string;
   schoolName: string;
