@@ -5,6 +5,21 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import { generateFallbackDocument } from './serverFallback.js';
+// FASE 1: kontrak data paket soal terstruktur (./shared/...) + pipeline
+// soal terstruktur (./server/soalPipeline.ts — diekstrak agar server.ts
+// tetap di bawah batas push konektor).
+import {
+  adalahSoalTerstruktur,
+  parseSoalTerstruktur,
+  renderPaketSoalMarkdown,
+  type BentukSoal,
+  type KomposisiKognitifState,
+} from './shared/soalTerstruktur.js';
+import {
+  hitungKomposisiSoal,
+  jalankanPipelineSoalTerstruktur,
+  SoalPipelineError,
+} from './server/soalPipeline.js';
 // GEL2 — docx dipakai server-side untuk unduh bundle paket sebagai satu .docx.
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } from 'docx';
 import {
@@ -1401,7 +1416,16 @@ app.get('/api/pakets/:id/bundle', requireAuth, async (req: Request, res: Respons
       new Paragraph({ children: [new PageBreak()] }),
       new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { after: 120 }, children: [new TextRun({ text: LABEL_DOC_PAKET[it.doc.docType], bold: true, size: 32, font: 'Times New Roman' })] }),
       new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: `${it.versi.title} — v${it.versi.nomorVersi}`, italics: true, size: 22, color: '555555', font: 'Times New Roman' })] }),
-      ...markdownKeParagraf(it.versi.content)
+      // FASE 1: dokumen soal terstruktur dirender deterministik (markdown stabil)
+      // sebelum dikonversi ke paragraf .docx; dokumen lama tetap seperti semula.
+      ...markdownKeParagraf((() => {
+        const c = it.versi.content;
+        if (adalahSoalTerstruktur(c)) {
+          const p = parseSoalTerstruktur(c);
+          if (p) return renderPaketSoalMarkdown(p);
+        }
+        return c;
+      })())
     );
   }
   const doc = new Document({ sections: [{ children: anak }] });
@@ -1559,6 +1583,19 @@ app.post('/api/generate', requireAuth, requireVerified, generateRateLimit, async
       : `  1. Pilihan Ganda Biasa (4-5 opsi jawaban logis): **5 butir**\n  2. Pilihan Ganda Kompleks (Model AKM): **3 butir**\n  3. Menjodohkan: **2 butir**\n  4. Isian Singkat: **2 butir**\n  5. Uraian HOTS: **3 butir**`;
     const jumlahSoalFinal = totalKomposisi > 0 ? totalKomposisi : (soalConfig?.jumlahSoal || 15);
 
+    // FASE 1: komposisi bentuk + kognitif dihitung di server/soalPipeline.ts.
+    let komposisiBentuk: Record<BentukSoal, number>;
+    let komposisiKognitif: KomposisiKognitifState;
+    let teksKomposisiJson: string;
+    let teksKognitif: string;
+    try {
+      ({ komposisiBentuk, komposisiKognitif, teksKomposisiJson, teksKognitif } =
+        hitungKomposisiSoal(soalConfig, komposisiSoal, totalKomposisi, jumlahSoalFinal));
+    } catch (e) {
+      if (e instanceof SoalPipelineError) return res.status(e.status).json(e.body);
+      throw e;
+    }
+
     const promptInstructions: Record<string, string> = {
       modul_ajar: `
 TUGAS SPESIFIK DOKUMEN: Susunlah **MODUL AJAR LENGKAP & SISTEMATIS KURIKULUM MERDEKA** sesuai dengan **Permendikdasmen No. 13 Tahun 2025** dan **Panduan Pembelajaran dan Asesmen (PPA)**.
@@ -1628,22 +1665,49 @@ STRUKTUR RESMI:
 6. **LEMBAR PENGESAHAN**: Tempat & Tanggal, Tanda Tangan Mengetahui Kepala Sekolah dan Guru Mata Pelajaran.
 `,
       soal_ujian: `
-TUGAS SPESIFIK DOKUMEN: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF KOMPREHENSIF** berstandar **Asesmen Kompetensi Minimum (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
-Gunakan **stimulus nyata dan membumi khas Indonesia** (artikel informatif, infografis data, studi kasus lingkungan/sosial, atau cerita naratif menarik) sehingga soal mengukur daya nalar murid, bukan sekadar hafalan rumus atau definisi kering.
+TUGAS SPESIFIK DOKUMEN: Susunlah **PAKET SOAL UJIAN & ASESMEN SUMATIF** berstandar **Asesmen Kompetensi Minimum (AKM) dan HOTS (Higher Order Thinking Skills)** sesuai Permendikdasmen No. 13 Tahun 2025.
 
-KONFIGURASI SOAL (PILIHAN GURU — WAJIB DIIKUTI TEPAT):
+KONTEKS PEMBELAJARAN:
+- Mata Pelajaran: ${mataPelajaran}
+- Jenjang / Kelas / Fase: ${jenjang} / ${tingkat} / ${calculatedFase}
+- Topik / Materi Pokok: ${topik}
+- Alokasi Waktu: ${alokasiWaktu || '90 Menit'}
+- Gunakan **stimulus nyata dan membumi khas Indonesia** (artikel informatif, infografis data, studi kasus lingkungan/sosial, atau cerita naratif menarik) sehingga soal mengukur daya nalar murid, bukan sekadar hafalan.
+
+KONFIGURASI SOAL (WAJIB DIIKUTI TEPAT):
 - Total: **${jumlahSoalFinal} butir** soal berkualitas tinggi.
-- Komposisi bentuk soal (hanya buat jenis yang terdaftar di bawah, dengan jumlah TEPAT seperti tertulis):
-${teksKomposisi}
-- Jangan menambah jenis soal di luar daftar di atas. Jangan mengubah jumlah per jenis.
+- Jumlah TEPAT per bentuk soal (jangan menambah jenis di luar daftar, jangan mengubah jumlah):
+${teksKomposisiJson}
+- Distribusi level kognitif yang diminta (jumlah butir per level, total = ${jumlahSoalFinal}): ${teksKognitif}
 
-SUSUNAN DOKUMEN:
-1. **KOP NASKAH PENILAIAN SUMATIF RESMI**: Satuan Pendidikan, Mata Pelajaran (${mataPelajaran}), Kelas (${tingkat} / ${calculatedFase}), Topik: ${topik}, Waktu: ${alokasiWaktu || '90 Menit'}.
-2. **KISI-KISI SOAL (TABEL LENGKAP MARKDOWN)**:
-   - Kolom: No, Capaian Pembelajaran, Materi, Indikator Soal, Level Kognitif (L1/Pengetahuan, L2/Aplikasi, L3/Penalaran HOTS), Bentuk Soal, No Butir.
-3. **NASKAH SOAL LENGKAP BESERTA STIMULUS**: Tuliskan setiap stimulus teks/data secara lengkap, dilanjutkan butir-butir pertanyaan yang terhubung dengan stimulus tersebut.
-4. **KUNCI JAWABAN & PEMBAHASAN PEDAGOGIS**: Penjelasan rasional mengapa jawaban tersebut benar dan konsep apa yang sedang dipelajari.
-5. **RUBRIK PENSKORAN & PANDUAN PENILAIAN URAIAN**: Pedoman skor per butir dan rumus konversi nilai akhir skala 0-100.
+GUARD PEDAGOGIS (WAJIB):
+- TP wajib turunan dari CP; gunakan kata kerja operasional (KKO) yang terukur pada indikator (mis. menentukan, menganalisis, mengevaluasi, merancang).
+- Materi harus TEPAT pada topik yang diminta — jangan menggeser topik ke materi lain.
+- Kunci jawaban pg_biasa DISEBAR MERATA di antara semua opsi (jangan selalu "B").
+
+FORMAT OUTPUT — KONTRAK JSON (WAJIB):
+Kembalikan HANYA satu objek JSON valid — TANPA code fence, TANPA prosa pembuka/penutup:
+{"items":[{"bentuk":"...","stimulus":"...","pertanyaan":"...","opsi":[...],"pasangan":[...],"kunci":"...","pembahasan":"...","levelKognitif":"...","indikator":"...","rubrik":[...]}]}
+
+Aturan tiap field:
+- "bentuk": tepat satu dari "pg_biasa" | "pg_kompleks" | "menjodohkan" | "isian" | "uraian".
+- "stimulus" (opsional): tulis LENGKAP teks/data/studi kasus yang mendasari butir; beberapa butir boleh berbagi stimulus yang sama.
+- "pertanyaan": teks pertanyaan (wajib, tidak boleh kosong).
+- "opsi": pg_biasa = 4-5 opsi jawaban logis (teks SAJA, tanpa huruf A./B. di depan); pg_kompleks = daftar pernyataan untuk dinilai Benar/Salah.
+- "pasangan": menjodohkan = array {"kiri","kanan"} minimal 3 pasang.
+- "kunci": pg_biasa = huruf opsi ("A"-"E"); pg_kompleks mis. "1-Benar, 2-Salah"; menjodohkan mis. "1-B, 2-A, 3-C"; isian = teks jawaban singkat; uraian = jawaban model.
+- "pembahasan": WAJIB 1-2 kalimat per butir — jelaskan mengapa kunci itu benar.
+- "levelKognitif": tepat satu dari "C1"-"C6", mengikuti distribusi yang diminta di atas.
+- "indikator": kalimat indikator dengan KKO yang terukur (wajib, tidak boleh kosong).
+- "rubrik": WAJIB untuk uraian — array minimal 2 {"skor","deskriptor"} dengan deskriptor perilaku yang dapat diamati guru.
+- JANGAN menulis identitas/kop/nama sekolah di dalam JSON — identitas diisi otomatis oleh sistem dari formulir guru.
+
+CONTOH BENAR (tirulah struktur ini):
+{"bentuk":"pg_biasa","stimulus":"Setiap pagi Ibu Sari membuka warung pukul 05.30 dan menutupnya pukul 21.00. Ia mencatat seluruh pemasukan dan pengeluaran dalam buku kas harian.","pertanyaan":"Berdasarkan stimulus di atas, perilaku Ibu Sari yang mencerminkan tanggung jawab dalam mengelola usaha adalah ....","opsi":["Mencatat pemasukan saja agar buku kas terlihat rapi","Menutup warung lebih awal setiap ada acara televisi favorit","Mencatat seluruh pemasukan dan pengeluaran secara disiplin setiap hari","Meminjam uang tetangga untuk menambah modal tanpa perencanaan"],"kunci":"C","pembahasan":"Pencatatan kas yang disiplin menunjukkan tanggung jawab karena menjadi dasar pengambilan keputusan usaha yang tepat.","levelKognitif":"C2","indikator":"Menjelaskan wujud tanggung jawab dalam pengelolaan usaha kecil sehari-hari"}
+
+CONTOH SALAH (JANGAN ditiru):
+{"bentuk":"pg_biasa","pertanyaan":"Apa ibu kota Indonesia?","opsi":["A. Bandung","B. Jakarta","C. Surabaya","D. Medan"],"kunci":"B","pembahasan":"","indikator":"","levelKognitif":"C9"}
+SALAH karena: opsi diawali huruf "A."/"B." (harusnya teks saja), pembahasan kosong, indikator kosong, dan levelKognitif "C9" tidak valid.
 `,
       kktp_atp: `
 TUGAS SPESIFIK DOKUMEN: Susunlah **ALUR TUJUAN PEMBELAJARAN (ATP) DAN KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)** untuk ${mataPelajaran} ${tingkat} (${calculatedFase}) sesuai Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen.
@@ -1829,9 +1893,11 @@ ${tieredLkpd ? '- Mode LKPD: DIFERENSIASI 3 TINGKAT (Perintis / Reguler / Mahir)
 
 ${specificInstructions}
 
-STANDAR OUTPUT MARKDOWN:
+${docType === 'soal_ujian' ? `STANDAR OUTPUT JSON:
+- Kembalikan HANYA objek JSON valid sesuai KONTRAK JSON di atas. TANPA code fence, TANPA prosa pembuka/penutup, TANPA markdown, TANPA identitas/kop.
+- Pastikan jumlah butir TEPAT ${jumlahSoalFinal} dan jumlah per bentuk TEPAT seperti konfigurasi.` : `STANDAR OUTPUT MARKDOWN:
 - Tuliskan dalam **MARKDOWN BERMUTU TINGGI**: gunakan heading hierarkis (\`#\`, \`##\`, \`###\`), penomoran sistematis, poin-poin terstruktur, serta TABEL MARKDOWN untuk matriks capaian, jadwal, instrumen soal, dan rubrik KKTP.
-- Berikan judul dokumen yang jelas dan berwibawa di bagian paling atas.
+- Berikan judul dokumen yang jelas dan berwibawa di bagian paling atas.`}
 `;
 
     // Generate with multi-model fallback & transient 503 resiliency
@@ -1901,6 +1967,41 @@ STANDAR OUTPUT MARKDOWN:
       modelUsed = 'kurikulum-merdeka-verified-engine';
     }
 
+    // FASE 1: pipeline kontrak JSON terstruktur (server/soalPipeline.ts).
+    // Dilewati bila fallback offline dipakai (markdown legacy, kompatibel mundur).
+    let soalTerstruktur = false;
+    if (docType === 'soal_ujian' && modelUsed !== 'kurikulum-merdeka-verified-engine') {
+      try {
+        const hasil = await jalankanPipelineSoalTerstruktur({
+          komposisiBentuk,
+          komposisiKognitif,
+          mataPelajaran: String(mataPelajaran),
+          tingkat: String(tingkat),
+          calculatedFase,
+          topik: String(topik),
+          jumlahSoalFinal,
+          modelUsed,
+          generatedText,
+          identitas: {
+            satuanPendidikan: schoolName || '',
+            mataPelajaran: String(mataPelajaran),
+            kelas: String(tingkat),
+            fase: calculatedFase,
+            topik: String(topik),
+            waktu: alokasiWaktu || '90 Menit',
+            guru: authorName || '',
+          },
+          panggilAI,
+        });
+        generatedText = hasil.generatedText;
+        modelUsed = hasil.modelUsed;
+        soalTerstruktur = true;
+      } catch (e) {
+        if (e instanceof SoalPipelineError) return res.status(e.status).json(e.body);
+        throw e;
+      }
+    }
+
     // Generate clean title
     const generatedTitle = `${
       docType === 'modul_ajar' ? 'Modul Ajar' :
@@ -1930,7 +2031,8 @@ STANDAR OUTPUT MARKDOWN:
         topik,
         durationMinutes: calculatedDuration,
         modelUsed,
-        generatedAt: new Date().toISOString()
+        generatedAt: new Date().toISOString(),
+        ...(soalTerstruktur ? { soalTerstruktur: true } : {})
       }
     });
 
