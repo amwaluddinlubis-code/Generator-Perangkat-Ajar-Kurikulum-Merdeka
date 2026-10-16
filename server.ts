@@ -23,6 +23,10 @@ import {
 // FASE 2 (F2-6 & F2-7): potongan prompt refleksi/pengayaan/remedial + dua kolom,
 // dipisah ke modul agar server.ts tetap di bawah batas push konektor.
 import { bagianRefleksiPengayaan, instruksiDuaKolom } from './server/promptFase2.js';
+// FASE 3 (F3-5 & F3-6): potongan prompt + parser AI grading uraian & digitalisasi soal,
+// dipisah ke modul agar server.ts tetap di bawah batas push konektor.
+import { bangunPromptNilaiUraian, parseHasilNilai } from './server/nilaiUraian.js';
+import { bangunPromptDigitalisasi, parseHasilDigitalisasi, butirValidMinimal } from './server/digitalisasiSoal.js';
 // GEL2 — docx dipakai server-side untuk unduh bundle paket sebagai satu .docx.
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak } from 'docx';
 import {
@@ -2284,6 +2288,53 @@ app.post('/api/pakets/:id/diagnostik', requireAuth, generateRateLimit, async (re
   } catch (err: any) {
     console.error('Error membuat asesmen diagnostik:', err);
     res.status(500).json({ success: false, message: 'Gagal membuat asesmen diagnostik: ' + (err?.message || '') });
+  }
+});
+
+// ---------------- FASE 3: F3-5 AI grading uraian ----------------
+// POST /api/nilai-uraian — nilai MAKNA jawaban uraian siswa (AI judge).
+// Hasil SELALU perluVerifikasi: true — guru wajib memverifikasi.
+app.post('/api/nilai-uraian', requireAuth, generateRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { pertanyaan, kunci, rubrik, jawabanSiswa } = req.body || {};
+    const tanya = String(pertanyaan || '').trim();
+    const knc = String(kunci || '').trim();
+    const jawab = String(jawabanSiswa || '').trim();
+    if (!tanya || !knc || !jawab) {
+      return res.status(400).json({ success: false, message: 'pertanyaan, kunci, dan jawabanSiswa wajib diisi' });
+    }
+    const rubrikArr = (Array.isArray(rubrik) ? rubrik : [])
+      .map((r: any) => ({ skor: Number(r?.skor) || 0, deskriptor: String(r?.deskriptor || '').trim() }))
+      .filter((r: { skor: number; deskriptor: string }) => r.skor > 0 && r.deskriptor);
+    const skorMaks = rubrikArr.length > 0 ? Math.max(...rubrikArr.map((r: { skor: number }) => r.skor)) : 100;
+    const { text, modelUsed } = await panggilAI(bangunPromptNilaiUraian({ pertanyaan: tanya, kunci: knc, rubrik: rubrikArr, jawabanSiswa: jawab, skorMaks }));
+    const { skor, alasan } = parseHasilNilai(text, skorMaks);
+    auditLog('nilai_uraian_ai', req.user!.id, { skorMaks, modelUsed: modelUsed || 'fallback' });
+    res.json({ success: true, skor, skorMaks, alasan, perluVerifikasi: true });
+  } catch (err: any) {
+    console.error('Error menilai uraian:', err);
+    res.status(500).json({ success: false, message: 'Gagal menilai jawaban: ' + (err?.message || '') });
+  }
+});
+
+// ---------------- FASE 3: F3-6 digitalisasi soal ----------------
+// POST /api/digitalisasi-soal — ubah teks soal mentah menjadi item rgm-soal-v1.
+// Tanpa fabrikasi: butir tak valid (bentuk/pertanyaan/kunci tak terisi) dibuang, dihitung di butirDibuang.
+app.post('/api/digitalisasi-soal', requireAuth, generateRateLimit, async (req: Request, res: Response) => {
+  try {
+    const teks = String(req.body?.teks || '');
+    if (teks.trim().length < 20 || teks.length > 8000) {
+      return res.status(400).json({ success: false, message: 'teks wajib 20..8000 karakter' });
+    }
+    const { text, modelUsed } = await panggilAI(bangunPromptDigitalisasi(teks));
+    const semua = parseHasilDigitalisasi(text);
+    const items = semua.filter(butirValidMinimal);
+    const butirDibuang = semua.length - items.length;
+    auditLog('digitalisasi_soal', req.user!.id, { jumlah: items.length, butirDibuang, modelUsed: modelUsed || 'fallback' });
+    res.json({ success: true, items, butirDibuang });
+  } catch (err: any) {
+    console.error('Error digitalisasi soal:', err);
+    res.status(500).json({ success: false, message: 'Gagal mendigitalisasi soal: ' + (err?.message || '') });
   }
 });
 
