@@ -20,6 +20,16 @@ import {
   type PaketSoalTerstruktur,
 } from '@/shared/soalTerstruktur';
 import { SoalTerstrukturView } from './SoalTerstrukturView';
+// FASE 2: kop & pengesahan (F2-1), nama file cerdas (F2-4), kertas A4/F4 (F2-5)
+import { useKopPengesahan } from '../hooks/useKopPengesahan';
+import { KopPengesahanModal } from './KopPengesahanModal';
+import NamaFileModal from './NamaFileModal';
+import KertasToggle from './KertasToggle';
+import { bacaUkuranKertas, simpanUkuranKertas, terapkanUkuranKertas, type UkuranKertas } from '../utils/kertasCetak';
+import { namaFileCerdas, type KopPengesahan } from '@/shared/kopPengesahan';
+// FASE 2: naskah ujian siap cetak (F2-2) + paket admin ujian (F2-3)
+import { susunNaskahUjian } from '../utils/naskahUjian';
+import { AdminUjianModal } from './AdminUjianModal';
 import { 
   Printer, 
   Download, 
@@ -39,7 +49,9 @@ import {
   X,
   CheckCircle2,
   XCircle,
-  Info
+  Info,
+  School,
+  ClipboardList
 } from 'lucide-react';
 
 // F1-6: salin dalam butir soal agar state edit tidak memutasi hasil parse
@@ -232,6 +244,80 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [soalErrors, setSoalErrors] = useState<string[]>([]);
   const [savingSoal, setSavingSoal] = useState<boolean>(false);
 
+  // FASE 2 (F2-1): kop & pengesahan — default dari profil pengguna, tersimpan di localStorage
+  const {
+    kop,
+    modalTerbuka: kopModalTerbuka,
+    bukaModal: bukaKopModal,
+    tutupModal: tutupKopModal,
+    simpan: simpanKopBaru,
+    kopSiap,
+  } = useKopPengesahan({
+    schoolName: currentUser.schoolName,
+    name: currentUser.name,
+    nip: currentUser.nip,
+  });
+  // Kop terakhir yang lengkap (ref agar aksi tertunda selalu dapat data terbaru)
+  const kopRef = useRef<KopPengesahan | null>(null);
+  // FASE 2 (F2-4): satu modal nama file dipakai semua tombol ekspor
+  const [modalNama, setModalNama] = useState<null | {
+    nilaiAwal: string;
+    ekstensi: string;
+    aksi: (namaFile: string, kopAktif?: KopPengesahan) => void | Promise<void>;
+  }>(null);
+  // Aksi ekspor yang menunggu pengisian kop & pengesahan
+  const pendingKop = useRef<null | {
+    aksi: (kopAktif: KopPengesahan) => void | Promise<void>;
+  }>(null);
+  // FASE 2 (F2-5): ukuran kertas cetak A4/F4
+  const [kertas, setKertas] = useState<UkuranKertas>(() => bacaUkuranKertas());
+  // FASE 2 (F2-3): modal paket admin ujian
+  const [adminUjianTerbuka, setAdminUjianTerbuka] = useState(false);
+
+  // F2-5: terapkan @page sesuai pilihan saat viewer dibuka
+  useEffect(() => {
+    terapkanUkuranKertas(bacaUkuranKertas());
+  }, []);
+
+  const ubahKertas = (u: UkuranKertas) => {
+    setKertas(u);
+    simpanUkuranKertas(u);
+    terapkanUkuranKertas(u);
+  };
+
+  // F2-1 + F2-4: alur ekspor — (1) nama file, (2) kop bila belum lengkap, (3) aksi ekspor
+  const mulaiEkspor = (
+    nilaiAwal: string,
+    ekstensi: string,
+    aksi: (namaFile: string, kopAktif?: KopPengesahan) => void | Promise<void>
+  ) => {
+    setModalNama({ nilaiAwal, ekstensi, aksi });
+  };
+
+  const kopAktifSekarang = (): KopPengesahan | undefined =>
+    kopRef.current ?? (kopSiap ? (kop as KopPengesahan) : undefined);
+
+  const handleSimpanNamaFile = (namaFile: string) => {
+    const m = modalNama;
+    setModalNama(null);
+    if (!m) return;
+    const kopAktif = kopAktifSekarang();
+    if (kopAktif) {
+      void m.aksi(namaFile, kopAktif);
+    } else {
+      pendingKop.current = { aksi: (k) => m.aksi(namaFile, k) };
+      bukaKopModal();
+    }
+  };
+
+  const handleSimpanKop = (k: KopPengesahan) => {
+    simpanKopBaru(k);
+    kopRef.current = k;
+    const p = pendingKop.current;
+    pendingKop.current = null;
+    if (p) void p.aksi(k);
+  };
+
   useEffect(() => {
     setEditItems((soal?.items ?? []).map(cloneButirSoal));
     setDirty(false);
@@ -361,81 +447,127 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     window.print();
   };
 
-  const handleExportDocx = async () => {
-    setIsExportingDocx(true);
-    try {
-      await exportToDocx(document.title, kontenEkspor, {
-        schoolName: document.schoolName || currentUser.schoolName,
-        authorName: document.authorName || currentUser.name,
-        jenjang: document.jenjang,
-        tingkat: document.tingkat,
-        fase: document.fase,
-        mapel: document.mataPelajaran,
-        nip: currentUser.nip
-      });
-      // UX: konfirmasi keberhasilan unduh agar pengguna tidak menebak-nebak
-      showToast('File .docx berhasil diunduh', 'success');
-    } catch (err) {
-      console.error('Docx export failed, falling back to html doc:', err);
-      downloadWordDocument(document.title, kontenEkspor, {
-        schoolName: document.schoolName || currentUser.schoolName,
-        authorName: document.authorName || currentUser.name,
-        jenjang: document.jenjang,
-        tingkat: document.tingkat,
-        fase: document.fase,
-        mapel: document.mataPelajaran
-      });
-      // UX: beri tahu pengguna bahwa format cadangan yang diunduh (bukan .docx)
-      showToast('Format .docx gagal, mengunduh format cadangan (.doc)', 'info');
-    } finally {
-      setIsExportingDocx(false);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    setIsExportingPdf(true);
-    try {
-      // Switch to preview if currently in edit/raw mode to capture full rendered layout
-      if (activeView !== 'preview') {
-        setActiveView('preview');
-        // allow DOM update
-        await new Promise(r => setTimeout(r, 200));
-      }
-      const success = await exportToPdf('printable-document-content', document.title);
-      if (!success) {
-        window.print();
-        // UX: jelaskan bahwa yang terbuka adalah dialog cetak browser
-        showToast('Membuka dialog cetak browser', 'info');
-      } else {
-        // UX: konfirmasi keberhasilan unduh
-        showToast('File .pdf berhasil diunduh', 'success');
-      }
-    } catch (err) {
-      console.error('PDF export failed, opening print dialog:', err);
-      window.print();
-      showToast('PDF gagal dibuat, membuka dialog cetak browser', 'error');
-    } finally {
-      setIsExportingPdf(false);
-    }
-  };
-
-  // FITUR 2: unduh Lembar Penilaian KKTP (.xlsx) — 30 baris nama + rumus interval otomatis.
-  const handleUnduhLembarXlsx = async () => {
+  // F2-1 + F2-4: ekspor .docx — lewat modal nama file & kop pengesahan dulu
+  const handleExportDocx = () => {
     if (!document) return;
-    setIsExportingXlsx(true);
-    try {
-      await unduhLembarPenilaianXlsx({
-        judulDokumen: document.title,
-        mataPelajaran: document.mataPelajaran || '',
-        kelas: document.tingkat || '',
-        sekolah: document.schoolName || '',
+    mulaiEkspor(namaFileCerdas(document.title, document.docType), '.docx', async (namaFile, kopAktif) => {
+      setIsExportingDocx(true);
+      try {
+        await exportToDocx(namaFile, kontenEkspor, {
+          schoolName: document.schoolName || currentUser.schoolName,
+          authorName: document.authorName || currentUser.name,
+          jenjang: document.jenjang,
+          tingkat: document.tingkat,
+          fase: document.fase,
+          mapel: document.mataPelajaran,
+          nip: currentUser.nip,
+          kop: kopAktif,
+        });
+        // UX: konfirmasi keberhasilan unduh agar pengguna tidak menebak-nebak
+        showToast('File .docx berhasil diunduh', 'success');
+      } catch (err) {
+        console.error('Docx export failed, falling back to html doc:', err);
+        downloadWordDocument(namaFile, kontenEkspor, {
+          schoolName: document.schoolName || currentUser.schoolName,
+          authorName: document.authorName || currentUser.name,
+          jenjang: document.jenjang,
+          tingkat: document.tingkat,
+          fase: document.fase,
+          mapel: document.mataPelajaran,
+          kop: kopAktif,
+        });
+        // UX: beri tahu pengguna bahwa format cadangan yang diunduh (bukan .docx)
+        showToast('Format .docx gagal, mengunduh format cadangan (.doc)', 'info');
+      } finally {
+        setIsExportingDocx(false);
+      }
+    });
+  };
+
+  // F2-4 + F2-5: ekspor .pdf — nama file cerdas + ukuran kertas A4/F4 aktif
+  const handleExportPdf = () => {
+    if (!document) return;
+    mulaiEkspor(namaFileCerdas(document.title, document.docType), '.pdf', async (namaFile) => {
+      setIsExportingPdf(true);
+      try {
+        // Switch to preview if currently in edit/raw mode to capture full rendered layout
+        if (activeView !== 'preview') {
+          setActiveView('preview');
+          // allow DOM update
+          await new Promise(r => setTimeout(r, 200));
+        }
+        const success = await exportToPdf('printable-document-content', namaFile, kertas === 'F4' ? 'f4' : 'a4');
+        if (!success) {
+          window.print();
+          // UX: jelaskan bahwa yang terbuka adalah dialog cetak browser
+          showToast('Membuka dialog cetak browser', 'info');
+        } else {
+          // UX: konfirmasi keberhasilan unduh
+          showToast('File .pdf berhasil diunduh', 'success');
+        }
+      } catch (err) {
+        console.error('PDF export failed, opening print dialog:', err);
+        window.print();
+        showToast('PDF gagal dibuat, membuka dialog cetak browser', 'error');
+      } finally {
+        setIsExportingPdf(false);
+      }
+    });
+  };
+
+  // FITUR 2 + F2-4: unduh Lembar Penilaian KKTP (.xlsx) — 30 baris nama + rumus interval otomatis.
+  const handleUnduhLembarXlsx = () => {
+    if (!document) return;
+    mulaiEkspor(namaFileCerdas(document.title, document.docType), '.xlsx', async (namaFile) => {
+      setIsExportingXlsx(true);
+      try {
+        await unduhLembarPenilaianXlsx({
+          judulDokumen: namaFile,
+          mataPelajaran: document.mataPelajaran || '',
+          kelas: document.tingkat || '',
+          sekolah: document.schoolName || '',
+        });
+        showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Gagal menyusun .xlsx', 'error');
+      } finally {
+        setIsExportingXlsx(false);
+      }
+    });
+  };
+
+  // F2-2: naskah ujian siap cetak — 2 file: naskah (tanpa kunci) + kunci rahasia guru
+  const handleExportNaskahUjian = () => {
+    if (!soal || !document) return;
+    const { naskahMarkdown, kunciMarkdown } = susunNaskahUjian(soal);
+    const meta = {
+      schoolName: document.schoolName || currentUser.schoolName,
+      authorName: document.authorName || currentUser.name,
+      jenjang: document.jenjang,
+      tingkat: document.tingkat,
+      fase: document.fase,
+      mapel: document.mataPelajaran,
+      nip: currentUser.nip,
+    };
+    mulaiEkspor(namaFileCerdas(document.title, 'soal_ujian'), '.docx', async (namaNaskah, kopAktif) => {
+      await exportToDocx(namaNaskah, naskahMarkdown, { ...meta, kop: kopAktif });
+      showToast('Naskah ujian diunduh — berikutnya kunci jawaban', 'info');
+      // Kunci jawaban: modal nama kedua dengan default turunan nama naskah
+      mulaiEkspor(`${namaNaskah}_Kunci`, '.docx', async (namaKunci, kopAktif2) => {
+        await exportToDocx(namaKunci, kunciMarkdown, { ...meta, kop: kopAktif2 });
+        showToast('Kunci jawaban (RAHASIA GURU) diunduh', 'success');
       });
-      showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
-    } catch (err) {
-      console.error(err);
-      showToast('Gagal menyusun .xlsx', 'error');
-    } finally {
-      setIsExportingXlsx(false);
+    });
+  };
+
+  // F2-3: buka modal paket admin ujian (hanya bila kop sudah lengkap)
+  const bukaAdminUjian = () => {
+    if (kopAktifSekarang()) {
+      setAdminUjianTerbuka(true);
+    } else {
+      pendingKop.current = { aksi: () => setAdminUjianTerbuka(true) };
+      bukaKopModal();
     }
   };
 
@@ -706,6 +838,43 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <span>{isExportingPdf ? 'Menyusun .pdf...' : '.pdf'}</span>
           </button>
 
+          {/* F2-1: Kop & Pengesahan */}
+          <button
+            onClick={bukaKopModal}
+            className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            title="Atur kop sekolah, logo, dan lembar pengesahan untuk ekspor & cetak"
+          >
+            <School className="w-4 h-4" />
+            <span>Kop{kopSiap ? ' ✓' : ''}</span>
+          </button>
+
+          {/* F2-5: Pilihan ukuran kertas A4/F4 */}
+          <KertasToggle nilai={kertas} onUbah={ubahKertas} />
+
+          {/* F2-2: Naskah ujian siap cetak — hanya dokumen soal terstruktur */}
+          {soal && (
+            <button
+              onClick={handleExportNaskahUjian}
+              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+              title="Unduh naskah ujian siap cetak (tanpa kunci) + kunci jawaban rahasia guru"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Naskah Ujian</span>
+            </button>
+          )}
+
+          {/* F2-3: Paket admin ujian — hanya dokumen soal terstruktur */}
+          {soal && (
+            <button
+              onClick={bukaAdminUjian}
+              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+              title="Susun Berita Acara, Daftar Hadir, dan Kartu Hasil ujian"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Admin Ujian</span>
+            </button>
+          )}
+
           {/* FITUR 2: Unduh Lembar Penilaian (.xlsx) — hanya dokumen KKTP */}
           {(document?.docType === 'kktp_atp' || (document?.title || '').toUpperCase().includes('KKTP')) && (
             <button
@@ -821,16 +990,22 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             ) : (
               <>
 
-            {/* Kop resmi */}
+            {/* Kop resmi — F2-1: memakai data kop & pengesahan guru */}
             <div className="doc-kop print-kop">
               <div className="kop-eyebrow">Kurikulum Merdeka • Permendikdasmen No. 13 Tahun 2025</div>
+              {kop.logoDataUrl && (
+                <img src={kop.logoDataUrl} alt="Logo sekolah" className="mx-auto mb-2 max-h-16 w-auto" />
+              )}
               <h4>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</h4>
               <h4>DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</h4>
               <div className="kop-school">
-                {document.schoolName || currentUser.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}
+                {kop.namaSekolah || document.schoolName || currentUser.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}
               </div>
               <div className="kop-addr">
-                NPSN: {currentUser.npsn || '20104829'} • Akreditasi: A (Unggul) • Tahun Ajaran 2026/2027
+                {kop.alamatSekolah && <>{kop.alamatSekolah}<br /></>}
+                {kop.tahunAjaran ? (
+                  <>Tahun Ajaran {kop.tahunAjaran}{kop.semester ? ` • Semester ${kop.semester}` : ''}</>
+                ) : null}
               </div>
               {/* Ornamen geometris */}
               <svg className="mx-auto mt-2" width="180" height="12" viewBox="0 0 180 12" aria-hidden="true">
@@ -857,7 +1032,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               dangerouslySetInnerHTML={{ __html: renderedHtml }}
             />
 
-            {/* Pengesahan */}
+            {/* Pengesahan — F2-1: nama/NIP asli dari kop; kosong = garis kosong (bukan dummy) */}
             <div className="doc-sign mt-10 avoid-break-inside">
               <div className="grid grid-cols-2 gap-8 text-center">
                 <div>
@@ -865,26 +1040,26 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   <p><b>Kepala Satuan Pendidikan</b></p>
                   <div className="h-20 flex items-end justify-center">
                     <p className="font-bold inline-block px-4" style={{ borderBottom: '1px solid #111' }}>
-                      Drs. H. Mulyadi, M.Pd.
+                      {kop.namaKepsek || '....................'}
                     </p>
                   </div>
                   <p className="text-[10pt] mt-1">
-                    NIP. 19710318 199702 1 002
+                    NIP. {kop.nipKepsek || '....................'}
                   </p>
                 </div>
 
                 <div>
                   <p>
-                    Jakarta, {new Date(document.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {kop.kotaTanggal || new Date(document.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                   <p><b>Guru Mata Pelajaran / Kelas</b></p>
                   <div className="h-20 flex items-end justify-center">
                     <p className="font-bold inline-block px-4" style={{ borderBottom: '1px solid #111' }}>
-                      {document.authorName || currentUser.name}
+                      {kop.namaGuru || document.authorName || currentUser.name}
                     </p>
                   </div>
                   <p className="text-[10pt] mt-1">
-                    NIP. {currentUser.nip || '19890412 201402 2 003'}
+                    NIP. {kop.nipGuru || currentUser.nip || '....................'}
                   </p>
                 </div>
               </div>
@@ -966,6 +1141,47 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           </div>
         </div>
       )}
+      {/* F2-1: modal editor kop & pengesahan */}
+      <KopPengesahanModal
+        terbuka={kopModalTerbuka}
+        kopAwal={kop}
+        onSimpan={handleSimpanKop}
+        onBatal={tutupKopModal}
+      />
+
+      {/* F2-4: modal nama file — dipakai semua tombol ekspor */}
+      <NamaFileModal
+        terbuka={!!modalNama}
+        nilaiAwal={modalNama?.nilaiAwal ?? ''}
+        infoEkstensi={modalNama ? `File akan diunduh dengan ekstensi ${modalNama.ekstensi}` : undefined}
+        onSimpan={handleSimpanNamaFile}
+        onBatal={() => setModalNama(null)}
+      />
+
+      {/* F2-3: modal paket admin ujian (hanya bila kop lengkap) */}
+      {kopSiap && soal && (
+        <AdminUjianModal
+          terbuka={adminUjianTerbuka}
+          kop={kop as KopPengesahan}
+          mapelAwal={soal.identitas.mataPelajaran}
+          kelasAwal={soal.identitas.kelas}
+          onBatal={() => setAdminUjianTerbuka(false)}
+          onUnduh={async (docs) => {
+            const kopAktif = kop as KopPengesahan;
+            const meta = {
+              schoolName: document?.schoolName || currentUser.schoolName,
+              authorName: document?.authorName || currentUser.name,
+              kop: kopAktif,
+            };
+            for (const d of docs) {
+              await exportToDocx(d.judul, d.markdown, meta);
+            }
+            setAdminUjianTerbuka(false);
+            showToast('3 dokumen admin ujian diunduh', 'success');
+          }}
+        />
+      )}
+
       {/* UX: toast lokal — umpan balik salin / unduh / simpan */}
       {toast && (
         <div
