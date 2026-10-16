@@ -4,6 +4,7 @@ import {
   Document,
   Paragraph,
   TextRun,
+  ImageRun,
   HeadingLevel,
   Table,
   TableRow,
@@ -17,10 +18,67 @@ import {
 } from 'docx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import type { KopPengesahan } from '@/shared/kopPengesahan';
+import { barisIdentitas } from '@/shared/kopPengesahan';
 
 /** Standar formal naskah dinas: Times New Roman 12pt, spasi 1.5, kertas A4 */
 const DOC_FONT = 'Times New Roman';
 const BODY_SIZE = 24; // 12pt dalam half-point
+
+/** Metadata umum ekspor: kop & pengesahan (F2-1). Bila `kop` tidak diberikan,
+ *  perilaku seperti semula, tetapi TANPA nama/NIP dummy — pakai garis kosong. */
+export interface MetadataEkspor {
+  schoolName?: string;
+  authorName?: string;
+  jenjang?: string;
+  tingkat?: string;
+  fase?: string;
+  mapel?: string;
+  nip?: string;
+  kop?: KopPengesahan;
+}
+
+/** tanggal hari ini format id-ID: "17 Oktober 2026" */
+function tanggalHariIniId(): string {
+  return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/** Escape nilai teks agar aman disisipkan ke HTML ekspor .doc legacy. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Tipe gambar docx dari dataURL logo (null bila bukan png/jpg/gif/bmp). */
+function tipeLogo(dataUrl: string): 'jpg' | 'png' | 'gif' | 'bmp' | null {
+  const cocok = /^data:image\/(png|jpe?g|gif|bmp);base64,/.exec((dataUrl || '').trim());
+  if (!cocok) return null;
+  const t = cocok[1];
+  if (t === 'jpeg' || t === 'jpg') return 'jpg';
+  return t as 'png' | 'gif' | 'bmp';
+}
+
+/** Dimensi asli logo dari dataURL (untuk menjaga rasio saat disisipkan ke docx). */
+function dimensiLogo(dataUrl: string): Promise<{ w: number; h: number } | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () =>
+        resolve(
+          img.naturalWidth > 0 && img.naturalHeight > 0
+            ? { w: img.naturalWidth, h: img.naturalHeight }
+            : null
+        );
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    } catch {
+      resolve(null);
+    }
+  });
+}
 
 export function renderMarkdownToHtml(markdownText: string): string {
   if (!markdownText) return '';
@@ -104,21 +162,36 @@ function parseFormattedTextRuns(
 export async function exportToDocx(
   title: string,
   markdownContent: string,
-  metadata?: {
-    schoolName?: string;
-    authorName?: string;
-    jenjang?: string;
-    tingkat?: string;
-    fase?: string;
-    mapel?: string;
-    nip?: string;
-  }
+  metadata?: MetadataEkspor
 ): Promise<void> {
   const lines = markdownContent.split('\n');
   const docChildren: (Paragraph | Table)[] = [];
+  const kop = metadata?.kop;
+
+  // Logo sekolah (bila ada): ImageRun ~120px, rata tengah, di atas nama sekolah
+  const logoParagraphs: Paragraph[] = [];
+  if (kop?.logoDataUrl) {
+    const tipe = tipeLogo(kop.logoDataUrl);
+    if (tipe) {
+      const dim = await dimensiLogo(kop.logoDataUrl);
+      const lebar = 120;
+      const tinggi = dim ? Math.round((lebar * dim.h) / dim.w) : 120;
+      logoParagraphs.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [
+            // docx menerima dataURL base64 langsung sebagai data gambar
+            new ImageRun({ type: tipe, data: kop.logoDataUrl, transformation: { width: lebar, height: tinggi } })
+          ]
+        })
+      );
+    }
+  }
 
   // 1. Kop resmi (Times New Roman, hitam formal)
-  docChildren.push(
+  const kopChildren: Paragraph[] = [
+    ...logoParagraphs,
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 60 },
@@ -145,17 +218,56 @@ export async function exportToDocx(
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
+      spacing: { after: 60 },
       children: [
         new TextRun({
-          text: (metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA').toUpperCase(),
+          text: (kop?.namaSekolah || metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA').toUpperCase(),
           bold: true,
           size: 30,
           color: '000000',
           font: DOC_FONT
         })
       ]
-    }),
+    })
+  ];
+
+  if (kop?.alamatSekolah?.trim()) {
+    kopChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 40 },
+        children: [
+          new TextRun({
+            text: kop.alamatSekolah.trim(),
+            italics: true,
+            size: 20,
+            color: '444444',
+            font: DOC_FONT
+          })
+        ]
+      })
+    );
+  }
+
+  if (kop) {
+    const infoTahun = `Tahun Ajaran ${kop.tahunAjaran}${kop.semester ? ` \u2022 Semester ${kop.semester}` : ''}`;
+    kopChildren.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 60 },
+        children: [
+          new TextRun({
+            text: infoTahun,
+            size: 20,
+            color: '333333',
+            font: DOC_FONT
+          })
+        ]
+      })
+    );
+  }
+
+  kopChildren.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 200 },
@@ -179,6 +291,7 @@ export async function exportToDocx(
     }),
     new Paragraph({ spacing: { after: 180 }, children: [] })
   );
+  docChildren.push(...kopChildren);
 
   // 2. Parse Markdown Body Content into docx paragraphs and tables
   let i = 0;
@@ -406,7 +519,14 @@ export async function exportToDocx(
     i++;
   }
 
-  // 3. Official Signatures Section (Mengetahui Kepala Satuan Pendidikan & Guru Pengampu)
+  // 3. Lembar pengesahan — identitas asli dari kop; bila kosong dirender
+  // sebagai garis kosong (barisIdentitas), TIDAK PERNAH nama/NIP dummy.
+  const kotaTanggal = kop?.kotaTanggal?.trim() || tanggalHariIniId();
+  const namaKepsek = barisIdentitas(kop?.namaKepsek);
+  const nipKepsek = `NIP. ${barisIdentitas(kop?.nipKepsek)}`;
+  const namaGuru = barisIdentitas(kop?.namaGuru ?? metadata?.authorName);
+  const nipGuru = `NIP. ${barisIdentitas(kop?.nipGuru ?? metadata?.nip)}`;
+
   docChildren.push(
     new Paragraph({ spacing: { before: 300, after: 100 }, children: [] }),
     new Table({
@@ -436,11 +556,11 @@ export async function exportToDocx(
                 new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'Drs. H. Mulyadi, M.Pd.', bold: true, underline: {}, size: 24, font: DOC_FONT })]
+                  children: [new TextRun({ text: namaKepsek, bold: true, underline: {}, size: 24, font: DOC_FONT })]
                 }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: 'NIP. 19710318 199702 1 002', size: 20, color: '555555', font: DOC_FONT })]
+                  children: [new TextRun({ text: nipKepsek, size: 20, color: '555555', font: DOC_FONT })]
                 })
               ]
             }),
@@ -451,7 +571,7 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `Jakarta, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+                      text: kotaTanggal,
                       size: 24,
                       font: DOC_FONT
                     })
@@ -466,7 +586,7 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: metadata?.authorName || 'Bapak/Ibu Guru',
+                      text: namaGuru,
                       bold: true,
                       underline: {},
                       size: 24,
@@ -478,7 +598,7 @@ export async function exportToDocx(
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `NIP. ${metadata?.nip || '19890412 201402 2 003'}`,
+                      text: nipGuru,
                       size: 20,
                       color: '555555',
                       font: DOC_FONT
@@ -534,7 +654,9 @@ export async function exportToDocx(
  */
 export async function exportToPdf(
   elementId: string,
-  filename: string
+  filename: string,
+  /** F2-5: ukuran kertas PDF mengikuti pilihan pengguna (default A4). */
+  format: 'a4' | 'f4' = 'a4'
 ): Promise<boolean> {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -551,7 +673,8 @@ export async function exportToPdf(
     });
 
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    // F2-5: F4 (folio) = 215 × 330 mm; jsPDF menerima ukuran kustom [lebar, tinggi].
+    const pdf = format === 'f4' ? new jsPDF('p', 'mm', [215, 330]) : new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const imgWidth = pdfWidth;
@@ -587,17 +710,20 @@ export async function exportToPdf(
 export function downloadWordDocument(
   title: string,
   markdownContent: string,
-  metadata?: {
-    schoolName?: string;
-    authorName?: string;
-    jenjang?: string;
-    tingkat?: string;
-    fase?: string;
-    mapel?: string;
-  }
+  metadata?: MetadataEkspor
 ) {
   const htmlBody = renderMarkdownToHtml(markdownContent);
   const cleanTitle = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim() || 'Perangkat_Ajar_Kurikulum_Merdeka';
+  const kop = metadata?.kop;
+
+  // Lembar pengesahan .doc legacy: identitas asli dari kop, garis kosong bila belum diisi.
+  const kotaTanggal = kop?.kotaTanggal?.trim() || tanggalHariIniId();
+  const namaKepsek = barisIdentitas(kop?.namaKepsek);
+  const nipKepsek = `NIP. ${barisIdentitas(kop?.nipKepsek)}`;
+  const namaGuru = barisIdentitas(kop?.namaGuru ?? metadata?.authorName);
+  const nipGuru = `NIP. ${barisIdentitas(kop?.nipGuru ?? metadata?.nip)}`;
+  const namaSekolah = (kop?.namaSekolah || metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA').toUpperCase();
+  const infoTahun = kop ? `Tahun Ajaran ${kop.tahunAjaran}${kop.semester ? ` \u2022 Semester ${kop.semester}` : ''}` : '';
 
   const fullWordHtml = `
   <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -658,10 +784,13 @@ export function downloadWordDocument(
   </head>
   <body>
     <div class="kop-surat">
+      ${kop?.logoDataUrl ? `<div style="text-align: center; margin-bottom: 6pt;"><img src="${kop.logoDataUrl}" alt="Logo sekolah" style="max-width: 120px; max-height: 120px;"></div>` : ''}
       <div class="kop-kementerian">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA</div>
       <div class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</div>
-      <div class="kop-sekolah">${metadata?.schoolName || 'SATUAN PENDIDIKAN KURIKULUM MERDEKA'}</div>
-      <div class="kop-alamat">Implementasi Kurikulum Merdeka Berdasarkan Permendikdasmen No. 13 Tahun 2025 & Panduan Pembelajaran dan Asesmen</div>
+      <div class="kop-sekolah">${escapeHtml(namaSekolah)}</div>
+      ${kop?.alamatSekolah?.trim() ? `<div class="kop-alamat">${escapeHtml(kop.alamatSekolah.trim())}</div>` : ''}
+      ${infoTahun ? `<div class="kop-alamat" style="font-style: normal;">${escapeHtml(infoTahun)}</div>` : ''}
+      <div class="kop-alamat">Implementasi Kurikulum Merdeka Berdasarkan Permendikdasmen No. 13 Tahun 2025 &amp; Panduan Pembelajaran dan Asesmen</div>
     </div>
 
     ${htmlBody}
@@ -672,14 +801,14 @@ export function downloadWordDocument(
           <td style="border: none; width: 50%; text-align: center;">
             Mengetahui,<br>
             Kepala Satuan Pendidikan<br><br><br><br><br>
-            <b>Drs. H. Mulyadi, M.Pd.</b><br>
-            NIP. 19710318 199702 1 002
+            <b>${escapeHtml(namaKepsek)}</b><br>
+            ${escapeHtml(nipKepsek)}
           </td>
           <td style="border: none; width: 50%; text-align: center;">
-            Jakarta, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br>
+            ${escapeHtml(kotaTanggal)}<br>
             Guru Mata Pelajaran / Kelas<br><br><br><br><br>
-            <b>${metadata?.authorName || 'Bapak/Ibu Guru'}</b><br>
-            NIP. ....................................................
+            <b>${escapeHtml(namaGuru)}</b><br>
+            ${escapeHtml(nipGuru)}
           </td>
         </tr>
       </table>
