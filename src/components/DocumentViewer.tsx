@@ -10,6 +10,16 @@ import {
 import { apiFetch } from '../utils/api';
 // FITUR 2: ekspor Lembar Penilaian KKTP ke .xlsx
 import { unduhLembarPenilaianXlsx } from '../utils/lembarPenilaianXlsx';
+// FASE 1 (F1-4/F1-6): viewer soal terstruktur + edit inline
+import {
+  parseSoalTerstruktur,
+  bungkusSoalTerstruktur,
+  validasiPaketSoal,
+  renderPaketSoalMarkdown,
+  type ButirSoal,
+  type PaketSoalTerstruktur,
+} from '@/shared/soalTerstruktur';
+import { SoalTerstrukturView } from './SoalTerstrukturView';
 import { 
   Printer, 
   Download, 
@@ -31,6 +41,14 @@ import {
   XCircle,
   Info
 } from 'lucide-react';
+
+// F1-6: salin dalam butir soal agar state edit tidak memutasi hasil parse
+const cloneButirSoal = (b: ButirSoal): ButirSoal => ({
+  ...b,
+  opsi: b.opsi ? [...b.opsi] : undefined,
+  pasangan: b.pasangan ? b.pasangan.map((x) => ({ ...x })) : undefined,
+  rubrik: b.rubrik ? b.rubrik.map((r) => ({ ...r })) : undefined,
+});
 
 interface DocumentViewerProps {
   document: EducationalDocument | null;
@@ -130,6 +148,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             }
           : null);
 
+  // F1-4/F1-6: dokumen soal terstruktur (format rgm-soal-v1); null untuk dokumen lama/markdown
+  // sehingga seluruh perilaku legacy tidak tersentuh.
+  const soal: PaketSoalTerstruktur | null = document?.content
+    ? parseSoalTerstruktur(document.content)
+    : null;
+
   // GEL2 — jadikan versi terpilih sebagai versi aktif: POST /generate dengan
   // {title, content} versi lama → tercatat sebagai versi BARU (riwayat tetap utuh).
   const handleJadikanVersiAktif = async () => {
@@ -202,6 +226,18 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setJustSaved(isSaved);
   }, [document?.id, document?.content, isSaved]);
 
+  // F1-6: state edit inline soal terstruktur — di-reset setiap ganti versi/dokumen
+  const [editItems, setEditItems] = useState<ButirSoal[]>(() => (soal?.items ?? []).map(cloneButirSoal));
+  const [dirty, setDirty] = useState<boolean>(false);
+  const [soalErrors, setSoalErrors] = useState<string[]>([]);
+  const [savingSoal, setSavingSoal] = useState<boolean>(false);
+
+  useEffect(() => {
+    setEditItems((soal?.items ?? []).map(cloneButirSoal));
+    setDirty(false);
+    setSoalErrors([]);
+  }, [document?.content]);
+
   if (!document) {
     // GEL2: mode paket masih memuat riwayat versi
     if (isPaketMode && loadingVersi) {
@@ -240,10 +276,76 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     );
   }
 
+  // F1-4: konten untuk salin & ekspor — dokumen soal selalu memakai markdown
+  // deterministik dari renderPaketSoalMarkdown (versi edit bila dirty).
+  const kontenEkspor = soal
+    ? renderPaketSoalMarkdown({ ...soal, items: dirty ? editItems : soal.items })
+    : editableContent;
+
+  // F1-6: perubahan satu butir dari editor inline
+  const handleButirChange = (index: number, butir: ButirSoal) => {
+    setEditItems((prev) => prev.map((b, i) => (i === index ? butir : b)));
+    setDirty(true);
+  };
+
+  // F1-6: hapus satu butir soal (dengan konfirmasi)
+  const handleHapusButir = (index: number) => {
+    const b = editItems[index];
+    if (!b) return;
+    if (!window.confirm(`Hapus butir soal nomor ${b.nomor}? Tindakan ini tidak dapat dibatalkan.`)) return;
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
+    setDirty(true);
+  };
+
+  // F1-6: validasi lalu simpan hasil edit inline sebagai versi baru
+  const handleSimpanSoal = async () => {
+    if (!soal || !document || savingSoal) return;
+    const hasil = validasiPaketSoal({ ...soal, items: editItems });
+    if (!hasil.valid) {
+      setSoalErrors(hasil.errors);
+      showToast(`Ada ${hasil.errors.length} masalah — perbaiki dulu sebelum menyimpan`, 'error');
+      return;
+    }
+    setSoalErrors([]);
+    const updated: PaketSoalTerstruktur = {
+      ...soal,
+      items: editItems.map((b, i) => ({ ...b, nomor: i + 1 })),
+      diubahManual: true,
+    };
+    const content = bungkusSoalTerstruktur(updated);
+    setSavingSoal(true);
+    try {
+      if (isPaketMode && paketId) {
+        const res = await apiFetch(
+          `/api/pakets/${encodeURIComponent(paketId)}/dokumen/soal_ujian/generate`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: document.title, content })
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Gagal menyimpan versi baru');
+        const nomorBaru: number | undefined = data.versi?.nomorVersi ?? data.dokumen?.versiAktif;
+        showToast('Perubahan soal tersimpan sebagai versi baru', 'success');
+        await muatVersi(nomorBaru);
+        // useEffect [document?.content] akan mereset editItems & dirty dari versi baru
+      } else {
+        onSaveToRepository?.({ ...document, content });
+        setDirty(false);
+        showToast('Perubahan soal tersimpan', 'success');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menyimpan perubahan soal', 'error');
+    } finally {
+      setSavingSoal(false);
+    }
+  };
+
   // UX: beri tahu pengguna saat salin gagal (sebelumnya kegagalan terjadi diam-diam)
   const handleCopy = async () => {
     try {
-      const success = await copyToClipboard(editableContent);
+      const success = await copyToClipboard(kontenEkspor);
       if (success) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2500);
@@ -262,7 +364,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const handleExportDocx = async () => {
     setIsExportingDocx(true);
     try {
-      await exportToDocx(document.title, editableContent, {
+      await exportToDocx(document.title, kontenEkspor, {
         schoolName: document.schoolName || currentUser.schoolName,
         authorName: document.authorName || currentUser.name,
         jenjang: document.jenjang,
@@ -275,7 +377,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
       showToast('File .docx berhasil diunduh', 'success');
     } catch (err) {
       console.error('Docx export failed, falling back to html doc:', err);
-      downloadWordDocument(document.title, editableContent, {
+      downloadWordDocument(document.title, kontenEkspor, {
         schoolName: document.schoolName || currentUser.schoolName,
         authorName: document.authorName || currentUser.name,
         jenjang: document.jenjang,
@@ -400,7 +502,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setActiveView('preview');
   };
 
-  const renderedHtml = renderMarkdownToHtml(editableContent);
+  // F1-4: pratinjau markdown legacy; dokumen soal memakai tampilan terstruktur
+  const renderedHtml = soal ? '' : renderMarkdownToHtml(editableContent);
 
   return (
     <div className="space-y-4">
@@ -530,21 +633,27 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <Eye className="w-3.5 h-3.5" />
               Pratinjau
             </button>
-            <button
-              onClick={() => setActiveView('edit')}
-              data-active={activeView === 'edit'}
-              className="flex items-center gap-1 cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              Edit
-            </button>
-            <button
-              onClick={() => setActiveView('raw')}
-              data-active={activeView === 'raw'}
-              className="flex items-center gap-1 cursor-pointer"
-            >
-              Markdown
-            </button>
+            {/* F1-6: dokumen soal terstruktur diedit lewat editor inline di pratinjau,
+                bukan lewat editor teks mentah (isinya JSON bermarka). */}
+            {!soal && (
+              <>
+                <button
+                  onClick={() => setActiveView('edit')}
+                  data-active={activeView === 'edit'}
+                  className="flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => setActiveView('raw')}
+                  data-active={activeView === 'raw'}
+                  className="flex items-center gap-1 cursor-pointer"
+                >
+                  Markdown
+                </button>
+              </>
+            )}
           </div>
 
           {/* Copy Button */}
@@ -697,6 +806,21 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         {activeView === 'preview' && (
           <div className="doc-paper" id="printable-document-content">
 
+            {/* F1-4/F1-6: dokumen soal terstruktur memakai tampilan terstruktur + edit inline */}
+            {soal ? (
+              <SoalTerstrukturView
+                soal={soal}
+                items={editItems}
+                dirty={dirty}
+                saving={savingSoal}
+                errors={soalErrors}
+                onButirChange={handleButirChange}
+                onHapusButir={handleHapusButir}
+                onSimpan={handleSimpanSoal}
+              />
+            ) : (
+              <>
+
             {/* Kop resmi */}
             <div className="doc-kop print-kop">
               <div className="kop-eyebrow">Kurikulum Merdeka • Permendikdasmen No. 13 Tahun 2025</div>
@@ -765,6 +889,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </div>
               </div>
             </div>
+
+              </>
+            )}
 
           </div>
         )}
