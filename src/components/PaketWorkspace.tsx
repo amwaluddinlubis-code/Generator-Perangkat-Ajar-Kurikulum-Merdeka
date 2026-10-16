@@ -39,6 +39,9 @@ import { SlidePresenter, Slide } from './SlidePresenter';
 import { DiagnostikModal } from './DiagnostikModal';
 // FITUR 2: ekspor Lembar Penilaian KKTP ke .xlsx
 import { unduhLembarPenilaianXlsx } from '../utils/lembarPenilaianXlsx';
+// F2-4: modal nama file cerdas untuk unduhan .md
+import NamaFileModal from './NamaFileModal';
+import { namaFileCerdas } from '@/shared/kopPengesahan';
 
 // REDESIGN: tipe lokal VersiDokumen/DokumenPaket (view-model workspace);
 // REDESIGN: dipetakan dari respons API server di muatVersi & selesaiGenerate.
@@ -147,6 +150,19 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   const [modalDiagnostik, setModalDiagnostik] = useState<boolean>(false);
   // FITUR 2: status ekspor Lembar Penilaian (.xlsx)
   const [mengunduhXlsx, setMengunduhXlsx] = useState(false);
+  // F2-4: modal nama file untuk unduhan .md per dokumen
+  const [mdModal, setMdModal] = useState<null | { docType: DocType; nilaiAwal: string }>(null);
+
+  // F2-4: ambil judul versi aktif dulu agar default nama file cerdas
+  const mintaNamaMd = async (docType: DocType) => {
+    const daftar = await muatVersi(docType);
+    const aktif = daftar[0];
+    if (!aktif) {
+      showToast('Belum ada versi untuk diunduh', 'info');
+      return;
+    }
+    setMdModal({ docType, nilaiAwal: `${namaFileCerdas(aktif.title, docType)}_v${aktif.nomor}` });
+  };
 
   // REDESIGN: toast lokal mengikuti pola DocumentRepository
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -427,7 +443,8 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   };
 
   // REDESIGN: Wave 1 — unduh per dokumen sebagai .md client-side (tanpa docx)
-  const unduhDokumen = async (docType: DocType) => {
+  // F2-4: namaFile opsional dari NamaFileModal; bila tidak diberikan pakai default lama.
+  const unduhDokumen = async (docType: DocType, namaFile?: string) => {
     try {
       const daftar = await muatVersi(docType);
       const aktif = daftar[0];
@@ -435,7 +452,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         showToast('Belum ada versi untuk diunduh', 'info');
         return;
       }
-      const nama = `${aktif.title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || docType}-v${aktif.nomor}.md`;
+      const nama = namaFile || `${aktif.title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || docType}-v${aktif.nomor}.md`;
       const blob = new Blob([`# ${aktif.title}\n\n${aktif.content}`], {
         type: 'text/markdown;charset=utf-8',
       });
@@ -794,7 +811,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
-                          onClick={() => unduhDokumen(d.docType)}
+                          onClick={() => mintaNamaMd(d.docType)}
                           aria-label={`Unduh ${info.label}`}
                           title="Unduh sebagai .md"
                         >
@@ -997,7 +1014,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
-                onClick={() => modalDoc && unduhDokumen(modalDoc)}
+                onClick={() => modalDoc && mintaNamaMd(modalDoc)}
               >
                 <FileDown className="w-4 h-4" /> Unduh .md
               </button>
@@ -1084,6 +1101,19 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
           onTutup={() => setSlideTerbuka(false)}
         />
       )}
+
+      {/* F2-4: modal nama file untuk unduhan .md */}
+      <NamaFileModal
+        terbuka={!!mdModal}
+        nilaiAwal={mdModal?.nilaiAwal ?? ''}
+        infoEkstensi="File akan diunduh dengan ekstensi .md"
+        onSimpan={(nama) => {
+          const m = mdModal;
+          setMdModal(null);
+          if (m) void unduhDokumen(m.docType, `${nama}.md`);
+        }}
+        onBatal={() => setMdModal(null)}
+      />
 
       {/* REDESIGN: toast lokal */}
       {toast && (
