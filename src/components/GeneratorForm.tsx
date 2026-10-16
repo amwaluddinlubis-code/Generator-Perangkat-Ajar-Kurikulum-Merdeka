@@ -15,6 +15,8 @@ import {
 } from '../data/curriculumData';
 import { ContextualTopicSuggester } from './ContextualTopicSuggester';
 import { KomposisiSoal, KomposisiSoalState, KOMPOSISI_DEFAULT } from './KomposisiSoal';
+import type { KomposisiKognitifState } from '../../shared/soalTerstruktur';
+import { bagiKomposisiPreset, totalKognitif } from '../../shared/soalTerstruktur';
 import { P5ThematicGeneratorSection } from './P5ThematicGeneratorSection';
 import { CurriculumTopicItem } from '../data/topicCatalog';
 import { apiFetch } from '../utils/api';
@@ -148,6 +150,10 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const [komposisiSoal, setKomposisiSoal] = useState<KomposisiSoalState>({ ...KOMPOSISI_DEFAULT });
   const jumlahSoal = Object.values(komposisiSoal).reduce((a, b) => a + (Number(b) || 0), 0);
   const [levelKognitif, setLevelKognitif] = useState<string>('Kombinasi MOTS & HOTS (C3-C5)');
+  // F1-4: komposisi kognitif (C1–C6) — default preset Lengkap mengikuti total butir.
+  const [komposisiKognitif, setKomposisiKognitif] = useState<KomposisiKognitifState>(
+    () => bagiKomposisiPreset('LENGKAP', jumlahSoal)
+  );
   const [pesanValidasi, setPesanValidasi] = useState<string | null>(null);
 
   // Konfigurasi tema & modul projek P5
@@ -272,7 +278,9 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
         jumlahSoal,
         komposisi: { ...komposisiSoal },
         bentukSoal: ['Pilihan Ganda', 'Pilihan Ganda Kompleks (AKM)', 'Menjodohkan', 'Isian Singkat', 'Uraian HOTS'],
-        levelKognitif
+        levelKognitif,
+        // F1-4: komposisi kognitif (C1–C6) diteruskan ke server sebagai acuan validasi.
+        komposisiKognitif: { ...komposisiKognitif }
       },
       authorName,
       schoolName,
@@ -301,6 +309,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
       setPesanValidasi('Tambah minimal 1 butir soal pada komposisi di atas ya, Guru! 🎯');
       return;
     }
+    // F1-4: total C1–C6 harus sama dengan total butir soal
+    if (docType === 'soal_ujian' && totalKognitif(komposisiKognitif) !== jumlahSoal) {
+      setPesanValidasi('Jumlah komposisi kognitif (C1–C6) harus sama dengan total butir soal ya, Guru! 🧠');
+      return;
+    }
     setPesanValidasi(null);
 
     onGenerate(bangunParams());
@@ -317,6 +330,16 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     // GEL2: validasi sama seperti mode lepas; tanpa pindah langkah karena
     // mode paket memakai satu tampilan bertumpuk.
     if (!validateMateriStep()) return;
+    // F1-4: validasi komposisi soal — konsisten dengan mode lepas.
+    if (docType === 'soal_ujian' && jumlahSoal < 1) {
+      setPesanValidasi('Tambah minimal 1 butir soal pada komposisi di atas ya, Guru! 🎯');
+      return;
+    }
+    if (docType === 'soal_ujian' && totalKognitif(komposisiKognitif) !== jumlahSoal) {
+      setPesanValidasi('Jumlah komposisi kognitif (C1–C6) harus sama dengan total butir soal ya, Guru! 🧠');
+      return;
+    }
+    setPesanValidasi(null);
 
     const params = bangunParams();
     setSedangSimpan(true);
@@ -837,7 +860,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
             </div>
 
             <div className="grid grid-cols-1 gap-3.5 pt-1">
-              <KomposisiSoal nilai={komposisiSoal} onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }} />
+              <KomposisiSoal
+                nilai={komposisiSoal}
+                onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }}
+                kognitif={komposisiKognitif}
+                onUbahKognitif={(n) => { setKomposisiKognitif(n); setPesanValidasi(null); }}
+                totalButir={jumlahSoal}
+              />
 
               <div>
                 <label className="block text-xs font-bold text-amber-950 mb-1.5">
@@ -1120,7 +1149,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
                     Konfigurasi Khusus Paket Soal Ujian (AKM & HOTS)
                   </div>
                   <div className="grid grid-cols-1 gap-3">
-                    <KomposisiSoal nilai={komposisiSoal} onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }} />
+                    <KomposisiSoal
+                      nilai={komposisiSoal}
+                      onUbah={(n) => { setKomposisiSoal(n); setPesanValidasi(null); }}
+                      kognitif={komposisiKognitif}
+                      onUbahKognitif={(n) => { setKomposisiKognitif(n); setPesanValidasi(null); }}
+                      totalButir={jumlahSoal}
+                    />
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
                         Komposisi Level Berpikir
