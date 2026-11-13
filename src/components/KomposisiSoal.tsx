@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, CircleDot, SquareCheckBig, Link2, PencilLine, FileText } from 'lucide-react';
 import {
   bagiKomposisiPreset,
   totalKognitif,
@@ -34,12 +34,12 @@ export const KOMPOSISI_DEFAULT: KomposisiSoalState = {
   uraian: 3,
 };
 
-const JENIS_SOAL: Array<{ key: keyof KomposisiSoalState; label: string; desc: string; ikon: string }> = [
-  { key: 'pg_biasa', label: 'Pilihan Ganda', desc: '4–5 opsi jawaban', ikon: '🔘' },
-  { key: 'pg_kompleks', label: 'PG Kompleks (AKM)', desc: 'Benar/Salah atau pilih banyak', ikon: '☑️' },
-  { key: 'menjodohkan', label: 'Menjodohkan', desc: 'Pasangan konsep–jawaban', ikon: '🔗' },
-  { key: 'isian', label: 'Isian Singkat', desc: 'Melengkapi kalimat konsep', ikon: '✏️' },
-  { key: 'uraian', label: 'Uraian HOTS', desc: 'Analisis kasus & solusi', ikon: '📝' },
+const JENIS_SOAL: Array<{ key: keyof KomposisiSoalState; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { key: 'pg_biasa', label: 'Pilihan ganda', desc: '4–5 opsi jawaban', icon: CircleDot },
+  { key: 'pg_kompleks', label: 'PG kompleks (AKM)', desc: 'Benar/salah atau pilih banyak', icon: SquareCheckBig },
+  { key: 'menjodohkan', label: 'Menjodohkan', desc: 'Pasangan konsep–jawaban', icon: Link2 },
+  { key: 'isian', label: 'Isian singkat', desc: 'Melengkapi kalimat konsep', icon: PencilLine },
+  { key: 'uraian', label: 'Uraian HOTS', desc: 'Analisis kasus & solusi', icon: FileText },
 ];
 
 const MAKS_PER_JENIS = 30;
@@ -62,6 +62,10 @@ interface Props {
 type ModeKognitif = `preset:${PresetKognitif}` | 'kustom';
 
 const DAFTAR_PRESET: PresetKognitif[] = ['C1-C2', 'C1-C4', 'HOTS', 'LENGKAP'];
+
+const rowCls = 'flex items-center justify-between gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2';
+const numCls = 'w-12 rounded-md border border-[var(--line-strong)] bg-[var(--surface)] py-1 text-center text-[12.5px] font-semibold text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40';
+const stepBtnCls = 'w-7 h-7 rounded-md flex items-center justify-center transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed';
 
 /**
  * KomposisiSoal — guru bebas mengatur jumlah tiap jenis soal.
@@ -95,34 +99,32 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
   };
 
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3.5">
-      <div className="flex items-center justify-between mb-2.5">
-        <p className="text-xs font-bold text-amber-950">
-          🎯 Komposisi Soal — atur sesukamu, Guru!
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-3.5">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold text-[var(--ink)]">
+          Komposisi soal
         </p>
-        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500 text-white">
-          Total: {total} butir
-        </span>
+        <span className="ds-badge ds-badge-accent">{total} butir</span>
       </div>
-      <div className="space-y-2">
-        {JENIS_SOAL.map((j) => (
-          <div
-            key={j.key}
-            className="flex items-center justify-between gap-2 bg-white rounded-xl border border-amber-100 px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-800 truncate">
-                <span className="mr-1">{j.ikon}</span>{j.label}
-              </p>
-              <p className="text-[10px] text-slate-500 truncate">{j.desc}</p>
+      <div className="space-y-1.5">
+        {JENIS_SOAL.map(({ key, label, desc, icon: Icon }) => (
+          <div key={key} className={rowCls}>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="w-6 h-6 rounded-md bg-[var(--surface-3)] text-[var(--muted)] flex items-center justify-center shrink-0">
+                <Icon className="w-3 h-3" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[12px] font-medium text-[var(--ink)]">{label}</p>
+                <p className="truncate text-[10.5px] text-[var(--muted)]">{desc}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
-                aria-label={`Kurangi ${j.label}`}
-                onClick={() => setJenis(j.key, nilai[j.key] - 1)}
-                disabled={nilai[j.key] <= 0}
-                className="w-7 h-7 rounded-full bg-amber-100 hover:bg-amber-200 disabled:opacity-30 flex items-center justify-center text-amber-900"
+                aria-label={`Kurangi ${label}`}
+                onClick={() => setJenis(key, nilai[key] - 1)}
+                disabled={nilai[key] <= 0}
+                className={`${stepBtnCls} border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink-soft)] hover:bg-[var(--surface-3)]`}
               >
                 <Minus className="w-3.5 h-3.5" />
               </button>
@@ -130,17 +132,17 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
                 type="number"
                 min={0}
                 max={MAKS_PER_JENIS}
-                value={nilai[j.key]}
-                onChange={(e) => setJenis(j.key, Number(e.target.value))}
-                aria-label={`Jumlah ${j.label}`}
-                className="w-12 text-center text-sm font-bold text-slate-900 rounded-lg border border-amber-200 py-1 focus:ring-2 focus:ring-amber-500"
+                value={nilai[key]}
+                onChange={(e) => setJenis(key, Number(e.target.value))}
+                aria-label={`Jumlah ${label}`}
+                className={numCls}
               />
               <button
                 type="button"
-                aria-label={`Tambah ${j.label}`}
-                onClick={() => setJenis(j.key, nilai[j.key] + 1)}
-                disabled={nilai[j.key] >= MAKS_PER_JENIS}
-                className="w-7 h-7 rounded-full bg-amber-500 hover:bg-amber-600 disabled:opacity-30 flex items-center justify-center text-white"
+                aria-label={`Tambah ${label}`}
+                onClick={() => setJenis(key, nilai[key] + 1)}
+                disabled={nilai[key] >= MAKS_PER_JENIS}
+                className={`${stepBtnCls} bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]`}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -149,30 +151,28 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
         ))}
       </div>
       {total === 0 && (
-        <p className="mt-2 text-[11px] text-red-600 font-medium">
-          ⚠️ Total masih 0 — tambah minimal 1 butir soal ya, Guru!
+        <p className="mt-2 text-[11px] font-medium text-[var(--danger)]">
+          Total masih 0 — tambah minimal 1 butir soal.
         </p>
       )}
       {total > 50 && (
-        <p className="mt-2 text-[11px] text-amber-700">
-          💡 Total {total} butir cukup banyak — pastikan alokasi waktu ujian mencukupi.
+        <p className="mt-2 text-[11px] text-[var(--warn)]">
+          Total {total} butir cukup banyak — pastikan alokasi waktu ujian mencukupi.
         </p>
       )}
 
-      {/* F1-4: Komposisi Kognitif (Taksonomi Bloom) — hanya bila props kognitif diaktifkan. */}
+      {/* F1-4: Komposisi Kognitif (Taksonomi Bloom) */}
       {kognitifAktif && kognitif && (
-        <div className="mt-3.5 rounded-2xl border border-violet-200 bg-violet-50/60 p-3.5">
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-xs font-bold text-violet-950">
-              🧠 Komposisi Kognitif (Taksonomi Bloom)
+        <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <p className="text-[12px] font-semibold text-[var(--ink)]">
+              Komposisi kognitif (Taksonomi Bloom)
             </p>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-violet-500 text-white">
-              {totalK} / {targetButir}
-            </span>
+            <span className="ds-badge">{totalK} / {targetButir}</span>
           </div>
 
           {/* Tombol preset + kustom */}
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
+          <div className="mb-2.5 flex flex-wrap gap-1.5">
             {DAFTAR_PRESET.map((p) => {
               const aktif = modeKognitif === `preset:${p}`;
               return (
@@ -181,10 +181,10 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
                   type="button"
                   onClick={() => pilihPresetKognitif(p)}
                   aria-pressed={aktif}
-                  className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                  className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
                     aktif
-                      ? 'bg-violet-600 border-violet-600 text-white'
-                      : 'bg-white border-violet-200 text-violet-900 hover:bg-violet-100'
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-ink)]'
+                      : 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-soft)] hover:bg-[var(--surface-2)]'
                   }`}
                 >
                   {LABEL_PRESET_KOGNITIF[p]}
@@ -195,35 +195,32 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
               type="button"
               onClick={() => setModeKognitif('kustom')}
               aria-pressed={modeKognitif === 'kustom'}
-              className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+              className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
                 modeKognitif === 'kustom'
-                  ? 'bg-violet-600 border-violet-600 text-white'
-                  : 'bg-white border-violet-200 text-violet-900 hover:bg-violet-100'
+                  ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-ink)]'
+                  : 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-soft)] hover:bg-[var(--surface-2)]'
               }`}
             >
-              ✏️ Kustom
+              Kustom
             </button>
           </div>
 
           {modeKognitif === 'kustom' ? (
             /* Mode kustom: 6 input angka C1–C6, pola minus/plus + input. */
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {DAFTAR_KOGNITIF.map((lv) => (
-                <div
-                  key={lv}
-                  className="flex items-center justify-between gap-2 bg-white rounded-xl border border-violet-100 px-3 py-2"
-                >
+                <div key={lv} className={rowCls}>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800">{lv}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{LABEL_KOGNITIF[lv].replace(`${lv} `, '')}</p>
+                    <p className="text-[12px] font-medium text-[var(--ink)]">{lv}</p>
+                    <p className="truncate text-[10.5px] text-[var(--muted)]">{LABEL_KOGNITIF[lv].replace(`${lv} `, '')}</p>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       type="button"
                       aria-label={`Kurangi ${lv}`}
                       onClick={() => setLevelKognitif(lv, kognitif[lv] - 1)}
                       disabled={kognitif[lv] <= 0}
-                      className="w-7 h-7 rounded-full bg-violet-100 hover:bg-violet-200 disabled:opacity-30 flex items-center justify-center text-violet-900"
+                      className={`${stepBtnCls} border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink-soft)] hover:bg-[var(--surface-3)]`}
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -234,14 +231,14 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
                       value={kognitif[lv]}
                       onChange={(e) => setLevelKognitif(lv, Number(e.target.value))}
                       aria-label={`Jumlah ${lv}`}
-                      className="w-12 text-center text-sm font-bold text-slate-900 rounded-lg border border-violet-200 py-1 focus:ring-2 focus:ring-violet-500"
+                      className={numCls}
                     />
                     <button
                       type="button"
                       aria-label={`Tambah ${lv}`}
                       onClick={() => setLevelKognitif(lv, kognitif[lv] + 1)}
                       disabled={kognitif[lv] >= MAKS_PER_JENIS}
-                      className="w-7 h-7 rounded-full bg-violet-500 hover:bg-violet-600 disabled:opacity-30 flex items-center justify-center text-white"
+                      className={`${stepBtnCls} bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]`}
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -256,7 +253,7 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
                 <span
                   key={lv}
                   title={LABEL_KOGNITIF[lv]}
-                  className="text-[11px] font-bold px-2 py-1 rounded-full bg-white border border-violet-200 text-violet-900"
+                  className="rounded-md border border-[var(--line)] bg-[var(--surface-2)] px-2 py-1 text-[11px] font-medium text-[var(--ink-soft)]"
                 >
                   {lv}: {kognitif[lv]}
                 </span>
@@ -265,8 +262,8 @@ export const KomposisiSoal: React.FC<Props> = ({ nilai, onUbah, kognitif, onUbah
           )}
 
           {totalK !== targetButir && (
-            <p role="alert" className="mt-2 text-[11px] text-red-600 font-medium">
-              ⚠️ Jumlah C1–C6 ({totalK}) harus sama dengan total butir soal ({targetButir}).
+            <p role="alert" className="mt-2 text-[11px] font-medium text-[var(--danger)]">
+              Jumlah C1–C6 ({totalK}) harus sama dengan total butir soal ({targetButir}).
             </p>
           )}
         </div>

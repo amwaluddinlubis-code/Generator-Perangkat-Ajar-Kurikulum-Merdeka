@@ -29,7 +29,11 @@ import {
   PackageOpen,
   FileDown,
   Clock,
+  Compass,
+  Presentation,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { DocumentViewer } from './DocumentViewer';
 // FRIENDLY: maskot Owi + sapaan hangat untuk empty state
 import { Maskot } from './Maskot';
 import { pesanKosong } from '../utils/sapaan';
@@ -583,44 +587,39 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   // REDESIGN: loading awal — skeleton
   if (memuat) {
     return (
-      <div className="p-4 md:p-6 space-y-4" aria-busy="true" aria-label="Memuat workspace paket">
-        <div className="skeleton h-10 w-2/3" />
+      <div className="space-y-4" aria-busy="true" aria-label="Memuat workspace paket">
+        <div className="skeleton h-8 w-1/3" />
         <div className="flex gap-2">
-          <div className="skeleton h-6 w-20" />
-          <div className="skeleton h-6 w-20" />
-          <div className="skeleton h-6 w-24" />
+          <div className="skeleton h-5 w-16 rounded-full" />
+          <div className="skeleton h-5 w-20 rounded-full" />
+          <div className="skeleton h-5 w-24 rounded-full" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {URUTAN_DOC.map((dt) => (
-            <div key={dt} className="skeleton h-44" />
+            <div key={dt} className="skeleton h-40 rounded-xl" />
           ))}
         </div>
       </div>
     );
   }
 
-  // REDESIGN: error state ramah dengan tombol coba lagi
+  // REDESIGN: error state ringkas
   if (galat || !paket) {
     return (
-      <div className="p-4 md:p-6 flex justify-center">
-        {/* FRIENDLY: maskot Owi menenangkan + microcopy ramah */}
-        <div className="rgm-card max-w-md w-full p-6 sm:p-8 ux-pop-in">
-          <div className="flex flex-col items-center text-center gap-2">
-            <Maskot size={96} />
-            <h2 className="text-lg font-black tracking-tight mt-2">
-              Ups, paketnya tidak ketemu 😅
-            </h2>
-            <p className="text-sm opacity-70">
-              {galat ?? 'Data paket tidak ditemukan.'} Periksa koneksi lalu coba lagi ya.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-3">
-              <button type="button" className="btn btn-primary btn-sm" onClick={muatPaket}>
-                Coba lagi
-              </button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={onKembali}>
-                <ArrowLeft className="w-4 h-4" /> Kembali
-              </button>
-            </div>
+      <div className="flex justify-center py-10">
+        <div className="apple-card max-w-md w-full p-6 ux-pop-in text-center">
+          <Maskot size={72} className="mx-auto mb-3" />
+          <h2 className="text-[16px] font-semibold text-[var(--ink)]">Paket tidak ditemukan</h2>
+          <p className="apple-sub mt-1.5">
+            {galat ?? 'Data paket tidak tersedia.'} Periksa koneksi lalu coba lagi.
+          </p>
+          <div className="flex justify-center gap-2 mt-4">
+            <button type="button" className="btn-apple" onClick={muatPaket}>
+              Coba lagi
+            </button>
+            <button type="button" className="btn-apple-secondary" onClick={onKembali}>
+              <ArrowLeft className="w-4 h-4" /> Kembali
+            </button>
           </div>
         </div>
       </div>
@@ -633,45 +632,47 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
   const paketDiarsip = paket.status === 'arsip';
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* FRIENDLY: header workspace dalam hero hangat yang ringkas */}
-      <div className="rgm-hero-warm rounded-3xl p-4 sm:p-5 ux-pop-in">
-        <div className="flex flex-wrap items-start gap-3">
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm mt-1"
-            onClick={onKembali}
-            aria-label="Kembali ke daftar paket"
-          >
-            <ArrowLeft className="w-4 h-4" /> Kembali
-          </button>
-          <div className="flex-1 min-w-52">
-            <h1 className="text-xl md:text-2xl font-black tracking-tight flex items-center gap-2">
-              <PackageOpen className="w-6 h-6 shrink-0 text-primary" />
-              {paket.topik}
+    <div className="space-y-5">
+      {/* Header workspace */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--muted)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+          onClick={onKembali}
+          aria-label="Kembali ke daftar paket"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Paket Saya
+        </button>
+
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold tracking-[-0.025em] text-[var(--ink)] leading-tight flex items-start gap-2">
+              <PackageOpen className="w-5 h-5 mt-1 shrink-0 text-[var(--accent)]" />
+              <span className="min-w-0">{paket.topik}</span>
             </h1>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="badge rgm-badge-warm">{paket.jenjang}</span>
-              <span className="badge badge-outline">{paket.fase}</span>
-              <span className="badge rgm-badge-warm">{paket.mataPelajaran}</span>
-              <span className="badge badge-outline">{paket.tingkat}</span>
-              {paketDiarsip && <span className="badge badge-neutral">Diarsipkan</span>}
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="ds-badge ds-badge-accent">{paket.mataPelajaran}</span>
+              <span className="ds-badge">{paket.jenjang}</span>
+              <span className="ds-badge">{paket.fase}</span>
+              <span className="ds-badge">{paket.tingkat}</span>
+              {paketDiarsip && <span className="ds-badge ds-badge-warn">Diarsipkan</span>}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {/* FITUR 4: generator asesmen diagnostik 5 menit */}
+
+          <div className="flex flex-wrap gap-2 shrink-0">
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn-apple-secondary"
               onClick={() => setModalDiagnostik(true)}
               aria-label="Buka generator asesmen diagnostik 5 menit"
               title="Buatkan pertanyaan diagnostik kilat untuk 5 menit pertama"
             >
-              🧭 Diagnostik 5 Menit
+              <Compass className="w-4 h-4" />
+              Diagnostik
             </button>
             <button
               type="button"
-              className="btn btn-outline btn-sm"
+              className="btn-apple-secondary"
               onClick={unduhBundle}
               disabled={mengunduhBundle}
             >
@@ -680,16 +681,16 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              Unduh Bundle
+              Unduh bundle
             </button>
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
+              className="btn-apple-ghost"
               onClick={() => setModal('arsip')}
             >
               {paketDiarsip ? (
                 <>
-                  <ArchiveRestore className="w-4 h-4" /> Keluarkan dari Arsip
+                  <ArchiveRestore className="w-4 h-4" /> Keluarkan dari arsip
                 </>
               ) : (
                 <>
@@ -701,12 +702,13 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         </div>
       </div>
 
-      {/* REDESIGN: tab Dokumen | Versi */}
-      <div role="tablist" className="tabs tabs-boxed w-fit">
+      {/* Tab Dokumen | Versi */}
+      <div className="apple-segment" role="tablist" aria-label="Tampilan workspace">
         <button
           type="button"
           role="tab"
-          className={`tab ${tab === 'dokumen' ? 'tab-active' : ''}`}
+          aria-selected={tab === 'dokumen'}
+          data-active={tab === 'dokumen'}
           onClick={() => setTab('dokumen')}
         >
           Dokumen
@@ -714,7 +716,8 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         <button
           type="button"
           role="tab"
-          className={`tab ${tab === 'versi' ? 'tab-active' : ''}`}
+          aria-selected={tab === 'versi'}
+          data-active={tab === 'versi'}
           onClick={bukaTabVersi}
         >
           Versi
@@ -723,148 +726,150 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
 
       {tab === 'dokumen' && (
         <>
-          {/* REDESIGN: pipeline 7 kartu dokumen */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* Pipeline 7 kartu dokumen */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             {dokumen.map((d, idx) => {
               const info = DOC_TYPE_INFO[d.docType];
               const Ikon = PETA_IKON[info.icon] ?? FileText;
               const adaVersi = d.versiAktif > 0;
               const sibuk = aksiDoc === d.docType;
-              // FRIENDLY: lingkaran ikon selang-seling peach / ungu lembut
-              const lingkaran =
-                idx % 2 === 0
-                  ? 'bg-[#FFEEDB] text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
-                  : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200';
+              const statusStyle =
+                d.status === 'final'
+                  ? 'ds-badge-ok'
+                  : d.status === 'draf'
+                    ? 'ds-badge-warn'
+                    : '';
               return (
                 <div
                   key={d.docType}
-                  className="rgm-card ux-lift ux-stagger"
-                  style={{ '--ux-delay': `${(idx % 7) * 70}ms` } as React.CSSProperties}
+                  className="apple-card ux-lift ux-stagger p-3.5 flex flex-col"
+                  style={{ '--ux-delay': `${(idx % 7) * 40}ms` } as React.CSSProperties}
                 >
-                  <div className="card-body p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`p-2 rounded-2xl shrink-0 ${lingkaran}`}>
-                          <Ikon className="w-5 h-5" />
-                        </span>
-                        <h2 className="font-semibold text-sm leading-tight">{info.label}</h2>
-                      </div>
-                      <span className={`badge ${badgeStatus(d.status)} badge-sm shrink-0`}>
-                        {labelStatus(d.status)}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-8 h-8 rounded-md bg-[var(--surface-2)] border border-[var(--line)] text-[var(--ink-soft)] flex items-center justify-center shrink-0">
+                        <Ikon className="w-4 h-4" />
                       </span>
+                      <h2 className="text-[13px] font-semibold text-[var(--ink)] leading-tight line-clamp-2">
+                        {info.label}
+                      </h2>
                     </div>
-                    <p className="text-xs opacity-60 line-clamp-2 mt-1">{info.desc}</p>
-                    {adaVersi && (
-                      <p className="text-xs font-medium mt-1">v{d.versiAktif}</p>
+                    <span className={`ds-badge shrink-0 ${statusStyle}`}>{labelStatus(d.status)}</span>
+                  </div>
+
+                  <p className="text-[11.5px] text-[var(--muted)] line-clamp-2 mt-2 leading-relaxed">{info.desc}</p>
+                  {adaVersi && (
+                    <p className="text-[11px] font-medium text-[var(--ink-soft)] mt-1.5">
+                      Versi aktif v{d.versiAktif}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-1.5 mt-auto pt-3">
+                    {(!adaVersi || d.status === 'draf') && (
+                      <button
+                        type="button"
+                        className="btn-apple !min-h-[32px] !py-1.5 !px-2.5 !text-[12px]"
+                        onClick={() => bukaModalGenerate(d.docType)}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {adaVersi ? 'Versi baru' : 'Generate'}
+                      </button>
                     )}
-                    <div className="card-actions flex-wrap gap-2 mt-3">
-                      {(!adaVersi || d.status === 'draf') && (
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          onClick={() => bukaModalGenerate(d.docType)}
-                        >
-                          {adaVersi ? '+ Versi baru ✨' : '+ Generate ✨'}
-                        </button>
-                      )}
-                      {adaVersi && (
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => bukaModalLihat(d.docType)}
-                        >
-                          <Eye className="w-4 h-4" /> Buka
-                        </button>
-                      )}
-                      {/* FITUR 3: slide adalah DOKUMEN TURUNAN Modul Ajar — bukan kartu ke-8 */}
-                      {d.docType === 'modul_ajar' && adaVersi && (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => bukaSlideTayang()}
-                          disabled={memuatSlide}
-                          title="Buat slide tayang kelas dari Modul Ajar ini"
-                        >
-                          {memuatSlide ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>🖥️ Buat Slide Tayang</>
-                          )}
-                        </button>
-                      )}
-                      {d.status === 'draf' && (
-                        <button
-                          type="button"
-                          className="btn btn-success btn-outline btn-sm"
-                          disabled={sibuk}
-                          onClick={() => tandaiFinal(d.docType)}
-                        >
-                          {sibuk ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <CheckCircle2 className="w-4 h-4" />
-                          )}
-                          Tandai Final 🎉
-                        </button>
-                      )}
-                      {adaVersi && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => mintaNamaMd(d.docType)}
-                          aria-label={`Unduh ${info.label}`}
-                          title="Unduh sebagai .md"
-                        >
-                          <FileDown className="w-4 h-4" /> Unduh
-                        </button>
-                      )}
-                    </div>
+                    {adaVersi && (
+                      <button
+                        type="button"
+                        className="btn-apple-secondary !min-h-[32px] !py-1.5 !px-2.5 !text-[12px]"
+                        onClick={() => bukaModalLihat(d.docType)}
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Buka
+                      </button>
+                    )}
+                    {d.docType === 'modul_ajar' && adaVersi && (
+                      <button
+                        type="button"
+                        className="btn-apple-ghost !min-h-[32px] !py-1.5 !px-2 !text-[12px]"
+                        onClick={() => bukaSlideTayang()}
+                        disabled={memuatSlide}
+                        title="Buat slide tayang kelas dari Modul Ajar ini"
+                      >
+                        {memuatSlide ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Presentation className="w-3.5 h-3.5" />
+                        )}
+                        Slide
+                      </button>
+                    )}
+                    {d.status === 'draf' && (
+                      <button
+                        type="button"
+                        className="btn-apple-ghost !min-h-[32px] !py-1.5 !px-2 !text-[12px] !text-[var(--ok)] hover:!bg-[var(--ok-soft)]"
+                        disabled={sibuk}
+                        onClick={() => tandaiFinal(d.docType)}
+                      >
+                        {sibuk ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        Final
+                      </button>
+                    )}
+                    {adaVersi && (
+                      <button
+                        type="button"
+                        className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] flex items-center justify-center transition-colors cursor-pointer ml-auto"
+                        onClick={() => mintaNamaMd(d.docType)}
+                        aria-label={`Unduh ${info.label}`}
+                        title="Unduh sebagai .md"
+                      >
+                        <FileDown className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* REDESIGN: timeline aktivitas vertikal */}
+          {/* Timeline aktivitas */}
           <section aria-label="Aktivitas terbaru">
-            <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <History className="w-5 h-5" /> Aktivitas Terbaru
-            </h2>
+            <div className="flex items-center justify-between mb-2.5">
+              <h2 className="text-[14px] font-semibold text-[var(--ink)] flex items-center gap-1.5">
+                <History className="w-4 h-4 text-[var(--muted)]" /> Aktivitas terbaru
+              </h2>
+            </div>
             {timeline.length === 0 ? (
-              /* FRIENDLY: empty state aktivitas bersama Owi */
-              <div className="rgm-card p-5 sm:p-6 ux-pop-in">
-                <div className="flex items-center gap-4">
-                  <Maskot size={76} className="shrink-0" />
+              <div className="apple-card p-4">
+                <div className="flex items-center gap-3">
+                  <Maskot size={56} className="shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold">{pesanKosong('aktivitas')}</p>
-                    <p className="text-xs opacity-60 mt-1">
-                      Buat versi pertama lewat tombol “+ Generate ✨” di salah satu kartu dokumen.
+                    <p className="text-[13px] font-medium text-[var(--ink)]">{pesanKosong('aktivitas')}</p>
+                    <p className="text-[11.5px] text-[var(--muted)] mt-0.5">
+                      Buat versi pertama lewat tombol Generate di salah satu kartu dokumen.
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <ul className="timeline timeline-vertical">
-                {timeline.map((e, i) => (
-                  <li key={e.id}>
-                    {i > 0 && <hr />}
-                    <div className="timeline-start text-xs opacity-60 flex items-center gap-1 justify-end">
-                      <Clock className="w-3.5 h-3.5" />
+              <ul className="apple-card divide-y divide-[var(--line)] overflow-hidden">
+                {timeline.map((e) => (
+                  <li key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                        e.final ? 'bg-[var(--ok-soft)] text-[var(--ok)]' : 'bg-[var(--surface-2)] text-[var(--muted)]'
+                      }`}
+                    >
+                      {e.final ? <CheckCircle2 className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12.5px] font-medium text-[var(--ink)] truncate">{e.judul}</p>
+                      <p className="text-[11.5px] text-[var(--muted)] truncate">{e.deskripsi}</p>
+                    </div>
+                    <span className="text-[11px] text-[var(--muted)] shrink-0 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
                       {waktuRelatif(e.waktu)}
-                    </div>
-                    <div className="timeline-middle">
-                      {e.final ? (
-                        <CheckCircle2 className="w-5 h-5 text-success" />
-                      ) : (
-                        <FileText className="w-5 h-5 text-primary" />
-                      )}
-                    </div>
-                    {/* FRIENDLY: item timeline dalam kartu hangat membulat */}
-                    <div className="timeline-end rounded-2xl bg-[#FFFBF5] dark:bg-base-200 border border-[#F6E7D3] dark:border-base-300 p-3 text-sm shadow-sm">
-                      <p className="font-medium">{e.judul}</p>
-                      <p className="text-xs opacity-60 truncate">{e.deskripsi}</p>
-                    </div>
-                    {i < timeline.length - 1 && <hr />}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -875,54 +880,53 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
 
       {tab === 'versi' && (
         <section aria-label="Semua versi dokumen">
-          <h2 className="text-lg font-semibold mb-3">Semua Versi</h2>
+          <h2 className="text-[14px] font-semibold mb-2.5 text-[var(--ink)]">Semua versi</h2>
           {memuatVersi ? (
             <div className="space-y-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="skeleton h-16 w-full" />
+                <div key={i} className="skeleton h-14 w-full rounded-lg" />
               ))}
             </div>
           ) : semuaVersi.length === 0 ? (
-            /* FRIENDLY: empty state versi bersama Owi */
-            <div className="rgm-card p-5 sm:p-6 ux-pop-in">
-              <div className="flex items-center gap-4">
-                <Maskot size={76} className="shrink-0" />
-                <p className="text-sm font-semibold">{pesanKosong('dokumen')}</p>
+            <div className="apple-card p-4">
+              <div className="flex items-center gap-3">
+                <Maskot size={56} className="shrink-0" />
+                <p className="text-[13px] font-medium text-[var(--ink)]">{pesanKosong('dokumen')}</p>
               </div>
             </div>
           ) : (
-            <div className="rgm-card overflow-x-auto p-2 sm:p-3">
-              <table className="table table-zebra">
+            <div className="apple-card overflow-x-auto">
+              <table className="table">
                 <thead>
-                  <tr>
-                    <th>Jenis Dokumen</th>
-                    <th>Versi</th>
-                    <th>Judul</th>
-                    <th>Tanggal</th>
-                    <th>Status</th>
+                  <tr className="border-[var(--line)]">
+                    <th className="text-[11.5px] font-medium text-[var(--muted)]">Dokumen</th>
+                    <th className="text-[11.5px] font-medium text-[var(--muted)]">Versi</th>
+                    <th className="text-[11.5px] font-medium text-[var(--muted)]">Judul</th>
+                    <th className="text-[11.5px] font-medium text-[var(--muted)]">Tanggal</th>
+                    <th className="text-[11.5px] font-medium text-[var(--muted)]">Status</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {semuaVersi.map(({ docType, versi }) => (
-                    <tr key={versi.id}>
-                      <td className="font-medium">{DOC_TYPE_INFO[docType].label}</td>
+                    <tr key={versi.id} className="border-[var(--line)] hover:bg-[var(--surface-2)]">
+                      <td className="text-[12.5px] font-medium text-[var(--ink)]">{DOC_TYPE_INFO[docType].label}</td>
                       <td>
-                        <span className="badge badge-outline badge-sm">v{versi.nomor}</span>
+                        <span className="ds-badge">v{versi.nomor}</span>
                       </td>
-                      <td className="max-w-64 truncate">{versi.title}</td>
-                      <td className="text-sm whitespace-nowrap" title={new Date(versi.dibuatPada).toLocaleString('id-ID')}>
+                      <td className="max-w-64 truncate text-[12.5px] text-[var(--ink-soft)]">{versi.title}</td>
+                      <td className="text-[12px] whitespace-nowrap text-[var(--muted)]" title={new Date(versi.dibuatPada).toLocaleString('id-ID')}>
                         {waktuRelatif(versi.dibuatPada)}
                       </td>
                       <td>
-                        <span className={`badge badge-sm ${versi.status === 'final' ? 'badge-success' : 'badge-warning'}`}>
+                        <span className={`ds-badge ${versi.status === 'final' ? 'ds-badge-ok' : 'ds-badge-warn'}`}>
                           {versi.status === 'final' ? 'Final' : 'Draf'}
                         </span>
                       </td>
                       <td>
                         <button
                           type="button"
-                          className="btn btn-ghost btn-xs"
+                          className="btn-apple-ghost !min-h-[28px] !py-1 !px-2 !text-[12px]"
                           onClick={() => {
                             setModalDoc(docType);
                             setJudulVersi(versi.title);
@@ -930,7 +934,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                             setModal('lihat');
                           }}
                         >
-                          <Eye className="w-4 h-4" /> Lihat
+                          <Eye className="w-3.5 h-3.5" /> Lihat
                         </button>
                       </td>
                     </tr>
@@ -942,20 +946,20 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         </section>
       )}
 
-      {/* GEL2: modal generate — GeneratorForm dalam paketMode: AI asli, docType &
-          konteks paket terkunci, hasil otomatis tersimpan sebagai versi baru,
-          lalu onSelesai menyegarkan state workspace. */}
+      {/* Modal generate — GeneratorForm dalam paketMode */}
       {modal === 'generate' && modalDoc && infoModal && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Generate ${infoModal.label}`}>
-          <div className="modal-box max-w-4xl p-0 rounded-3xl ux-pop-in">
-            <div className="flex items-start justify-between gap-2 p-4 md:p-6 pb-0 md:pb-0">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <IkonModal className="w-5 h-5 text-primary" />
-                Generate — {infoModal.label}
+          <div className="modal-box max-w-4xl p-0 ux-pop-in">
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-5 h-14 border-b border-[var(--line)]">
+              <h3 className="text-[14px] font-semibold flex items-center gap-2 text-[var(--ink)]">
+                <span className="w-7 h-7 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
+                  <IkonModal className="w-4 h-4" />
+                </span>
+                Generate {infoModal.label}
               </h3>
               <button
                 type="button"
-                className="btn btn-ghost btn-sm btn-circle"
+                className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center cursor-pointer"
                 onClick={() => setModal(null)}
                 aria-label="Tutup"
               >
@@ -983,46 +987,33 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         </div>
       )}
 
-      {/* REDESIGN: modal baca isi versi aktif */}
-      {modal === 'lihat' && modalDoc && infoModal && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Lihat dokumen">
-          <div className="modal-box max-w-3xl rounded-3xl ux-pop-in">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <IkonModal className="w-5 h-5 text-primary" />
-                {judulVersi || infoModal.label}
-              </h3>
+      {/* Dokumen: tampilan baca layar penuh memakai DocumentViewer (A4 + ekspor) */}
+      {modal === 'lihat' && modalDoc && pengguna && (
+        <div
+          className="fixed inset-0 z-50 bg-[var(--bg)] overflow-y-auto no-print"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Dokumen ${DOC_TYPE_INFO[modalDoc].label}`}
+        >
+          <div className="sticky top-0 z-10 h-[52px] border-b border-[var(--line)] bg-[var(--surface)] flex items-center justify-between gap-2 px-3 sm:px-5">
+            <div className="flex items-center gap-2 min-w-0">
               <button
                 type="button"
-                className="btn btn-ghost btn-sm btn-circle"
                 onClick={() => setModal(null)}
-                aria-label="Tutup"
+                className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--ink-soft)] hover:text-[var(--ink)] px-2 py-1.5 rounded-md hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <ArrowLeft className="w-3.5 h-3.5" /> Kembali
               </button>
+              <span className="w-px h-4 bg-[var(--line)]" aria-hidden="true" />
+              <span className="text-[13px] font-medium text-[var(--ink)] truncate">
+                {judulVersi || DOC_TYPE_INFO[modalDoc].label}
+              </span>
             </div>
-            {isiVersi ? (
-              <div className="mt-4 max-h-[60vh] overflow-y-auto rounded-lg bg-base-200 p-4">
-                <pre className="whitespace-pre-wrap text-sm font-sans">{isiVersi}</pre>
-              </div>
-            ) : (
-              <div className="mt-4 flex justify-center py-8">
-                <span className="loading loading-spinner loading-lg" aria-label="Memuat konten" />
-              </div>
-            )}
-            <div className="modal-action">
-              <button
-                type="button"
-                className="btn btn-outline btn-sm"
-                onClick={() => modalDoc && mintaNamaMd(modalDoc)}
-              >
-                <FileDown className="w-4 h-4" /> Unduh .md
-              </button>
-              {/* FITUR 2: Lembar Penilaian (.xlsx) — hanya dokumen KKTP */}
+            <div className="flex items-center gap-1.5 shrink-0">
               {modalDoc === 'kktp_atp' && (
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
+                  className="btn-apple-secondary !min-h-[32px] !py-1.5 !px-2.5 !text-[12px]"
                   disabled={mengunduhXlsx}
                   title="Unduh lembar penilaian KKTP (.xlsx): 30 baris nama, rumus interval & rekomendasi otomatis"
                   onClick={async () => {
@@ -1035,46 +1026,64 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                         kelas: paket.tingkat,
                         sekolah: '',
                       });
-                      showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
-                    } catch (err) {
+                      showToast('Lembar penilaian (.xlsx) berhasil diunduh', 'success');
+                    } catch {
                       showToast('Gagal menyusun .xlsx', 'error');
                     } finally {
                       setMengunduhXlsx(false);
                     }
                   }}
                 >
-                  {mengunduhXlsx ? <Loader2 className="w-4 h-4 animate-spin" /> : <>📊 Lembar Nilai (.xlsx)</>}
+                  {mengunduhXlsx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+                  Lembar nilai
                 </button>
               )}
-              <button type="button" className="btn btn-sm" onClick={() => setModal(null)}>
-                Tutup
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center cursor-pointer"
+                aria-label="Tutup dokumen"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => setModal(null)} />
+          <div className="max-w-[1120px] mx-auto px-3 sm:px-6 py-5">
+            <DocumentViewer
+              document={null}
+              currentUser={pengguna}
+              paketMode={{
+                paketId,
+                docType: modalDoc,
+                onTutup: () => setModal(null),
+              }}
+            />
+          </div>
         </div>
       )}
 
-      {/* REDESIGN: modal konfirmasi arsip */}
+      {/* Modal konfirmasi arsip */}
       {modal === 'arsip' && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi arsip">
-          <div className="modal-box max-w-md rounded-3xl ux-pop-in">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <Archive className="w-5 h-5" />
+          <div className="modal-box max-w-md ux-pop-in">
+            <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
+              <span className="w-8 h-8 rounded-md bg-[var(--surface-2)] text-[var(--ink-soft)] flex items-center justify-center">
+                <Archive className="w-4 h-4" />
+              </span>
               {paketDiarsip ? 'Keluarkan dari arsip?' : 'Arsipkan paket?'}
             </h3>
-            <p className="text-sm opacity-70 mt-2">
+            <p className="text-[13px] text-[var(--ink-soft)] mt-2.5 leading-relaxed">
               {paketDiarsip
                 ? 'Paket akan kembali aktif di daftar paket Anda.'
                 : 'Paket akan disembunyikan dari daftar aktif, tetapi dokumennya tetap tersimpan.'}
             </p>
             <div className="modal-action">
-              <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>
+              <button type="button" className="btn-apple-secondary" onClick={() => setModal(null)}>
                 Batal
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn-apple"
                 disabled={menyimpan}
                 onClick={arsipkan}
               >
@@ -1120,21 +1129,21 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-2xl shadow-xl text-[13.5px] font-medium max-w-[calc(100vw-2rem)] bg-[#1c1c1e] text-white dark:bg-white dark:text-black"
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2.5 pl-3.5 pr-2 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[13px] font-medium max-w-[calc(100vw-2rem)] text-[var(--ink)] ux-pop-in"
         >
           {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#30d158]" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
           ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[#ff9d97]" />
+            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
           ) : (
-            <Info className="w-4 h-4 shrink-0" />
+            <Info className="w-4 h-4 shrink-0 text-[var(--accent)]" />
           )}
           <span>{toast.message}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
             aria-label="Tutup notifikasi"
-            className="ml-1 rounded-full p-1 hover:bg-white/10 dark:hover:bg-black/10"
+            className="ml-1 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)]"
           >
             <X className="w-3.5 h-3.5" />
           </button>

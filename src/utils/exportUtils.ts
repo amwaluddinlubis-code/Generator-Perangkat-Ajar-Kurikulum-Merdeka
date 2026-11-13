@@ -92,12 +92,15 @@ export function renderMarkdownToHtml(markdownText: string): string {
         'ul', 'ol', 'li',
         'table', 'thead', 'tbody', 'tr', 'th', 'td',
         'strong', 'em', 'blockquote', 'code', 'pre',
-        'br', 'hr', 'a'
+        'br', 'hr', 'a', 'img', 'figure', 'figcaption'
       ],
       allowedAttributes: {
-        a: ['href']
+        a: ['href', 'title'],
+        img: ['src', 'alt', 'title', 'width', 'height', 'style']
       },
-      allowedSchemes: ['http', 'https', 'mailto']
+      allowedSchemes: ['http', 'https', 'mailto', 'data'],
+      // Batasi img hanya ke http/https/data:image agar javascript: tidak lolos
+      allowedSchemesAppliedToAttributes: ['href', 'src'],
     });
   } catch (err) {
     console.error('Error parsing markdown:', err);
@@ -784,7 +787,7 @@ export function downloadWordDocument(
   </head>
   <body>
     <div class="kop-surat">
-      ${kop?.logoDataUrl ? `<div style="text-align: center; margin-bottom: 6pt;"><img src="${kop.logoDataUrl}" alt="Logo sekolah" style="max-width: 120px; max-height: 120px;"></div>` : ''}
+      ${kop?.logoDataUrl && tipeLogo(kop.logoDataUrl) ? `<div style="text-align: center; margin-bottom: 6pt;"><img src="${kop.logoDataUrl}" alt="Logo sekolah" style="max-width: 120px; max-height: 120px;"></div>` : ''}
       <div class="kop-kementerian">KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH REPUBLIK INDONESIA</div>
       <div class="kop-dinas">DINAS PENDIDIKAN DAN KEBUDAYAAN DAERAH</div>
       <div class="kop-sekolah">${escapeHtml(namaSekolah)}</div>

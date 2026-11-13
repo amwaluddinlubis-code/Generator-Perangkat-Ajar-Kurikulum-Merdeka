@@ -18,11 +18,12 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { theme } = useTheme();
   const dark = theme === 'dark';
-  // Palet netral Apple — mengikuti tema
-  const ink = dark ? '#f5f5f7' : '#1d1d1f';
-  const subtle = dark ? '#98989d' : '#6e6e73';
-  const grid = dark ? 'rgba(255,255,255,0.12)' : '#e8e8ed';
-  const dotBg = dark ? '#1c1c1e' : '#ffffff';
+  // Palet netral dingin — mengikuti tema
+  const ink = dark ? '#e8eaed' : '#0f172a';
+  const subtle = dark ? '#8b94a3' : '#5b6675';
+  const grid = dark ? 'rgba(255,255,255,0.10)' : '#e2e6ee';
+  const dotBg = dark ? '#161a22' : '#ffffff';
+  const series = dark ? '#818cf8' : '#4f46e5';
   const [tooltip, setTooltip] = useState<{
     visible: boolean;
     x: number;
@@ -80,13 +81,13 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
     areaGradient
       .append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', ink)
-      .attr('stop-opacity', 0.28);
+      .attr('stop-color', series)
+      .attr('stop-opacity', 0.22);
 
     areaGradient
       .append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', '#3b82f6')
+      .attr('stop-color', series)
       .attr('stop-opacity', 0.02);
 
     // Bar Gradient
@@ -101,12 +102,14 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
     barGradient
       .append('stop')
       .attr('offset', '0%')
-      .attr('stop-color', ink);
+      .attr('stop-color', series)
+      .attr('stop-opacity', 1);
 
     barGradient
       .append('stop')
       .attr('offset', '100%')
-      .attr('stop-color', subtle);
+      .attr('stop-color', series)
+      .attr('stop-opacity', 0.45);
 
     // X and Y Scales
     const xScale = d3
@@ -202,7 +205,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
       g.append('path')
         .datum(data)
         .attr('fill', 'none')
-        .attr('stroke', ink)
+        .attr('stroke', series)
         .attr('stroke-width', 3)
         .attr('stroke-linecap', 'round')
         .attr('d', line);
@@ -221,7 +224,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
           .attr('cy', cy)
           .attr('r', 6)
           .attr('fill', dotBg)
-          .attr('stroke', ink)
+          .attr('stroke', series)
           .attr('stroke-width', 2.5)
           .attr('class', 'cursor-pointer transition-all hover:scale-125')
           .on('mouseenter', (event) => {
@@ -243,7 +246,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
           .attr('cx', cx)
           .attr('cy', cy)
           .attr('r', 2.5)
-          .attr('fill', ink)
+          .attr('fill', series)
           .attr('pointer-events', 'none');
       });
 
@@ -287,7 +290,7 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
         .text(d => getValue(d) > 0 ? getValue(d) : '');
     }
 
-  }, [data, selectedMetric, chartType, theme, ink, subtle, grid, dotBg]);
+  }, [data, selectedMetric, chartType, theme, ink, subtle, grid, dotBg, series]);
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -296,47 +299,47 @@ export const ProductivityD3Chart: React.FC<ProductivityD3ChartProps> = ({
       {/* Floating D3 Tooltip */}
       {tooltip.visible && tooltip.data && (
         <div
-          className="absolute z-20 pointer-events-none bg-slate-900/95 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs backdrop-blur-sm transition-all transform -translate-x-1/2 -translate-y-full mb-3 min-w-[200px]"
+          className="absolute z-20 pointer-events-none mb-3 min-w-[200px] -translate-x-1/2 -translate-y-full rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 text-[11.5px] shadow-lg transition-all"
           style={{
             left: `${tooltip.x}px`,
             top: `${tooltip.y - 12}px`
           }}
         >
-          <div className="flex items-center justify-between border-b border-slate-700 pb-1.5 mb-2">
-            <span className="font-extrabold text-blue-300">
+          <div className="mb-2 flex items-center justify-between border-b border-[var(--line)] pb-1.5">
+            <span className="font-semibold text-[var(--ink)]">
               {tooltip.data.month} {tooltip.data.year}
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 text-[10px] font-bold">
-              {tooltip.data.total} Dokumen
+            <span className="ds-badge ds-badge-accent !py-0 !text-[10px]">
+              {tooltip.data.total} dokumen
             </span>
           </div>
 
-          <div className="space-y-1 text-[11px]">
-            <div className="flex justify-between text-slate-300">
-              <span>• Modul Ajar:</span>
-              <b className="text-white">{tooltip.data.modulAjar}</b>
+          <div className="space-y-1">
+            <div className="flex justify-between text-[var(--muted)]">
+              <span>Modul ajar</span>
+              <b className="text-[var(--ink)]">{tooltip.data.modulAjar}</b>
             </div>
-            <div className="flex justify-between text-slate-300">
-              <span>• RPP Ringkas:</span>
-              <b className="text-white">{tooltip.data.rpp}</b>
+            <div className="flex justify-between text-[var(--muted)]">
+              <span>RPP ringkas</span>
+              <b className="text-[var(--ink)]">{tooltip.data.rpp}</b>
             </div>
-            <div className="flex justify-between text-slate-300">
-              <span>• Bank Soal Ujian:</span>
-              <b className="text-white">{tooltip.data.soalUjian}</b>
+            <div className="flex justify-between text-[var(--muted)]">
+              <span>Bank soal ujian</span>
+              <b className="text-[var(--ink)]">{tooltip.data.soalUjian}</b>
             </div>
-            <div className="flex justify-between text-slate-300">
-              <span>• LKPD / ATP / P5:</span>
-              <b className="text-white">{tooltip.data.lainnya}</b>
+            <div className="flex justify-between text-[var(--muted)]">
+              <span>LKPD / ATP / P5</span>
+              <b className="text-[var(--ink)]">{tooltip.data.lainnya}</b>
             </div>
           </div>
 
-          <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-emerald-300">
-            <span>Rata-rata Waktu AI:</span>
-            <b>~{tooltip.data.avgDurationMinutes} Menit</b>
+          <div className="mt-2.5 flex items-center justify-between border-t border-[var(--line)] pt-2 text-[10.5px] text-[var(--ok)]">
+            <span>Rata-rata waktu AI</span>
+            <b>~{tooltip.data.avgDurationMinutes} menit</b>
           </div>
-          <div className="text-[10px] text-amber-300 flex items-center justify-between mt-0.5">
-            <span>Estimasi Hemat Kerja:</span>
-            <b>~{(tooltip.data.total * 3.5).toFixed(1)} Jam</b>
+          <div className="mt-0.5 flex items-center justify-between text-[10.5px] text-[var(--warn)]">
+            <span>Estimasi hemat kerja</span>
+            <b>~{(tooltip.data.total * 3.5).toFixed(1)} jam</b>
           </div>
         </div>
       )}

@@ -1,0 +1,51 @@
+- generic [ref=f3e3]:
+  - navigation [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: Ruang Guru Merdeka
+      - generic [ref=f3e12]: Kurikulum Merdeka · 2026/2027
+  - main [ref=f3e13]:
+    - generic [ref=f3e14]:
+      - img "Maskot burung hantu Owi" [ref=f3e15]
+      - paragraph [ref=f3e42]: Generator Perangkat Ajar
+      - heading "Halo, Pak Guru! 👋" [level=1] [ref=f3e43]
+      - paragraph [ref=f3e44]: Ruang Guru Merdeka
+      - paragraph [ref=f3e45]: Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikbudristek No. 12 Tahun 2024 — dalam hitungan menit, bukan akhir pekan ☕.
+    - generic [ref=f3e46]:
+      - tablist "Masuk atau daftar" [ref=f3e48]:
+        - tab "Masuk" [selected] [ref=f3e49] [cursor=pointer]
+        - tab "Daftar Guru" [ref=f3e50] [cursor=pointer]
+      - generic [ref=f3e51]:
+        - generic [ref=f3e52]:
+          - generic [ref=f3e53]: Email profil guru
+          - textbox "Email profil guru" [ref=f3e58]:
+            - /placeholder: nama@sekolah.id
+          - generic [ref=f3e59]:
+            - button "@guru.sd.belajar.id" [ref=f3e60]
+            - button "@guru.smp.belajar.id" [ref=f3e61]
+            - button "@guru.sma.belajar.id" [ref=f3e62]
+          - paragraph [ref=f3e63]: Hanya email sebagai identitas profil — tanpa kata sandi Belajar.id.
+        - button "Lanjutkan" [ref=f3e64] [cursor=pointer]
+        - generic [ref=f3e67]:
+          - paragraph [ref=f3e68]: Masuk sekali ketuk ✨
+          - button "A Amwaluddin Lubis, M.Pd. Balai Penjaminan Mutu Pendidikan (BPMP)" [ref=f3e70]:
+            - generic [ref=f3e71]: A
+            - generic [ref=f3e72]:
+              - paragraph [ref=f3e73]: Amwaluddin Lubis, M.Pd.
+              - paragraph [ref=f3e74]: Balai Penjaminan Mutu Pendidikan (BPMP)
+    - generic [ref=f3e75]:
+      - generic [ref=f3e76]:
+        - heading "7 format perangkat" [level=3] [ref=f3e81]
+        - paragraph [ref=f3e82]: Modul Ajar, RPP, Soal AKM/HOTS, LKPD, ATP/KKTP, Prota-Promes, P5.
+      - generic [ref=f3e83]:
+        - heading "Siap cetak & edit" [level=3] [ref=f3e88]
+        - paragraph [ref=f3e89]: Ekspor .docx asli dan .pdf dengan kop sekolah resmi.
+      - generic [ref=f3e90]:
+        - heading "Katalog topik BSKAP" [level=3] [ref=f3e94]
+        - paragraph [ref=f3e95]: Inspirasi materi otomatis mengikuti Fase dan Kelas.
+      - generic [ref=f3e96]:
+        - heading "Arsip & statistik" [level=3] [ref=f3e100]
+        - paragraph [ref=f3e101]: Semua dokumen tersimpan rapi dan terpantau.
+    - generic [ref=f3e102]: Mode demo — akun Belajar.id resmi belum terhubung. Data tersimpan lokal di perangkat Anda.
+  - contentinfo [ref=f3e107]:
+    - text: Ruang Guru Merdeka · Alat bantu penyusunan perangkat ajar ·
+    - generic [ref=f3e108]: Permendikbudristek No. 12/2024

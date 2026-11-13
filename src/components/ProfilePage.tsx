@@ -19,6 +19,8 @@ interface ProfilePageProps {
   onOpenAuthModal: () => void;
 }
 
+const labelCls = 'block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5';
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   currentUser,
   documents,
@@ -59,106 +61,110 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
       {/* Hero profil */}
-      <div className="text-center">
-        <div className="w-20 h-20 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[28px] mx-auto">
-          {currentUser.name.charAt(0)}
-        </div>
-        <h2 className="apple-headline !text-[26px] sm:!text-[32px] mt-3">{currentUser.name}</h2>
-        <p className="apple-sub !text-[14.5px] mt-1">{currentUser.email}</p>
-        <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-            {isVerified || isSuperAdmin ? (
-              <><span className="w-1.5 h-1.5 rounded-full bg-[#30b158]" /> {isSuperAdmin ? 'Admin' : 'Terverifikasi'}</>
-            ) : (
-              <><span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a] animate-pulse" /> Menunggu verifikasi</>
-            )}
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-            {currentUser.jenjang} • {myDocs.length} dokumen
-          </span>
+      <div className="apple-card p-5 sm:p-6">
+        <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+          <div className="w-16 h-16 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[22px] shrink-0">
+            {currentUser.name.charAt(0)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[20px] font-semibold tracking-[-0.025em] text-[var(--ink)] truncate">{currentUser.name}</h1>
+            <p className="text-[12.5px] text-[var(--muted)] mt-0.5 truncate">{currentUser.email}</p>
+            <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap sm:justify-start">
+              <span className={`ds-badge ${isVerified || isSuperAdmin ? 'ds-badge-ok' : 'ds-badge-warn'}`}>
+                {isVerified || isSuperAdmin ? (isSuperAdmin ? 'Admin' : 'Terverifikasi') : 'Menunggu verifikasi'}
+              </span>
+              <span className="ds-badge">
+                {currentUser.jenjang} · {myDocs.length} dokumen
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={onOpenAuthModal} className="btn-apple-secondary shrink-0">
+            <UserCircle2 className="w-4 h-4" />
+            Ganti akun
+          </button>
         </div>
         {currentUser.verifiedBy && (
-          <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-2">
+          <p className="mt-3 border-t border-[var(--line)] pt-3 text-[11.5px] text-[var(--muted)]">
             Diverifikasi oleh {currentUser.verifiedBy}
-            {currentUser.verifiedAt && ` • ${new Date(currentUser.verifiedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+            {currentUser.verifiedAt && ` · ${new Date(currentUser.verifiedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
           </p>
         )}
       </div>
 
       {/* Form profil mandiri */}
-      <form onSubmit={handleSubmit} className="apple-card p-6 sm:p-8 space-y-3.5">
-        <h3 className="font-semibold text-[15px]">Data profil</h3>
+      <form onSubmit={handleSubmit} className="apple-card p-4 sm:p-5 space-y-3">
+        <h2 className="text-[13.5px] font-semibold text-[var(--ink)]">Data profil</h2>
         <div>
-          <label className="block text-[13px] font-semibold mb-1.5">Nama lengkap & gelar</label>
+          <label className={labelCls}>Nama lengkap &amp; gelar</label>
           <input value={name} onChange={(e) => setName(e.target.value)} required className="apple-input" />
         </div>
         <div>
-          <label className="block text-[13px] font-semibold mb-1.5">Sekolah</label>
+          <label className={labelCls}>Sekolah</label>
           <input value={school} onChange={(e) => setSchool(e.target.value)} required className="apple-input" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">Jenjang (terkunci)</label>
+            <label className={labelCls}>Jenjang (terkunci)</label>
             <input value={currentUser.jenjang} disabled className="apple-input disabled:opacity-60" />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">Mata pelajaran</label>
+            <label className={labelCls}>Mata pelajaran</label>
             <input value={mapel} onChange={(e) => setMapel(e.target.value)} className="apple-input" />
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">NIP / NUPTK</label>
+            <label className={labelCls}>NIP / NUPTK</label>
             <input value={nip} onChange={(e) => setNip(e.target.value)} placeholder="Opsional" className="apple-input" />
           </div>
           <div>
-            <label className="block text-[13px] font-semibold mb-1.5">NPSN</label>
+            <label className={labelCls}>NPSN</label>
             <input value={npsn} onChange={(e) => setNpsn(e.target.value)} placeholder="Opsional" className="apple-input" />
           </div>
         </div>
         <button type="submit" disabled={saving} className="btn-apple w-full">
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? 'Menyimpan...' : 'Simpan perubahan'}
+          {saving ? 'Menyimpan…' : 'Simpan perubahan'}
         </button>
-        <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] text-center">
+        <p className="text-center text-[11.5px] text-[var(--muted)]">
           Jenjang, peran, dan status hanya bisa diubah oleh admin.
         </p>
       </form>
 
       {/* Aktivitas & preferensi */}
-      <div className="apple-card p-6 sm:p-8 space-y-3">
-        <h3 className="font-semibold text-[15px]">Akun & tampilan</h3>
-        <div className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.03] dark:bg-white/5 px-4 py-3">
-          <div className="flex items-center gap-2.5 text-[14px] font-medium">
-            {theme === 'dark' ? <Moon className="w-[18px] h-[18px]" /> : <Sun className="w-[18px] h-[18px]" />}
+      <div className="apple-card p-4 sm:p-5 space-y-2.5">
+        <h2 className="text-[13.5px] font-semibold text-[var(--ink)]">Akun &amp; tampilan</h2>
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5">
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-[var(--ink-soft)]">
+            {theme === 'dark' ? <Moon className="w-4 h-4 text-[var(--muted)]" /> : <Sun className="w-4 h-4 text-[var(--muted)]" />}
             Mode {theme === 'dark' ? 'gelap' : 'terang'}
           </div>
-          <button type="button" onClick={toggle} className="btn-apple-secondary !min-h-[38px] !py-2">
+          <button type="button" onClick={toggle} className="btn-apple-secondary !min-h-[32px] !py-1 !px-2.5 !text-[12px]">
             Ganti
           </button>
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.03] dark:bg-white/5 px-4 py-3">
-          <div className="flex items-center gap-2.5 text-[14px] font-medium">
-            <UserCircle2 className="w-[18px] h-[18px]" />
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5">
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-[var(--ink-soft)]">
+            <UserCircle2 className="w-4 h-4 text-[var(--muted)]" />
             {myDocs.length} perangkat tersusun
           </div>
-          <button type="button" onClick={onOpenAuthModal} className="btn-apple-secondary !min-h-[38px] !py-2">
+          <button type="button" onClick={onOpenAuthModal} className="btn-apple-secondary !min-h-[32px] !py-1 !px-2.5 !text-[12px]">
             Ganti akun
           </button>
         </div>
-        <div className="flex items-center gap-2 text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
-          <FileText className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 text-[11.5px] text-[var(--muted)]">
+          <FileText className="w-3.5 h-3.5 shrink-0" />
           Terdaftar sejak {new Date(currentUser.registeredAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
         {!isVerified && !isSuperAdmin && (
-          <div className="flex items-center gap-2 text-[13px] rounded-2xl bg-[#ff9f0a]/10 px-4 py-3">
-            <Clock className="w-4 h-4 text-[#ff9f0a] shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-3.5 py-2.5 text-[12px] text-[var(--warn)]">
+            <Clock className="w-4 h-4 shrink-0" />
             Akun Anda sedang menunggu verifikasi admin sebelum akses penuh.
           </div>
         )}
         {(isVerified || isSuperAdmin) && (
-          <div className="flex items-center gap-2 text-[13px] rounded-2xl bg-[#30b158]/10 px-4 py-3">
-            <CheckCircle2 className="w-4 h-4 text-[#30b158] shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-[var(--ok)]/30 bg-[var(--ok-soft)] px-3.5 py-2.5 text-[12px] text-[var(--ok)]">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             Akun aktif — seluruh fitur generator terbuka.
           </div>
         )}

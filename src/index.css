@@ -6,76 +6,159 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* REDESIGN: jembatani tema gelap DaisyUI ke class .dark (strategi class aplikasi).
-   Tanpa ini, komponen DaisyUI (btn, dropdown, menu, hero, badge) hanya mengikuti
-   prefers-color-scheme OS dan tidak ikut toggle tema aplikasi. Nilai disalin dari
-   tema "dark" bawaan DaisyUI agar tetap harmonis. */
-.dark {
-  color-scheme: dark;
-  --color-base-100: oklch(25.33% 0.016 252.42);
-  --color-base-200: oklch(23.26% 0.014 253.1);
-  --color-base-300: oklch(21.15% 0.012 254.09);
-  --color-base-content: oklch(97.807% 0.029 256.847);
-  --color-primary: oklch(58% 0.233 277.117);
-  --color-primary-content: oklch(96% 0.018 272.314);
-  --color-secondary: oklch(65% 0.241 354.308);
-  --color-secondary-content: oklch(94% 0.028 342.258);
-  --color-accent: oklch(77% 0.152 181.912);
-  --color-accent-content: oklch(38% 0.063 188.416);
-  --color-neutral: oklch(14% 0.005 285.823);
-  --color-neutral-content: oklch(92% 0.004 286.32);
-  --color-info: oklch(74% 0.16 232.661);
-  --color-info-content: oklch(29% 0.066 243.157);
-  --color-success: oklch(76% 0.177 163.223);
-  --color-success-content: oklch(37% 0.077 168.94);
-  --color-warning: oklch(82% 0.189 84.429);
-  --color-warning-content: oklch(41% 0.112 45.904);
-  --color-error: oklch(71% 0.194 13.428);
-  --color-error-content: oklch(27% 0.105 12.094);
-  --radius-selector: 0.5rem;
-  --radius-field: 0.25rem;
-  --radius-box: 0.5rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
-}
+/* ============================================================
+   DESIGN SYSTEM — "Slate Core"
+   Netral dingin + satu aksen indigo. Sudut 12px, permukaan
+   ber-border tipis, elevasi minimal. Nama variabel lama
+   (--apple-*) dipertahankan sebagai alias agar komponen lama
+   tetap berjalan tanpa disentuh.
+   ============================================================ */
 
-/* ——— Apple-style design system (light + dark) ——— */
 @layer base {
   :root {
-    --apple-bg: #f5f5f7;
-    --apple-card: #ffffff;
-    --apple-ink: #1d1d1f;
-    --apple-gray: #6e6e73;
-    --apple-line: rgba(0, 0, 0, 0.08);
-    --apple-fill: #e8e8ed;
-    --apple-input-bg: #f5f5f7;
-    --apple-nav: rgba(251, 251, 253, 0.82);
-    --apple-blue: #0071e3;
-    --apple-blue-hover: #0077ed;
-    --apple-green: #30b158;
-    --apple-orange: #ff9f0a;
-    --apple-radius: 20px;
+    /* — Token inti — */
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f1f3f7;
+    --surface-3: #e6eaf0;
+    --ink: #0f172a;
+    --ink-soft: #334155;
+    --muted: #5b6675;
+    --line: #e3e7ed;
+    --line-strong: #cfd6e0;
+
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --accent-soft: #eef2ff;
+    --accent-ink: #3730a3;
+
+    --ok: #047857;
+    --ok-soft: #ecfdf5;
+    --warn: #b45309;
+    --warn-soft: #fffbeb;
+    --danger: #b91c1c;
+    --danger-soft: #fef2f2;
+
+    --ring: rgba(79, 70, 229, 0.32);
+
+    /* — Alias kompatibilitas (dipakai komponen lama) — */
+    --apple-bg: var(--bg);
+    --apple-card: var(--surface);
+    --apple-ink: var(--ink);
+    --apple-gray: var(--muted);
+    --apple-line: var(--line);
+    --apple-fill: var(--surface-2);
+    --apple-input-bg: var(--surface);
+    --apple-nav: rgba(255, 255, 255, 0.88);
+    --apple-blue: var(--accent);
+    --apple-blue-hover: var(--accent-hover);
+    --apple-green: var(--ok);
+    --apple-orange: var(--warn);
+    --apple-radius: 12px;
+
+    /* — DaisyUI: tema terang — */
+    --color-base-100: #ffffff;
+    --color-base-200: #f6f7f9;
+    --color-base-300: #e6eaf0;
+    --color-base-content: #0f172a;
+    --color-primary: #4f46e5;
+    --color-primary-content: #ffffff;
+    --color-secondary: #475569;
+    --color-secondary-content: #ffffff;
+    --color-accent: #6366f1;
+    --color-accent-content: #ffffff;
+    --color-neutral: #1e293b;
+    --color-neutral-content: #f8fafc;
+    --color-info: #0369a1;
+    --color-info-content: #ffffff;
+    --color-success: #047857;
+    --color-success-content: #ffffff;
+    --color-warning: #b45309;
+    --color-warning-content: #ffffff;
+    --color-error: #b91c1c;
+    --color-error-content: #ffffff;
+    --radius-selector: 0.5rem;
+    --radius-field: 0.625rem;
+    --radius-box: 0.75rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
     color-scheme: light;
   }
 
   .dark {
-    --apple-bg: #000000;
-    --apple-card: #1c1c1e;
-    --apple-ink: #f5f5f7;
-    --apple-gray: #98989d;
-    --apple-line: rgba(255, 255, 255, 0.14);
-    --apple-fill: #2c2c2e;
-    --apple-input-bg: #2c2c2e;
-    --apple-nav: rgba(20, 20, 22, 0.78);
-    --apple-blue: #0a84ff;
-    --apple-blue-hover: #409cff;
+    --bg: #0b0d11;
+    --surface: #12151b;
+    --surface-2: #191d25;
+    --surface-3: #222833;
+    --ink: #e8eaed;
+    --ink-soft: #b7bec9;
+    --muted: #8b94a3;
+    --line: #232934;
+    --line-strong: #333b49;
+
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --accent-soft: rgba(99, 102, 241, 0.16);
+    --accent-ink: #c7d2fe;
+
+    --ok: #34d399;
+    --ok-soft: rgba(52, 211, 153, 0.14);
+    --warn: #fbbf24;
+    --warn-soft: rgba(251, 191, 36, 0.14);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+
+    --ring: rgba(129, 140, 248, 0.4);
+
+    --apple-bg: var(--bg);
+    --apple-card: var(--surface);
+    --apple-ink: var(--ink);
+    --apple-gray: var(--muted);
+    --apple-line: var(--line);
+    --apple-fill: var(--surface-2);
+    --apple-input-bg: var(--surface-2);
+    --apple-nav: rgba(11, 13, 17, 0.86);
+    --apple-blue: var(--accent);
+    --apple-blue-hover: var(--accent-hover);
+    --apple-green: var(--ok);
+    --apple-orange: var(--warn);
+
+    /* — DaisyUI: tema gelap — */
+    --color-base-100: #12151b;
+    --color-base-200: #0d1016;
+    --color-base-300: #222833;
+    --color-base-content: #e8eaed;
+    --color-primary: #4f46e5;
+    --color-primary-content: #ffffff;
+    --color-secondary: #334155;
+    --color-secondary-content: #e2e8f0;
+    --color-accent: #818cf8;
+    --color-accent-content: #101322;
+    --color-neutral: #2b333f;
+    --color-neutral-content: #e8eaed;
+    --color-info: #38bdf8;
+    --color-info-content: #082f49;
+    --color-success: #34d399;
+    --color-success-content: #052e16;
+    --color-warning: #fbbf24;
+    --color-warning-content: #451a03;
+    --color-error: #f87171;
+    --color-error-content: #450a0a;
+    --radius-selector: 0.5rem;
+    --radius-field: 0.625rem;
+    --radius-box: 0.75rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
     color-scheme: dark;
   }
 
-  /* REDESIGN: scrollbar ramping selaras gaya Apple (untuk worker lain & panel scroll) */
+  /* — Scrollbar ramping — */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -84,19 +167,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(120, 120, 128, 0.35);
+    background: rgba(120, 130, 150, 0.32);
     border-radius: 8px;
-    border: 2.5px solid transparent;
+    border: 3px solid transparent;
     background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(120, 120, 128, 0.55);
-    border: 2.5px solid transparent;
-    background-clip: content-box;
+    background: rgba(120, 130, 150, 0.55);
   }
   html {
     scrollbar-width: thin;
-    scrollbar-color: rgba(120, 120, 128, 0.4) transparent;
+    scrollbar-color: rgba(120, 130, 150, 0.4) transparent;
   }
 
   html {
@@ -105,182 +186,272 @@
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', 'Plus Jakarta Sans', system-ui, sans-serif;
-    background-color: var(--apple-bg);
-    /* Gradien aurora Apple terkini — sangat lembut, fixed */
-    background-image:
-      radial-gradient(1000px 520px at 6% -8%, rgba(0, 113, 227, 0.12), transparent 62%),
-      radial-gradient(860px 480px at 96% -4%, rgba(175, 82, 222, 0.11), transparent 60%),
-      radial-gradient(1100px 620px at 50% 112%, rgba(255, 159, 10, 0.09), transparent 62%),
-      radial-gradient(700px 420px at 88% 88%, rgba(48, 209, 88, 0.07), transparent 60%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background-color: var(--bg);
+    /* Satu sapuan aksen sangat tipis di atas — cukup untuk kedalaman, tanpa aurora. */
+    background-image: radial-gradient(
+      900px 420px at 50% -12%,
+      color-mix(in oklab, var(--accent) 7%, transparent),
+      transparent 70%
+    );
     background-attachment: fixed;
-    color: var(--apple-ink);
-    font-size: 15.5px;
+    background-repeat: no-repeat;
+    color: var(--ink);
+    font-size: 14.5px;
     line-height: 1.55;
-    letter-spacing: -0.01em;
-    transition: background-color .25s ease, color .25s ease;
+    letter-spacing: -0.006em;
+    transition: background-color .2s ease, color .2s ease;
   }
 
   .dark body {
-    background-color: #000000;
-    background-image:
-      radial-gradient(1000px 520px at 6% -8%, rgba(10, 132, 255, 0.16), transparent 62%),
-      radial-gradient(860px 480px at 96% -4%, rgba(175, 82, 222, 0.13), transparent 60%),
-      radial-gradient(1100px 620px at 50% 112%, rgba(255, 159, 10, 0.09), transparent 62%),
-      radial-gradient(700px 420px at 88% 88%, rgba(48, 209, 88, 0.08), transparent 60%);
+    background-image: radial-gradient(
+      900px 420px at 50% -12%,
+      color-mix(in oklab, var(--accent) 10%, transparent),
+      transparent 70%
+    );
+  }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.018em;
+    color: var(--ink);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 24%, transparent);
   }
 }
 
 @layer components {
-  /* Kartu utama gaya Apple: sudut besar, bayangan sangat lembut */
+  /* ————— Permukaan ————— */
   .apple-card {
-    background: var(--apple-card);
-    border: 1px solid var(--apple-line);
+    background: var(--surface);
+    border: 1px solid var(--line);
     border-radius: var(--apple-radius);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05);
-    color: var(--apple-ink);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+    color: var(--ink);
   }
   .dark .apple-card {
-    box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.35);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
-  /* Input gaya Apple */
+  /* Kartu interaktif: mengangkat 2px, bukan melayang 8px. */
+  .ux-lift {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .ux-lift:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+    box-shadow: 0 6px 20px rgba(16, 24, 40, 0.08);
+  }
+  .dark .ux-lift:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ————— Input ————— */
   .apple-input {
     width: 100%;
-    background: var(--apple-input-bg);
-    border: 1px solid transparent;
-    border-radius: 12px;
-    padding: 12px 14px;
-    font-size: 15px;
-    color: var(--apple-ink);
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 14px;
+    color: var(--ink);
     outline: none;
-    transition: all .2s ease;
+    transition: border-color .16s ease, box-shadow .16s ease;
   }
-  .apple-input::placeholder { color: var(--apple-gray); }
+  .apple-input::placeholder { color: var(--muted); }
+  .apple-input:hover { border-color: var(--muted); }
   .apple-input:focus {
-    background: var(--apple-card);
-    border-color: var(--apple-blue);
-    box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.18);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
   }
+  .dark .apple-input { background: var(--surface-2); }
 
   select.apple-input {
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%2398989d' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%2364748b' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 14px center;
-    padding-right: 36px;
+    background-position: right 12px center;
+    padding-right: 34px;
   }
 
-  /* Tombol utama Apple: pill biru */
+  /* ————— Tombol ————— */
   .btn-apple {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    background: var(--apple-blue);
+    gap: 7px;
+    background: var(--accent);
     color: #fff;
     font-weight: 600;
-    font-size: 15px;
-    border-radius: 980px;
-    padding: 12px 24px;
-    min-height: 44px;
-    transition: all .2s ease;
+    font-size: 13.5px;
+    letter-spacing: -0.005em;
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-height: 40px;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+    transition: background-color .16s ease, box-shadow .16s ease, transform .12s ease;
     cursor: pointer;
-    border: none;
+    white-space: nowrap;
   }
-  .btn-apple:hover { background: var(--apple-blue-hover); transform: translateY(-1px); }
-  .btn-apple:active { transform: translateY(0) scale(.99); }
-  .btn-apple:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+  .btn-apple:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 4px 12px color-mix(in oklab, var(--accent) 28%, transparent);
+  }
+  .btn-apple:active { transform: translateY(1px); box-shadow: none; }
+  .btn-apple:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-apple:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* Tombol sekunder */
   .btn-apple-secondary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    background: var(--apple-fill);
-    color: var(--apple-ink);
+    gap: 7px;
+    background: var(--surface);
+    color: var(--ink-soft);
     font-weight: 600;
-    font-size: 14.5px;
-    border-radius: 980px;
-    padding: 11px 22px;
-    min-height: 44px;
-    transition: all .2s ease;
+    font-size: 13.5px;
+    letter-spacing: -0.005em;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-height: 40px;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
     cursor: pointer;
-    border: none;
+    white-space: nowrap;
   }
-  .btn-apple-secondary:hover { filter: brightness(.94); }
-  .dark .btn-apple-secondary:hover { filter: brightness(1.25); }
+  .btn-apple-secondary:hover {
+    background: var(--surface-2);
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+  .btn-apple-secondary:disabled { opacity: .5; cursor: not-allowed; }
 
-  /* Segmented control ala iOS */
+  .btn-apple-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 13.5px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 9px 12px;
+    min-height: 38px;
+    transition: background-color .16s ease, color .16s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-apple-ghost:hover { background: var(--surface-2); color: var(--ink); }
+
+  /* ————— Segmented control ————— */
   .apple-segment {
-    background: var(--apple-fill);
-    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
     padding: 3px;
     display: inline-flex;
     gap: 2px;
   }
   .apple-segment button {
-    border-radius: 9px;
-    padding: 8px 18px;
-    font-size: 13.5px;
+    border-radius: 7px;
+    padding: 6px 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--apple-gray);
-    transition: all .2s ease;
+    color: var(--muted);
+    transition: background-color .15s ease, color .15s ease;
     cursor: pointer;
     border: none;
     background: transparent;
-    min-height: 36px;
+    min-height: 32px;
   }
+  .apple-segment button:hover { color: var(--ink); }
   .apple-segment button[data-active="true"] {
-    background: var(--apple-card);
-    color: var(--apple-ink);
-    box-shadow: 0 1px 4px rgba(0,0,0,.18);
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
   }
 
-  /* Nav blur ala Apple */
+  /* ————— Navigasi ————— */
   .apple-nav {
     background: var(--apple-nav);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid var(--apple-line);
+    backdrop-filter: saturate(150%) blur(14px);
+    -webkit-backdrop-filter: saturate(150%) blur(14px);
+    border-bottom: 1px solid var(--line);
   }
 
+  /* ————— Tipografi ————— */
   .apple-eyebrow {
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .02em;
-    color: var(--apple-blue);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
 
   .apple-headline {
-    font-size: clamp(28px, 4vw, 44px);
+    font-size: clamp(24px, 3vw, 32px);
     font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
-    color: var(--apple-ink);
+    letter-spacing: -0.028em;
+    line-height: 1.15;
+    color: var(--ink);
   }
 
   .apple-sub {
-    font-size: 16px;
-    color: var(--apple-gray);
-    line-height: 1.5;
-    letter-spacing: -0.01em;
+    font-size: 14.5px;
+    color: var(--muted);
+    line-height: 1.55;
   }
 
-  /* UX: transisi halus saat view berganti tab (fade + naik ringan) */
+  /* ————— Badge ————— */
+  .ds-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .ds-badge-accent {
+    background: var(--accent-soft);
+    border-color: color-mix(in oklab, var(--accent) 24%, transparent);
+    color: var(--accent-ink);
+  }
+  .ds-badge-ok {
+    background: var(--ok-soft);
+    border-color: color-mix(in oklab, var(--ok) 28%, transparent);
+    color: var(--ok);
+  }
+  .ds-badge-warn {
+    background: var(--warn-soft);
+    border-color: color-mix(in oklab, var(--warn) 28%, transparent);
+    color: var(--warn);
+  }
+
+  /* ————— Animasi masuk ————— */
   @keyframes ux-view-enter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .ux-view-enter {
-    animation: ux-view-enter 0.32s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+    animation: ux-view-enter 0.24s cubic-bezier(0.22, 0.8, 0.36, 1) both;
   }
 
   /* UX: indikator fokus keyboard selalu terlihat (a11y) */
-  :where(button, a, input, select, [tabindex]):focus-visible {
-    outline: 2px solid var(--apple-blue);
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
+    border-radius: 6px;
   }
 }
 
@@ -288,14 +459,14 @@
   .ux-view-enter { animation: none; }
 }
 
-/* Markdown dokumen */
+/* ————— Markdown dokumen ————— */
 .prose-educational {
-  color: var(--apple-ink);
+  color: var(--ink);
   line-height: 1.75;
-  font-size: 15.5px;
+  font-size: 15px;
 }
 .prose-educational h1 {
-  font-size: 1.55rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   text-align: center;
@@ -303,36 +474,36 @@
   margin: 1.4rem 0 0.8rem;
 }
 .prose-educational h2 {
-  font-size: 1.22rem;
+  font-size: 1.18rem;
   font-weight: 700;
   letter-spacing: -0.015em;
   margin: 1.6rem 0 0.5rem;
 }
-.prose-educational h3 { font-size: 1.05rem; font-weight: 600; margin: 1.2rem 0 0.35rem; }
-.prose-educational h4 { font-size: 1rem; font-weight: 600; color: var(--apple-gray); margin: 1rem 0 0.25rem; }
-.prose-educational h1, .prose-educational h2, .prose-educational h3 { color: var(--apple-ink); }
-.prose-educational p { margin: 0.5rem 0 0.8rem; text-align: left; opacity: .92; }
+.prose-educational h3 { font-size: 1.03rem; font-weight: 600; margin: 1.2rem 0 0.35rem; }
+.prose-educational h4 { font-size: 0.98rem; font-weight: 600; color: var(--muted); margin: 1rem 0 0.25rem; }
+.prose-educational h1, .prose-educational h2, .prose-educational h3 { color: var(--ink); }
+.prose-educational p { margin: 0.5rem 0 0.8rem; text-align: left; }
 .prose-educational ul, .prose-educational ol { margin-left: 1.4rem; margin-bottom: 0.8rem; }
 .prose-educational li { margin-bottom: 0.3rem; }
 .prose-educational strong { font-weight: 700; }
-.prose-educational hr { border: 0; border-top: 1px solid var(--apple-line); margin: 1.6rem 0; }
+.prose-educational hr { border: 0; border-top: 1px solid var(--line); margin: 1.6rem 0; }
 .prose-educational blockquote {
-  border-left: 3px solid var(--apple-blue);
+  border-left: 3px solid var(--accent);
   padding: 0.6rem 1rem;
-  background: var(--apple-input-bg);
-  border-radius: 0 12px 12px 0;
+  background: var(--surface-2);
+  border-radius: 0 8px 8px 0;
   margin: 1rem 0;
 }
-.prose-educational table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.9rem; }
+.prose-educational table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.88rem; }
 .prose-educational th, .prose-educational td {
-  border: 1px solid var(--apple-line);
-  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.7rem;
   text-align: left;
   vertical-align: top;
 }
-.prose-educational th { background: var(--apple-input-bg); font-weight: 600; }
+.prose-educational th { background: var(--surface-2); font-weight: 600; }
 
-/* ——— Kertas dokumen formal A4 ——— */
+/* ————— Kertas dokumen formal A4 (tetap serif & putih saat dicetak) ————— */
 .doc-paper {
   background: #ffffff;
   color: #111111;
@@ -382,7 +553,7 @@
   max-width: 100%;
   height: auto;
   margin: 12pt auto;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid #e5e5e5;
 }
 .doc-kop { text-align: center; }
@@ -403,22 +574,23 @@
   .doc-paper { padding: 16px 14px; min-height: unset; }
 }
 
-/* ——— Kompatibilitas dark untuk panel lama (palet slate) ——— */
-.dark .bg-white { background-color: #1c1c1e; }
-.dark .bg-slate-50 { background-color: #2c2c2e; }
-.dark .bg-slate-100 { background-color: #2c2c2e; }
-.dark .bg-slate-800\/60, .dark .bg-slate-800\/70 { background-color: rgba(44, 44, 46, 0.7); }
-.dark .bg-slate-900 { background-color: #101012; }
-.dark .text-slate-900, .dark .text-slate-800 { color: #f5f5f7; }
-.dark .text-slate-700, .dark .text-slate-600 { color: #c7c7cc; }
-.dark .text-slate-500, .dark .text-slate-400 { color: #98989d; }
-.dark .border-slate-200 { border-color: rgba(255, 255, 255, 0.14); }
-.dark .border-slate-300 { border-color: rgba(255, 255, 255, 0.22); }
-.dark .border-slate-700 { border-color: rgba(255, 255, 255, 0.16); }
-.dark .hover\:bg-slate-50:hover { background-color: #2c2c2e; }
-.dark .hover\:bg-slate-100:hover { background-color: #3a3a3c; }
+/* ————— Jaring pengaman dark mode untuk kelas Tailwind lama ————— */
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-slate-50 { background-color: var(--surface-2); }
+.dark .bg-slate-100 { background-color: var(--surface-2); }
+.dark .bg-slate-200 { background-color: var(--surface-3); }
+.dark .bg-slate-800\/60, .dark .bg-slate-800\/70 { background-color: rgba(34, 40, 51, 0.7); }
+.dark .bg-slate-900 { background-color: #0d1016; }
+.dark .text-slate-900, .dark .text-slate-800 { color: var(--ink); }
+.dark .text-slate-700, .dark .text-slate-600 { color: var(--ink-soft); }
+.dark .text-slate-500, .dark .text-slate-400 { color: var(--muted); }
+.dark .border-slate-200 { border-color: var(--line); }
+.dark .border-slate-300 { border-color: var(--line-strong); }
+.dark .border-slate-700 { border-color: var(--line); }
+.dark .hover\:bg-slate-50:hover { background-color: var(--surface-2); }
+.dark .hover\:bg-slate-100:hover { background-color: var(--surface-3); }
 
-/* Print — tetap terang untuk dokumen sekolah */
+/* ————— Print — tetap terang untuk dokumen sekolah ————— */
 @page {
   size: A4;
   margin: 20mm 18mm;
@@ -444,94 +616,72 @@
   .avoid-break-inside { break-inside: avoid !important; }
 }
 
-/* ——— FRIENDLY: palet hangat + animasi playful ——— */
-:root {
-  --rgm-cream: #FFFBF5;
-  --rgm-peach: #FFEEDB;
-  --rgm-peach-deep: #F5C77E;
-  --rgm-amber: #F59E0B;
-  --rgm-amber-soft: #FEF3C7;
-  --rgm-coral-soft: #FFE4E0;
-  --rgm-honey: #E8963C;
-}
+/* ============================================================
+   Kompatibilitas nama kelas lama (rgm-*) — dipetakan ke Slate Core
+   agar halaman yang belum disentuh ikut berubah serentak.
+   ============================================================ */
 
-/* Latar hangat untuk mode terang */
-body {
-  background-color: var(--rgm-cream);
-}
-.dark body {
-  background-color: oklch(25.33% 0.016 252.42);
-}
-
-/* Kartu hangat: membulat besar, bayangan lembut bernuansa peach */
 .rgm-card {
-  border-radius: 1.5rem;
-  background: #fff;
-  border: 1px solid #F6E7D3;
-  box-shadow: 0 2px 12px rgba(217, 150, 60, 0.08);
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  color: var(--ink);
 }
 .dark .rgm-card {
-  background: oklch(25.33% 0.016 252.42);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* Hero hangat: gradasi peach lembut */
 .rgm-hero-warm {
-  background: linear-gradient(135deg, #FFF3E0 0%, #FFE8D1 45%, #F3E8FF 100%);
-  border: 1px solid #F6E0C2;
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 10%, var(--surface)) 0%,
+    var(--surface) 55%,
+    var(--surface-2) 100%
+  );
+  border: 1px solid var(--line);
 }
 .dark .rgm-hero-warm {
-  background: linear-gradient(135deg, oklch(30% 0.05 70) 0%, oklch(28% 0.05 300) 100%);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--accent) 18%, var(--surface)) 0%,
+    var(--surface) 60%,
+    var(--surface-2) 100%
+  );
+  border-color: var(--line);
 }
 
-/* Badge hangat */
 .rgm-badge-warm {
-  background: var(--rgm-amber-soft);
-  color: #92400E;
-  border: 1px solid #FDE68A;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, transparent);
 }
 .dark .rgm-badge-warm {
-  background: rgba(245, 158, 11, 0.15);
-  color: #FCD34D;
-  border-color: rgba(245, 158, 11, 0.3);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: color-mix(in oklab, var(--accent) 32%, transparent);
 }
 
-/* FRIENDLY: maskot melayang lembut */
+/* ————— Animasi ————— */
 @keyframes ux-float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
+  50% { transform: translateY(-5px); }
 }
-.ux-float {
-  animation: ux-float 4s ease-in-out infinite;
-}
+.ux-float { animation: ux-float 5s ease-in-out infinite; }
 
-/* FRIENDLY: kartu/modal muncul dengan pop lembut */
 @keyframes ux-pop-in {
-  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  from { opacity: 0; transform: scale(0.98) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.ux-pop-in {
-  animation: ux-pop-in 0.28s cubic-bezier(0.22, 0.8, 0.36, 1) both;
-}
+.ux-pop-in { animation: ux-pop-in 0.2s cubic-bezier(0.22, 0.8, 0.36, 1) both; }
 
-/* FRIENDLY: kartu terangkat saat hover */
-.ux-lift {
-  transition: transform 0.22s cubic-bezier(0.22, 0.8, 0.36, 1), box-shadow 0.22s ease;
-}
-.ux-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 28px rgba(217, 150, 60, 0.16);
-}
-
-/* FRIENDLY: entrance berurutan — pakai style={{ '--ux-delay': '80ms' }} */
+/* Entrance berurutan — pakai style={{ '--ux-delay': '60ms' }} */
 @keyframes ux-rise-in {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .ux-stagger {
-  animation: ux-rise-in 0.4s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+  animation: ux-rise-in 0.3s cubic-bezier(0.22, 0.8, 0.36, 1) both;
   animation-delay: var(--ux-delay, 0ms);
 }
 

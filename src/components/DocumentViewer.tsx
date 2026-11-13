@@ -51,7 +51,8 @@ import {
   XCircle,
   Info,
   School,
-  ClipboardList
+  ClipboardList,
+  Table2
 } from 'lucide-react';
 
 // F1-6: salin dalam butir soal agar state edit tidak memutasi hasil parse
@@ -329,20 +330,20 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     if (isPaketMode && loadingVersi) {
       return (
         <div className="apple-card p-12 text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-[14.5px] text-[#6e6e73]">Memuat riwayat versi dokumen...</p>
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[var(--accent)]" />
+          <p className="text-[13px] text-[var(--muted)]">Memuat riwayat versi dokumen…</p>
         </div>
       );
     }
     return (
       <div className="apple-card p-12 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#f5f5f7] flex items-center justify-center mx-auto mb-4">
-          <FileText className="w-8 h-8" />
+        <div className="w-14 h-14 rounded-xl bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-6 h-6" />
         </div>
-        <h3 className="text-[19px] font-semibold tracking-tight mb-1">
+        <h3 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--ink)] mb-1">
           Belum ada dokumen
         </h3>
-        <p className="text-[14.5px] text-[#6e6e73] max-w-md mx-auto mb-6">
+        <p className="text-[13px] text-[var(--muted)] max-w-md mx-auto mb-6">
           Pilih format, tentukan kelas dan materi, lalu susun dokumen untuk ditinjau dan diekspor.
         </p>
         {/* UX: beri jalan keluar yang jelas — kembali ke generator untuk menyusun dokumen */}
@@ -527,7 +528,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           kelas: document.tingkat || '',
           sekolah: document.schoolName || '',
         });
-        showToast('Lembar Penilaian (.xlsx) berhasil diunduh 📊', 'success');
+        showToast('Lembar penilaian .xlsx berhasil diunduh', 'success');
       } catch (err) {
         console.error(err);
         showToast('Gagal menyusun .xlsx', 'error');
@@ -640,31 +641,32 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   return (
     <div className="space-y-4">
       
-      {/* Top Action Bar — Apple frosted */}
-      <div className="apple-card p-4 flex flex-wrap items-center justify-between gap-3 no-print !rounded-[20px]">
-        <div className="flex items-center gap-2">
+      {/* Top Action Bar */}
+      <div className="apple-card p-4 flex flex-wrap items-center justify-between gap-3 no-print">
+        <div className="flex items-center gap-2 min-w-0">
           {onBackToGenerator && (
             <button
               onClick={onBackToGenerator}
-              className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-lg text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Kembali ke formulir"
+              aria-label="Kembali ke formulir"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4" />
             </button>
           )}
 
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-semibold">
-                {document.jenjang} • {document.tingkat} ({document.fase})
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="ds-badge !py-0.5 !text-[10.5px]">
+                {document.jenjang} · {document.tingkat} · {document.fase}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-medium">
+              <span className="ds-badge !py-0.5 !text-[10.5px]">
                 {document.mataPelajaran}
               </span>
               {modelUsed && (
                 <span
                   title={`Mesin penyusun: ${modelUsed}`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10 text-[11px] font-medium"
+                  className="ds-badge ds-badge-accent !py-0.5 !text-[10.5px]"
                 >
                   {/gemini/i.test(modelUsed) ? (
                     <><Sparkles className="w-3 h-3" /> AI Gemini</>
@@ -674,7 +676,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </span>
               )}
             </div>
-            <h1 className="text-base sm:text-lg font-extrabold text-slate-900 truncate max-w-[280px] sm:max-w-md mt-0.5">
+            <h1 className="text-[15px] sm:text-[17px] font-semibold tracking-[-0.02em] text-[var(--ink)] truncate max-w-[280px] sm:max-w-md mt-1">
               {document.title}
             </h1>
           </div>
@@ -683,30 +685,30 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         {/* GEL2: bilah versi — hanya dalam mode paket */}
         {isPaketMode && (
           <div className="flex items-center gap-2 flex-wrap no-print">
-            {/* Pemilih versi (dropdown DaisyUI, terbaru dulu, versi aktif ditandai) */}
+            {/* Pemilih versi */}
             <div className="dropdown">
-              <div tabIndex={0} role="button" className="btn btn-sm btn-outline gap-1" aria-label="Pilih versi dokumen">
+              <div tabIndex={0} role="button" className="btn-apple-secondary !min-h-[34px] !py-1 !px-2.5 !text-[12px] gap-1" aria-label="Pilih versi dokumen">
                 {loadingVersi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />}
                 {nomorTerpilih != null ? `v${nomorTerpilih}` : 'Pilih versi'}
                 <ChevronDown className="w-3.5 h-3.5" />
               </div>
               <ul
                 tabIndex={0}
-                className="dropdown-content menu bg-base-100 rounded-box z-20 w-72 p-2 shadow-lg border border-base-300 max-h-72 overflow-y-auto"
+                className="dropdown-content menu z-20 w-72 p-1.5 shadow-lg border border-[var(--line)] bg-[var(--surface)] rounded-xl max-h-72 overflow-y-auto"
               >
                 {versis.length === 0 && !loadingVersi && (
-                  <li><span className="text-sm opacity-60">Belum ada versi tersimpan</span></li>
+                  <li><span className="text-[12px] text-[var(--muted)] px-2 py-1.5 block">Belum ada versi tersimpan</span></li>
                 )}
                 {versis.map((v) => (
                   <li key={v.id}>
                     <button
                       onClick={() => setNomorTerpilih(v.nomorVersi)}
-                      className={`flex items-center gap-2 ${v.nomorVersi === nomorTerpilih ? 'active' : ''}`}
+                      className={`flex items-center gap-2 rounded-lg text-[12.5px] ${v.nomorVersi === nomorTerpilih ? 'bg-[var(--accent-soft)] text-[var(--accent-ink)]' : ''}`}
                     >
                       <span className="font-semibold shrink-0">v{v.nomorVersi}</span>
-                      <span className="flex-1 truncate text-xs opacity-70">{v.title}</span>
+                      <span className="flex-1 truncate text-[11.5px] text-[var(--muted)]">{v.title}</span>
                       {v.nomorVersi === versiAktifServer && (
-                        <span className="badge badge-primary badge-sm shrink-0">Aktif</span>
+                        <span className="ds-badge ds-badge-accent !py-0 !text-[10px] shrink-0">Aktif</span>
                       )}
                     </button>
                   </li>
@@ -716,18 +718,18 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
             {/* Badge status dokumen */}
             {statusDokumen === 'final' ? (
-              <span className="badge badge-success gap-1"><Check className="w-3 h-3" /> Final</span>
+              <span className="ds-badge ds-badge-ok"><Check className="w-3 h-3" /> Final</span>
             ) : statusDokumen === 'draf' ? (
-              <span className="badge badge-warning">Draf</span>
+              <span className="ds-badge ds-badge-warn">Draf</span>
             ) : statusDokumen ? (
-              <span className="badge badge-ghost">{statusDokumen}</span>
+              <span className="ds-badge">{statusDokumen}</span>
             ) : null}
 
             {/* Aksi versi */}
             <button
               onClick={handleJadikanVersiAktif}
               disabled={aksiVersi || !versiTerpilih || versiTerpilih.nomorVersi === versiAktifServer}
-              className="btn btn-sm btn-primary"
+              className="btn-apple !min-h-[34px] !py-1 !px-2.5 !text-[12px]"
               title="Simpan versi yang sedang dilihat sebagai versi aktif yang baru"
             >
               {aksiVersi && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -737,15 +739,15 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               <button
                 onClick={handleTandaiFinal}
                 disabled={aksiVersi || versis.length === 0}
-                className="btn btn-sm btn-success"
+                className="btn-apple-secondary !min-h-[34px] !py-1 !px-2.5 !text-[12px] !text-[var(--ok)] !border-[var(--ok)]/40 hover:!bg-[var(--ok-soft)]"
                 title="Tandai dokumen ini sebagai final"
               >
                 {aksiVersi && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Tandai Final
+                Tandai final
               </button>
             )}
             {paketMode?.onTutup && (
-              <button onClick={paketMode.onTutup} className="btn btn-sm btn-ghost">
+              <button onClick={paketMode.onTutup} className="btn-apple-ghost !min-h-[34px] !py-1 !px-2.5 !text-[12px]">
                 Tutup
               </button>
             )}
@@ -756,7 +758,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           
           {/* View Toggles */}
-          <div className="apple-segment !rounded-full">
+          <div className="apple-segment">
             <button
               onClick={() => setActiveView('preview')}
               data-active={activeView === 'preview'}
@@ -791,20 +793,20 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* Copy Button */}
           <button
             onClick={handleCopy}
-            className="px-4 py-2 rounded-full border border-black/10 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px]"
             title="Salin isi dokumen ke clipboard"
           >
-            {copied ? <Check className="w-4 h-4 text-[#30b158]" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? 'Tersalin!' : 'Salin'}</span>
+            {copied ? <Check className="w-3.5 h-3.5 text-[var(--ok)]" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Tersalin' : 'Salin'}</span>
           </button>
 
           {/* Ilustrasi AI */}
           <button
             onClick={openImgModal}
-            className="px-4 py-2 rounded-full bg-black dark:bg-white dark:text-black text-white text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            className="btn-apple !min-h-[34px] !py-1.5 !px-3 !text-[12px]"
             title="Buat ilustrasi AI untuk dokumen ini (Gemini)"
           >
-            <ImagePlus className="w-4 h-4" />
+            <ImagePlus className="w-3.5 h-3.5" />
             <span>Ilustrasi AI</span>
           </button>
 
@@ -812,7 +814,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           <button
             onClick={handleExportDocx}
             disabled={isExportingDocx}
-            className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
+            className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px] disabled:opacity-50"
             title="Ekspor dokumen Microsoft Word (.docx) siap diedit di Word / Google Docs"
           >
             {isExportingDocx ? (
@@ -827,7 +829,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           <button
             onClick={handleExportPdf}
             disabled={isExportingPdf}
-            className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
+            className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px] disabled:opacity-50"
             title="Ekspor dokumen langsung ke format berkas PDF (.pdf) siap cetak"
           >
             {isExportingPdf ? (
@@ -841,11 +843,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {/* F2-1: Kop & Pengesahan */}
           <button
             onClick={bukaKopModal}
-            className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px]"
             title="Atur kop sekolah, logo, dan lembar pengesahan untuk ekspor & cetak"
           >
-            <School className="w-4 h-4" />
-            <span>Kop{kopSiap ? ' ✓' : ''}</span>
+            <School className="w-3.5 h-3.5" />
+            <span>Kop</span>
+            {kopSiap && <span className="w-1.5 h-1.5 rounded-full bg-[var(--ok)]" aria-hidden />}
           </button>
 
           {/* F2-5: Pilihan ukuran kertas A4/F4 */}
@@ -855,10 +858,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {soal && (
             <button
               onClick={handleExportNaskahUjian}
-              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+              className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px]"
               title="Unduh naskah ujian siap cetak (tanpa kunci) + kunci jawaban rahasia guru"
             >
-              <FileText className="w-4 h-4" />
+              <FileText className="w-3.5 h-3.5" />
               <span>Naskah Ujian</span>
             </button>
           )}
@@ -867,10 +870,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           {soal && (
             <button
               onClick={bukaAdminUjian}
-              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+              className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px]"
               title="Susun Berita Acara, Daftar Hadir, dan Kartu Hasil ujian"
             >
-              <ClipboardList className="w-4 h-4" />
+              <ClipboardList className="w-3.5 h-3.5" />
               <span>Admin Ujian</span>
             </button>
           )}
@@ -880,40 +883,37 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <button
               onClick={handleUnduhLembarXlsx}
               disabled={isExportingXlsx}
-              className="px-4 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] disabled:opacity-50"
+              className="btn-apple-secondary !min-h-[34px] !py-1.5 !px-3 !text-[12px] disabled:opacity-50"
               title="Unduh lembar penilaian KKTP (.xlsx): 30 baris nama, rumus interval & rekomendasi otomatis"
             >
               {isExportingXlsx ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <span aria-hidden>📊</span>
+                <Table2 className="w-3.5 h-3.5" />
               )}
-              <span>{isExportingXlsx ? 'Menyusun .xlsx...' : 'Lembar Penilaian (.xlsx)'}</span>
+              <span>{isExportingXlsx ? 'Menyusun .xlsx…' : 'Lembar penilaian'}</span>
             </button>
           )}
 
           {/* Print Button */}
           <button
             onClick={handlePrint}
-            className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+            className="w-9 h-9 rounded-lg text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] flex items-center justify-center transition-colors cursor-pointer"
             title="Cetak langsung melalui dialog browser"
+            aria-label="Cetak dokumen"
           >
-            <Printer className="w-[18px] h-[18px]" />
+            <Printer className="w-4 h-4" />
           </button>
 
           {/* Save to Repo */}
           {onSaveToRepository && (
             <button
               onClick={handleSave}
-              className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px] ${
-                justSaved
-                  ? 'bg-black dark:bg-white dark:text-black text-white'
-                  : 'bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15'
-              }`}
+              className={`!min-h-[34px] !py-1.5 !px-3 !text-[12px] ${justSaved ? 'btn-apple' : 'btn-apple-secondary'}`}
               title="Simpan dokumen ke bank arsip perangkat ajar"
             >
-              <Bookmark className="w-4 h-4" />
-              <span>{justSaved ? 'Tersimpan!' : 'Simpan'}</span>
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>{justSaved ? 'Tersimpan' : 'Simpan'}</span>
             </button>
           )}
 
@@ -922,50 +922,53 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* GEL2: peringatan bila riwayat versi gagal dimuat (mode paket) */}
       {isPaketMode && errorVersi && (
-        <div role="alert" className="alert alert-error no-print">
-          <XCircle className="w-5 h-5 shrink-0" />
-          <span className="text-sm flex-1">{errorVersi}</span>
-          <button onClick={() => muatVersi()} className="btn btn-sm btn-ghost">
+        <div role="alert" className="no-print flex items-start gap-2.5 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-3 text-[12.5px] text-[var(--danger)]">
+          <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="flex-1">{errorVersi}</span>
+          <button
+            onClick={() => muatVersi()}
+            className="shrink-0 rounded-md border border-[var(--danger)]/35 px-2 py-1 text-[11.5px] font-semibold hover:bg-[var(--danger)]/10 cursor-pointer"
+          >
             Coba lagi
           </button>
         </div>
       )}
 
       {/* Main Document Paper Display */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden print-container">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--line)] shadow-sm overflow-hidden print-container p-3 sm:p-4">
         
         {/* EDIT VIEW */}
         {activeView === 'edit' && (
-          <div className="p-6 space-y-4 no-print">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">
-                Mode Editor Teks Langsung (Perubahan otomatis mempengaruhi tampilan pratinjau cetak dan unduhan Word / PDF)
+          <div className="space-y-3 no-print">
+            <div className="flex items-center justify-between gap-3 text-[11.5px] text-[var(--muted)]">
+              <span className="font-medium text-[var(--ink-soft)]">
+                Editor teks — perubahan langsung memengaruhi pratinjau cetak dan unduhan Word / PDF.
               </span>
-              <span>{editableContent.length} karakter</span>
+              <span className="shrink-0">{editableContent.length} karakter</span>
             </div>
             <textarea
               value={editableContent}
               onChange={(e) => setEditableContent(e.target.value)}
               rows={24}
-              className="w-full p-4 rounded-xl border border-slate-300 font-mono text-xs sm:text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 bg-slate-50/50"
+              className="w-full rounded-lg border border-[var(--line-strong)] bg-[var(--surface-2)] p-3.5 font-mono text-[12px] sm:text-[12.5px] leading-relaxed text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/45"
             />
           </div>
         )}
 
         {/* RAW MARKDOWN VIEW */}
         {activeView === 'raw' && (
-          <div className="p-6 bg-slate-900 text-slate-100 overflow-x-auto no-print">
-            <div className="flex items-center justify-between text-xs text-slate-400 mb-3 border-b border-slate-800 pb-2">
-              <span className="font-mono">RAW MARKDOWN FORMAT</span>
+          <div className="p-4 rounded-lg bg-[#0f172a] overflow-x-auto no-print">
+            <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2 text-[11px] text-[#8b94a3]">
+              <span className="font-mono uppercase tracking-[0.08em]">Markdown mentah</span>
               <button
                 onClick={handleCopy}
-                className="hover:text-white flex items-center gap-1 cursor-pointer"
+                className="flex items-center gap-1 text-[#c7cdd8] hover:text-white cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5" />
-                Salin Semua
+                Salin semua
               </button>
             </div>
-            <pre className="font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed text-slate-200">
+            <pre className="font-mono text-[12px] whitespace-pre-wrap leading-relaxed text-[#e8eaed]">
               {editableContent}
             </pre>
           </div>
@@ -1075,70 +1078,77 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* Modal Ilustrasi AI */}
       {imgModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 no-print">
-          <div className="apple-card max-w-md w-full p-6 ux-pop-in !rounded-3xl !border-[#F5C77E]/50 dark:!border-[#F5C77E]/30">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="text-[17px] font-semibold tracking-tight">Ilustrasi AI 🎨</h3>
+        <div className="modal modal-open no-print" role="dialog" aria-modal="true" aria-label="Ilustrasi AI">
+          <div className="modal-box max-w-md">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-semibold text-[var(--ink)]">Ilustrasi AI</h3>
+                <p className="text-[12px] text-[var(--muted)] mt-0.5">
+                  Dibuatkan Gemini dari deskripsi Anda, lalu disisipkan ke dokumen.
+                </p>
+              </div>
               <button
                 onClick={() => setImgModalOpen(false)}
-                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+                className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center shrink-0 cursor-pointer"
                 aria-label="Tutup"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mb-4">
-              Dibuatkan Gemini dari deskripsi Anda, lalu disisipkan rapi ke dokumen. 🖼️
-            </p>
 
-            <label className="block text-[13px] font-semibold mb-1.5">Deskripsi gambar</label>
-            <textarea
-              value={imgPrompt}
-              onChange={(e) => setImgPrompt(e.target.value)}
-              rows={4}
-              className="apple-input resize-none"
-              placeholder="Contoh: ilustrasi siklus air untuk anak SD, gaya flat..."
-            />
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5">Deskripsi gambar</label>
+                <textarea
+                  value={imgPrompt}
+                  onChange={(e) => setImgPrompt(e.target.value)}
+                  rows={4}
+                  className="apple-input resize-none"
+                  placeholder="Contoh: ilustrasi siklus air untuk anak SD, gaya flat…"
+                />
+              </div>
 
-            <div className="mt-3">
-              <label className="block text-[13px] font-semibold mb-1.5">Rasio</label>
-              <select value={imgRatio} onChange={(e) => setImgRatio(e.target.value)} className="apple-input">
-                <option value="16:9">Lanskap 16:9</option>
-                <option value="4:3">Lanskap 4:3</option>
-                <option value="1:1">Persegi 1:1</option>
-                <option value="3:4">Potret 3:4</option>
-                <option value="9:16">Potret 9:16</option>
-              </select>
+              <div>
+                <label className="block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5">Rasio</label>
+                <select value={imgRatio} onChange={(e) => setImgRatio(e.target.value)} className="apple-input">
+                  <option value="16:9">Lanskap 16:9</option>
+                  <option value="4:3">Lanskap 4:3</option>
+                  <option value="1:1">Persegi 1:1</option>
+                  <option value="3:4">Potret 3:4</option>
+                  <option value="9:16">Potret 9:16</option>
+                </select>
+              </div>
+
+              {imgError && (
+                <div className="rounded-lg border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3.5 py-2.5 text-[12.5px] text-[var(--danger)]">
+                  {imgError}
+                </div>
+              )}
+
+              {imgResult && (
+                <div className="rounded-lg overflow-hidden border border-[var(--line)]">
+                  <img src={imgResult} alt="Pratinjau ilustrasi AI" className="w-full h-auto block" />
+                </div>
+              )}
             </div>
 
-            {imgError && (
-              <div className="mt-3 rounded-xl bg-[#fff1f1] dark:bg-[#3a1512] border border-[#ffcfcf] dark:border-[#6b231d] text-[#b3261e] dark:text-[#ff9d97] text-[13px] px-4 py-3">
-                {imgError}
-              </div>
-            )}
-
-            {imgResult && (
-              <div className="mt-3 rounded-2xl overflow-hidden border border-black/10 dark:border-white/15">
-                <img src={imgResult} alt="Pratinjau ilustrasi AI" className="w-full h-auto block" />
-              </div>
-            )}
-
-            <div className="flex items-center gap-2 mt-5">
-              <button onClick={() => setImgModalOpen(false)} className="btn-apple-secondary flex-1">
+            <div className="modal-action">
+              <button onClick={() => setImgModalOpen(false)} className="btn-apple-secondary">
                 Batal
               </button>
               {imgResult ? (
-                <button onClick={handleInsertImage} className="btn-apple flex-1">
+                <button onClick={handleInsertImage} className="btn-apple">
                   Sisipkan ke dokumen
                 </button>
               ) : (
-                <button onClick={handleGenerateImage} disabled={imgLoading || !imgPrompt.trim()} className="btn-apple flex-1">
+                <button onClick={handleGenerateImage} disabled={imgLoading || !imgPrompt.trim()} className="btn-apple">
                   {imgLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {imgLoading ? 'Membuat...' : 'Buat gambar'}
+                  {imgLoading ? 'Membuat…' : 'Buat gambar'}
                 </button>
               )}
             </div>
           </div>
+          <div className="modal-backdrop" onClick={() => setImgModalOpen(false)} />
         </div>
       )}
       {/* F2-1: modal editor kop & pengesahan */}
@@ -1187,20 +1197,20 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] no-print flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-2xl shadow-xl text-[13.5px] font-medium max-w-[calc(100vw-2rem)] bg-[#1c1c1e] text-white dark:bg-white dark:text-black"
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] no-print flex items-center gap-2.5 pl-3.5 pr-2 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[12.5px] font-medium max-w-[calc(100vw-2rem)] text-[var(--ink)]"
         >
           {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#30d158]" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
           ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[#ff9d97]" />
+            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
           ) : (
-            <Info className="w-4 h-4 shrink-0" />
+            <Info className="w-4 h-4 shrink-0 text-[var(--muted)]" />
           )}
           <span className="truncate">{toast.message}</span>
           <button
             onClick={() => setToast(null)}
             aria-label="Tutup notifikasi"
-            className="p-1.5 rounded-full hover:bg-white/10 dark:hover:bg-black/10 shrink-0 cursor-pointer"
+            className="ml-1 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)] shrink-0 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>

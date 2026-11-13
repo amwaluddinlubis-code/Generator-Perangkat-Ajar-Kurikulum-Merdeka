@@ -26,6 +26,13 @@ interface LoginPageProps {
   isLoading?: boolean;
 }
 
+const FEATURES = [
+  { icon: FileText, title: '7 format perangkat', desc: 'Modul Ajar, RPP, Soal AKM/HOTS, LKPD, ATP/KKTP, Prota-Promes, P5.' },
+  { icon: Download, title: 'Siap cetak & edit', desc: 'Ekspor .docx asli dan .pdf dengan kop sekolah resmi.' },
+  { icon: BookOpen, title: 'Katalog topik BSKAP', desc: 'Inspirasi materi otomatis mengikuti Fase dan Kelas.' },
+  { icon: BarChart3, title: 'Arsip & statistik', desc: 'Semua dokumen tersimpan rapi dan terpantau.' },
+];
+
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLogin,
   demoUsers,
@@ -43,7 +50,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [regNip, setRegNip] = useState<string>('');
   const errorRef = useRef<HTMLDivElement>(null);
 
-  // UX: pindahkan fokus ke kotak error saat muncul agar tak terlewat pengguna keyboard/SR
   useEffect(() => {
     if (errorMessage) errorRef.current?.focus();
   }, [errorMessage]);
@@ -57,8 +63,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
     try {
       await onLogin({ email: loginEmail.trim() });
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal masuk. Periksa kembali email Anda.');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk. Periksa kembali email Anda.');
     }
   };
 
@@ -76,8 +82,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         mataPelajaran: regMapel.trim() || 'Semua Mata Pelajaran',
         nip: regNip.trim(),
       });
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal mendaftarkan akun guru.');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal mendaftarkan akun guru.');
     }
   };
 
@@ -91,178 +97,250 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         jenjang: user.jenjang,
         mataPelajaran: user.mataPelajaran,
       });
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal masuk dengan akun terpilih.');
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk dengan akun terpilih.');
     }
   };
 
-  const features = [
-    { icon: <FileText className="w-5 h-5" />, title: '7 format perangkat', desc: 'Modul Ajar, RPP, Soal AKM/HOTS, LKPD, ATP/KKTP, Prota-Promes, P5.' },
-    { icon: <Download className="w-5 h-5" />, title: 'Siap cetak & edit', desc: 'Ekspor .docx asli dan .pdf dengan kop sekolah resmi.' },
-    { icon: <BookOpen className="w-5 h-5" />, title: 'Katalog topik BSKAP', desc: 'Inspirasi materi otomatis mengikuti Fase dan Kelas.' },
-    { icon: <BarChart3 className="w-5 h-5" />, title: 'Arsip & statistik', desc: 'Semua dokumen tersimpan rapi dan terpantau.' },
-  ];
+  const labelCls = 'block text-[12.5px] font-medium text-[var(--ink-soft)] mb-1.5';
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Nav tipis ala Apple */}
-      <nav className="apple-nav sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-5 h-12 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-black dark:bg-white dark:text-black text-white flex items-center justify-center">
+    <div className="min-h-screen lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,540px)]">
+      {/* ————— Panel kiri: identitas produk ————— */}
+      <aside className="hidden lg:flex flex-col justify-between border-r border-[var(--line)] bg-[var(--surface)] px-12 py-10 relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(600px 300px at 20% 0%, color-mix(in oklab, var(--accent) 12%, transparent), transparent 70%)',
+          }}
+        />
+
+        <div className="relative">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[9px] bg-[var(--accent)] text-white flex items-center justify-center">
+              <GraduationCap className="w-[17px] h-[17px]" />
+            </div>
+            <span className="text-[14px] font-semibold tracking-tight text-[var(--ink)]">
+              Ruang Guru Merdeka
+            </span>
+          </div>
+
+          <h1 className="mt-14 text-[32px] font-semibold tracking-[-0.03em] leading-[1.15] text-[var(--ink)] max-w-[18ch]">
+            Perangkat ajar rapi, dalam hitungan menit.
+          </h1>
+          <p className="apple-sub mt-3 max-w-[46ch]">
+            Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikdasmen
+            No. 13 Tahun 2025 — tanpa lembur di akhir pekan.
+          </p>
+
+          <ul className="mt-10 space-y-4 max-w-[46ch]">
+            {FEATURES.map(({ icon: Icon, title, desc }) => (
+              <li key={title} className="flex gap-3">
+                <span className="w-8 h-8 rounded-md bg-[var(--surface-2)] border border-[var(--line)] text-[var(--ink-soft)] flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-semibold text-[var(--ink)]">{title}</p>
+                  <p className="text-[12.5px] text-[var(--muted)] mt-0.5 leading-relaxed">{desc}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="relative flex items-end justify-between gap-4">
+          <p className="flex items-center gap-2 text-[11.5px] text-[var(--muted)] max-w-[40ch]">
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+            Mode demo — akun Belajar.id resmi belum terhubung. Data tersimpan lokal di perangkat Anda.
+          </p>
+          <Maskot varian="wisuda" size={72} />
+        </div>
+      </aside>
+
+      {/* ————— Panel kanan: formulir ————— */}
+      <main className="flex flex-col min-h-screen bg-[var(--bg)]">
+        <div className="lg:hidden px-5 py-4 border-b border-[var(--line)] bg-[var(--surface)]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center">
               <GraduationCap className="w-4 h-4" />
             </div>
-            <span className="text-[14px] font-semibold tracking-tight">Ruang Guru Merdeka</span>
+            <span className="text-[13.5px] font-semibold text-[var(--ink)]">Ruang Guru Merdeka</span>
           </div>
-          <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">Kurikulum Merdeka · 2026/2027</span>
-        </div>
-      </nav>
-
-      <main className="flex-1 w-full max-w-5xl mx-auto px-5 pt-12 pb-16 sm:pt-16">
-        {/* Hero */}
-        <div className="text-center max-w-2xl mx-auto">
-          <Maskot varian="wisuda" size={120} melayang={true} className="mx-auto mb-4" />
-          <p className="apple-eyebrow mb-2">Generator Perangkat Ajar</p>
-          <h1 className="apple-headline">Halo, Pak Guru! 👋</h1>
-          <p className="apple-sub mt-3 font-semibold text-[#424245] dark:text-[#e8e8ed]">
-            Ruang Guru Merdeka
-          </p>
-          <p className="apple-sub mt-2">
-            Susun Modul Ajar, RPP, Soal, dan perangkat kelas sesuai Permendikbudristek No.&nbsp;12&nbsp;Tahun&nbsp;2024 — dalam hitungan menit, bukan akhir pekan ☕.
-          </p>
         </div>
 
-        {/* Kartu auth */}
-        <div className="apple-card mt-10 max-w-xl mx-auto p-6 sm:p-8 !rounded-3xl !border-[#F5C77E]/50 dark:!border-[#F5C77E]/30 shadow-[0_8px_30px_rgba(245,158,11,0.08)]">
-          <div className="flex justify-center">
-            <div className="apple-segment" role="tablist" aria-label="Masuk atau daftar">
-              {/* UX: tandai tab aktif untuk pembaca layar */}
-              <button type="button" role="tab" aria-selected={activeTab === 'login'} data-active={activeTab === 'login'} onClick={() => { setActiveTab('login'); setErrorMessage(''); }}>Masuk</button>
-              <button type="button" role="tab" aria-selected={activeTab === 'register'} data-active={activeTab === 'register'} onClick={() => { setActiveTab('register'); setErrorMessage(''); }}>Daftar Guru</button>
-            </div>
-          </div>
-
-          {errorMessage && (
-            // UX: kotak error bisa difokuskan + konsisten di dark mode
-            <div ref={errorRef} tabIndex={-1} className="mt-5 rounded-xl bg-[#fff1f1] dark:bg-[#3a1f1f] border border-[#ffcfcf] dark:border-[#7a3b3b] text-[#b3261e] dark:text-[#ffb4ab] text-[13.5px] font-medium px-4 py-3 focus:outline-none" role="alert">
-              {errorMessage}
-            </div>
-          )}
-
-          {activeTab === 'login' ? (
-            <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
-              <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="login-email">Email profil guru</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="login-email"
-                    type="email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="nama@sekolah.id"
-                    className="apple-input !pl-10"
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {['@guru.sd.belajar.id', '@guru.smp.belajar.id', '@guru.sma.belajar.id'].map((dom) => (
-                    <button key={dom} type="button" onClick={() => setLoginEmail(`guru${dom}`)}
-                      className="text-[12px] font-medium px-2.5 py-1 rounded-full bg-[#f5f5f7] dark:bg-white/10 text-[#424245] dark:text-[#e8e8ed] hover:bg-[#e8e8ed] dark:hover:bg-white/15 transition-colors">
-                      {dom}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-2">Hanya email sebagai identitas profil — tanpa kata sandi Belajar.id.</p>
-              </div>
-
-              <button type="submit" disabled={isLoading} className="btn-apple w-full">
-                {isLoading ? 'Membuka ruang kerja…' : 'Lanjutkan'} <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <div className="pt-5 border-t border-black/10">
-                <p className="text-[13px] font-semibold text-[#424245] mb-2.5">Masuk sekali ketuk ✨</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {demoUsers.slice(0, 4).map((user) => (
-                    // UX: nonaktifkan saat proses login berjalan agar tak terkirim ganda
-                    <button key={user.id} type="button" disabled={isLoading} onClick={() => handleQuickLogin(user)}
-                      className="rounded-2xl border border-black/10 dark:border-white/15 hover:border-[#F59E0B] hover:bg-[#FFEEDB]/60 dark:hover:bg-amber-900/20 transition-all text-left p-3 flex items-center gap-2.5 min-h-[56px] disabled:opacity-60 disabled:cursor-not-allowed">
-                      <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-semibold truncate">{user.name}</p>
-                        <p className="text-[12px] text-[#6e6e73] dark:text-[#98989d] truncate">{user.schoolName}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-3.5">
-              <p className="text-[13.5px] bg-[#f5f5f7] dark:bg-white/10 rounded-xl px-4 py-3">
-                Profil baru berstatus <b>menunggu verifikasi</b> administrator sebelum aktif penuh.
+        <div className="flex-1 flex items-center justify-center px-5 py-10 sm:py-14">
+          <div className="w-full max-w-[420px]">
+            <div className="mb-6">
+              <h2 className="text-[22px] font-semibold tracking-[-0.025em] text-[var(--ink)]">
+                {activeTab === 'login' ? 'Masuk ke ruang kerja' : 'Daftar sebagai guru'}
+              </h2>
+              <p className="apple-sub mt-1">
+                {activeTab === 'login'
+                  ? 'Gunakan email profil guru Anda untuk melanjutkan.'
+                  : 'Ajukan akun baru — administrator akan memverifikasi.'}
               </p>
-              <div>
-                {/* UX: label terhubung ke input agar bisa diklik & dibaca screen reader */}
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-name">Nama lengkap & gelar *</label>
-                <input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Contoh: Rahmadani, S.Pd." className="apple-input" required autoComplete="name" />
-              </div>
-              <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-email">Email Belajar.id *</label>
-                <input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required autoComplete="email" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-jenjang">Jenjang</label>
-                  <select id="reg-jenjang" value={regJenjang} onChange={(e) => setRegJenjang(e.target.value as Jenjang)} className="apple-input">
-                    <option value="SD">SD</option>
-                    <option value="SMP">SMP</option>
-                    <option value="SMA">SMA</option>
-                    <option value="SMK">SMK</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-nip">NIP <span className="font-normal text-[#86868b]">(opsional)</span></label>
-                  <input id="reg-nip" value={regNip} onChange={(e) => setRegNip(e.target.value)} placeholder="19890412…" className="apple-input" inputMode="numeric" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-school">Sekolah *</label>
-                <input id="reg-school" value={regSchool} onChange={(e) => setRegSchool(e.target.value)} placeholder="SMP Negeri 1 Padang" className="apple-input" required autoComplete="organization" />
-              </div>
-              <div>
-                <label className="block text-[13.5px] font-semibold mb-1.5" htmlFor="reg-mapel">Mata pelajaran</label>
-                <input id="reg-mapel" value={regMapel} onChange={(e) => setRegMapel(e.target.value)} placeholder="Matematika / IPA" className="apple-input" />
-              </div>
-              <button type="submit" disabled={isLoading} className="btn-apple w-full">
-                Daftarkan & ajukan verifikasi <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Fitur — grid lega */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8 max-w-4xl mx-auto">
-          {features.map((f) => (
-            <div key={f.title} className="apple-card rgm-card ux-lift p-5 text-left">
-              <div className="w-9 h-9 rounded-xl bg-[#FFEEDB] dark:bg-amber-900/30 text-[#B45309] dark:text-amber-300 flex items-center justify-center mb-3">{f.icon}</div>
-              <h3 className="text-[14.5px] font-semibold">{f.title}</h3>
-              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-1 leading-relaxed">{f.desc}</p>
             </div>
-          ))}
-        </div>
 
-        <div className="max-w-xl mx-auto mt-6 flex items-center gap-2.5 justify-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
-          <ShieldCheck className="w-4 h-4 shrink-0" />
-          <span>Mode demo — akun Belajar.id resmi belum terhubung. Data tersimpan lokal di perangkat Anda.</span>
+            <div className="apple-card p-5 sm:p-6">
+              <div className="flex justify-center">
+                <div className="apple-segment w-full" role="tablist" aria-label="Masuk atau daftar">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'login'}
+                    data-active={activeTab === 'login'}
+                    className="flex-1"
+                    onClick={() => { setActiveTab('login'); setErrorMessage(''); }}
+                  >
+                    Masuk
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'register'}
+                    data-active={activeTab === 'register'}
+                    className="flex-1"
+                    onClick={() => { setActiveTab('register'); setErrorMessage(''); }}
+                  >
+                    Daftar
+                  </button>
+                </div>
+              </div>
+
+              {errorMessage && (
+                <div
+                  ref={errorRef}
+                  tabIndex={-1}
+                  className="mt-4 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)] text-[12.5px] font-medium px-3 py-2.5 focus:outline-none"
+                  role="alert"
+                >
+                  {errorMessage}
+                </div>
+              )}
+
+              {activeTab === 'login' ? (
+                <form onSubmit={handleLoginSubmit} className="mt-5 space-y-3.5">
+                  <div>
+                    <label className={labelCls} htmlFor="login-email">Email profil guru</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="login-email"
+                        type="email"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="nama@sekolah.id"
+                        className="apple-input !pl-9"
+                        autoComplete="email"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {['@guru.sd.belajar.id', '@guru.smp.belajar.id', '@guru.sma.belajar.id'].map((dom) => (
+                        <button
+                          key={dom}
+                          type="button"
+                          onClick={() => setLoginEmail(`guru${dom}`)}
+                          className="text-[11.5px] font-medium px-2 py-1 rounded-md border border-[var(--line)] bg-[var(--surface-2)] text-[var(--ink-soft)] hover:border-[var(--line-strong)] hover:text-[var(--ink)] transition-colors"
+                        >
+                          {dom}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11.5px] text-[var(--muted)] mt-2">
+                      Hanya email sebagai identitas profil — tanpa kata sandi Belajar.id.
+                    </p>
+                  </div>
+
+                  <button type="submit" disabled={isLoading} className="btn-apple w-full">
+                    {isLoading ? 'Membuka ruang kerja…' : 'Lanjutkan'}
+                    {!isLoading && <ArrowRight className="w-4 h-4" />}
+                  </button>
+
+                  <div className="pt-4 border-t border-[var(--line)]">
+                    <p className="text-[12px] font-medium text-[var(--ink-soft)] mb-2">
+                      Masuk cepat akun demo
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {demoUsers.slice(0, 4).map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          disabled={isLoading}
+                          onClick={() => handleQuickLogin(user)}
+                          className="rounded-lg border border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] transition-colors text-left p-2 flex items-center gap-2 min-h-[48px] disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <span className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[12px] shrink-0">
+                            {user.name.charAt(0)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-[12.5px] font-semibold text-[var(--ink)] truncate">
+                              {user.name}
+                            </span>
+                            <span className="block text-[11px] text-[var(--muted)] truncate">
+                              {user.schoolName}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleRegisterSubmit} className="mt-5 space-y-3">
+                  <p className="text-[12px] bg-[var(--surface-2)] border border-[var(--line)] rounded-lg px-3 py-2.5 text-[var(--ink-soft)]">
+                    Profil baru berstatus <b className="text-[var(--ink)]">menunggu verifikasi</b> administrator
+                    sebelum aktif penuh.
+                  </p>
+                  <div>
+                    <label className={labelCls} htmlFor="reg-name">Nama lengkap & gelar *</label>
+                    <input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="Contoh: Rahmadani, S.Pd." className="apple-input" required autoComplete="name" />
+                  </div>
+                  <div>
+                    <label className={labelCls} htmlFor="reg-email">Email Belajar.id *</label>
+                    <input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required autoComplete="email" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className={labelCls} htmlFor="reg-jenjang">Jenjang</label>
+                      <select id="reg-jenjang" value={regJenjang} onChange={(e) => setRegJenjang(e.target.value as Jenjang)} className="apple-input">
+                        <option value="SD">SD</option>
+                        <option value="SMP">SMP</option>
+                        <option value="SMA">SMA</option>
+                        <option value="SMK">SMK</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls} htmlFor="reg-nip">
+                        NIP <span className="font-normal text-[var(--muted)]">(opsional)</span>
+                      </label>
+                      <input id="reg-nip" value={regNip} onChange={(e) => setRegNip(e.target.value)} placeholder="19890412…" className="apple-input" inputMode="numeric" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelCls} htmlFor="reg-school">Sekolah *</label>
+                    <input id="reg-school" value={regSchool} onChange={(e) => setRegSchool(e.target.value)} placeholder="SMP Negeri 1 Padang" className="apple-input" required autoComplete="organization" />
+                  </div>
+                  <div>
+                    <label className={labelCls} htmlFor="reg-mapel">Mata pelajaran</label>
+                    <input id="reg-mapel" value={regMapel} onChange={(e) => setRegMapel(e.target.value)} placeholder="Matematika / IPA" className="apple-input" />
+                  </div>
+                  <button type="submit" disabled={isLoading} className="btn-apple w-full">
+                    Daftarkan & ajukan verifikasi
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+              )}
+            </div>
+
+            <p className="mt-5 text-center text-[11.5px] text-[var(--muted)] flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Permendikdasmen No. 13 Tahun 2025 · Kurikulum Merdeka
+            </p>
+          </div>
         </div>
       </main>
-
-      <footer className="border-t border-black/10 dark:border-white/15 py-5 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
-        Ruang Guru Merdeka · Alat bantu penyusunan perangkat ajar · <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Permendikbudristek No. 12/2024</span>
-      </footer>
     </div>
   );
 };

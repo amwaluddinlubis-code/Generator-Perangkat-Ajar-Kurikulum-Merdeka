@@ -18,40 +18,40 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="apple-card max-w-sm w-full p-6 text-center">
+    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Keluar dari akun">
+      <div className="modal-box max-w-sm text-center">
         
-        <div className="w-12 h-12 rounded-full bg-black/[0.05] dark:bg-white/10 flex items-center justify-center mx-auto mb-4">
-          <LogOut className="w-6 h-6" />
+        <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--muted)]">
+          <LogOut className="w-5 h-5" />
         </div>
 
-        <h3 className="text-[17px] font-semibold tracking-tight">
+        <h3 className="text-[15px] font-semibold text-[var(--ink)]">
           Keluar dari akun?
         </h3>
         
-        <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mt-1.5">
+        <p className="mt-1.5 text-[12.5px] text-[var(--muted)]">
           Sesi {currentUser.name} akan diakhiri.
         </p>
 
-        <div className="mt-4 p-3 rounded-2xl bg-black/[0.03] dark:bg-white/5 text-left flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-black dark:bg-white dark:text-black text-white font-semibold flex items-center justify-center text-[14px] shrink-0">
+        <div className="mt-4 flex items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] p-3 text-left">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[12.5px] font-semibold text-[var(--accent-ink)]">
             {currentUser.name.charAt(0)}
           </div>
-          <div className="truncate flex-1 min-w-0">
-            <div className="text-[13.5px] font-semibold truncate">
+          <div className="min-w-0 flex-1 truncate">
+            <div className="truncate text-[12.5px] font-semibold text-[var(--ink)]">
               {currentUser.name}
             </div>
-            <div className="text-[12px] text-[#6e6e73] dark:text-[#98989d] truncate">
+            <div className="truncate text-[11.5px] text-[var(--muted)]">
               {currentUser.email}
             </div>
           </div>
         </div>
 
-        <p className="text-[12px] text-[#86868b] mt-3">
+        <p className="mt-3 text-[11.5px] text-[var(--muted)]">
           Arsip yang tersimpan tetap aman dan bisa dibuka lagi nanti.
         </p>
 
-        <div className="flex items-center gap-2 mt-5">
+        <div className="modal-action">
           <button
             type="button"
             onClick={onClose}
@@ -66,7 +66,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
               onClose();
               onConfirmLogout();
             }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#ff3b30] hover:bg-[#e5342c] text-white font-semibold text-[14.5px] rounded-[980px] min-h-[44px] px-5 transition-all cursor-pointer"
+            className="flex-1 inline-flex min-h-[40px] cursor-pointer items-center justify-center gap-1.5 rounded-[10px] bg-[var(--danger)] px-4 text-[13px] font-semibold text-white transition-colors hover:opacity-90"
           >
             <LogOut className="w-4 h-4" />
             <span>Keluar</span>
@@ -74,6 +74,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
         </div>
 
       </div>
+      <div className="modal-backdrop" onClick={onClose} />
     </div>
   );
 };

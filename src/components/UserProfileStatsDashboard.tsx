@@ -143,8 +143,8 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
   const donutData = useMemo(() => {
     const total = totalDocsCount > 0 ? totalDocsCount : 10;
     const mono = dark
-      ? { ink: '#f5f5f7', gray: '#aeaeb2', faint: '#48484a', blue: '#0a84ff', green: '#30d158', orange: '#ffb340' }
-      : { ink: '#1d1d1f', gray: '#6e6e73', faint: '#c7c7cc', blue: '#0071e3', green: '#30b158', orange: '#ff9f0a' };
+      ? { ink: '#e8eaed', gray: '#8b94a3', faint: '#333b49', blue: '#818cf8', green: '#34d399', orange: '#fbbf24' }
+      : { ink: '#0f172a', gray: '#5b6675', faint: '#cfd6e0', blue: '#4f46e5', green: '#047857', orange: '#b45309' };
     return [
       { label: 'Modul Ajar Lengkap', count: modulAjarCount > 0 ? modulAjarCount : 4, color: mono.ink },
       { label: 'RPP Ringkas (1-2 Lembar)', count: rppCount > 0 ? rppCount : 2, color: mono.gray },
@@ -162,47 +162,46 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
     <div className="space-y-4">
       
       {/* 1. Header Profil */}
-      <div className="apple-card p-6 sm:p-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="apple-card p-5 sm:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           
           {/* Avatar & Identitas */}
-          <div className="flex items-start sm:items-center gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
             <div className="relative">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[22px]">
                 {currentUser.name.charAt(0)}
               </div>
-              <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full ${isVerified || isSuperAdmin ? 'bg-[#30b158]' : 'bg-[#ff9f0a]'}`} style={{ border: '3px solid var(--apple-card)' }} />
+              <div
+                className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${isVerified || isSuperAdmin ? 'bg-[var(--ok)]' : 'bg-[var(--warn)]'}`}
+                style={{ border: '3px solid var(--surface)' }}
+              />
             </div>
 
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">
+                <h1 className="text-[20px] sm:text-[23px] font-semibold tracking-[-0.025em] text-[var(--ink)]">
                   {currentUser.name}
                 </h1>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 text-[12.5px] font-medium">
-                  {isSuperAdmin ? 'Admin' : isVerified ? (
-                    <><span className="w-1.5 h-1.5 rounded-full bg-[#30b158]" /> Terverifikasi</>
-                  ) : (
-                    <><span className="w-1.5 h-1.5 rounded-full bg-[#ff9f0a]" /> Menunggu verifikasi</>
-                  )}
+                <span className={`ds-badge ${isVerified || isSuperAdmin ? 'ds-badge-ok' : 'ds-badge-warn'}`}>
+                  {isSuperAdmin ? 'Admin' : isVerified ? 'Terverifikasi' : 'Menunggu verifikasi'}
                 </span>
               </div>
 
-              <div className="text-[13px] text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1.5 mt-1 truncate">
+              <div className="text-[12.5px] text-[var(--muted)] flex items-center gap-1.5 mt-1 truncate">
                 <Mail className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{currentUser.email}</span>
                 {currentUser.nip && (
-                  <span>• NIP. {currentUser.nip}</span>
+                  <span className="hidden sm:inline">· NIP {currentUser.nip}</span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mt-2 text-[12.5px] flex-wrap">
-                <span className="inline-flex items-center gap-1.5 bg-black/5 dark:bg-white/10 px-2.5 py-1 rounded-full font-medium">
-                  <School className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 mt-2 text-[12px] flex-wrap">
+                <span className="ds-badge">
+                  <School className="w-3 h-3" />
                   {currentUser.schoolName}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 font-medium">
-                  {currentUser.jenjang} • {currentUser.mataPelajaran}
+                <span className="ds-badge">
+                  {currentUser.jenjang} · {currentUser.mataPelajaran}
                 </span>
               </div>
             </div>
@@ -211,18 +210,12 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
 
           {/* Aksi */}
           <div className="flex items-center gap-2 shrink-0 self-start md:self-center flex-wrap">
-            <button
-              onClick={onOpenAuthModal}
-              className="btn-apple-secondary !min-h-[40px]"
-            >
+            <button onClick={onOpenAuthModal} className="btn-apple-secondary">
               <UserCircle2 className="w-4 h-4" />
               Ganti akun
             </button>
 
-            <button
-              onClick={onCreateNew}
-              className="btn-apple !min-h-[40px] !bg-black dark:!bg-white dark:!text-black"
-            >
+            <button onClick={onCreateNew} className="btn-apple">
               <Sparkles className="w-4 h-4" />
               Susun modul baru
             </button>
@@ -232,70 +225,78 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
       </div>
 
       {/* 2. Kartu Statistik Utama */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         
-        <div className="apple-card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+        <div className="apple-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12px] font-medium text-[var(--muted)]">
               Total dokumen
             </span>
-            <FileText className="w-5 h-5" />
+            <span className="w-7 h-7 rounded-md bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4" />
+            </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] font-bold tracking-tight">{totalDocsCount}</span>
-            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">tersimpan</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-[26px] font-semibold tracking-[-0.03em] leading-none text-[var(--ink)]">{totalDocsCount}</span>
+            <span className="text-[11.5px] text-[var(--muted)]">tersimpan</span>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-[12px] text-[#6e6e73] dark:text-[#98989d]">
-            <span>Modul: <b className="text-inherit">{modulAjarCount}</b></span>
-            <span>RPP: <b className="text-inherit">{rppCount}</b></span>
-            <span>Soal: <b className="text-inherit">{soalCount}</b></span>
+          <div className="mt-2.5 pt-2 border-t border-[var(--line)] flex items-center justify-between text-[11px] text-[var(--muted)]">
+            <span>Modul <b className="text-[var(--ink-soft)]">{modulAjarCount}</b></span>
+            <span>RPP <b className="text-[var(--ink-soft)]">{rppCount}</b></span>
+            <span>Soal <b className="text-[var(--ink-soft)]">{soalCount}</b></span>
           </div>
         </div>
 
-        <div className="apple-card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+        <div className="apple-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12px] font-medium text-[var(--muted)]">
               Rata-rata durasi AI
             </span>
-            <Zap className="w-5 h-5" />
+            <span className="w-7 h-7 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center shrink-0">
+              <Zap className="w-4 h-4" />
+            </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] font-bold tracking-tight">~{avgDurationMinutes}</span>
-            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">mnt / dokumen</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-[26px] font-semibold tracking-[-0.03em] leading-none text-[var(--ink)]">~{avgDurationMinutes}</span>
+            <span className="text-[11.5px] text-[var(--muted)]">mnt / dok</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+          <p className="mt-2.5 pt-2 border-t border-[var(--line)] text-[11px] text-[var(--muted)]">
             98% lebih cepat dari cara manual
           </p>
         </div>
 
-        <div className="apple-card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+        <div className="apple-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12px] font-medium text-[var(--muted)]">
               Jam kerja dihemat
             </span>
-            <Clock className="w-5 h-5" />
+            <span className="w-7 h-7 rounded-md bg-[var(--ok-soft)] text-[var(--ok)] flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" />
+            </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] font-bold tracking-tight">~{savedHours}</span>
-            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">jam efektif</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-[26px] font-semibold tracking-[-0.03em] leading-none text-[var(--ink)]">~{savedHours}</span>
+            <span className="text-[11.5px] text-[var(--muted)]">jam efektif</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+          <p className="mt-2.5 pt-2 border-t border-[var(--line)] text-[11px] text-[var(--muted)]">
             Lebih banyak waktu untuk murid
           </p>
         </div>
 
-        <div className="apple-card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[12px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+        <div className="apple-card p-4">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[12px] font-medium text-[var(--muted)]">
               Kepatuhan regulasi
             </span>
-            <Award className="w-5 h-5" />
+            <span className="w-7 h-7 rounded-md bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center shrink-0">
+              <Award className="w-4 h-4" />
+            </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] font-bold tracking-tight">100%</span>
-            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">Permendikbud 12/2024</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-[26px] font-semibold tracking-[-0.03em] leading-none text-[var(--ink)]">100%</span>
+            <span className="text-[11.5px] text-[var(--muted)]">Permendikdasmen 13/2025</span>
           </div>
-          <p className="mt-3 pt-2.5 border-t border-black/10 dark:border-white/10 text-[12px] text-[#6e6e73] dark:text-[#98989d]">
+          <p className="mt-2.5 pt-2 border-t border-[var(--line)] text-[11px] text-[var(--muted)]">
             BSKAP 046/H/KR/2025 & PPA
           </p>
         </div>
@@ -303,14 +304,14 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
       </div>
 
       {/* 3. Grafik Produktivitas Bulanan */}
-      <div className="apple-card p-6 sm:p-7 space-y-4">
+      <div className="apple-card p-4 sm:p-5 space-y-3">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/10 dark:border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[var(--line)]">
           <div>
-            <h2 className="text-[17px] font-semibold tracking-tight">
+            <h2 className="text-[14.5px] font-semibold text-[var(--ink)]">
               Produktivitas bulanan
             </h2>
-            <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+            <p className="text-[12px] text-[var(--muted)] mt-0.5">
               Tren modul, RPP, dan bank soal sepanjang 2026.
             </p>
           </div>
@@ -339,7 +340,8 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
             <select
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value as any)}
-              className="apple-input !w-auto !py-2 text-[13px] font-semibold"
+              className="apple-input !w-auto !py-2 !text-[12.5px]"
+              aria-label="Pilih metrik"
             >
               <option value="all">Semua perangkat</option>
               <option value="modulAjar">Modul Ajar</option>
@@ -349,7 +351,7 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
           </div>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-1">
           <ProductivityD3Chart
             data={monthlyData}
             selectedMetric={selectedMetric}
@@ -357,21 +359,21 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
           />
         </div>
 
-        <div className="flex items-center justify-between text-[12px] text-[#86868b] pt-2 border-t border-black/10 dark:border-white/10">
-          <span>Sentuh titik grafik untuk rincian per bulan</span>
+        <div className="flex items-center justify-between text-[11.5px] text-[var(--muted)] pt-2 border-t border-[var(--line)]">
+          <span>Arahkan kursor ke titik grafik untuk rincian per bulan</span>
         </div>
 
       </div>
 
       {/* 4. Donut Distribusi & Lencana */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         
-        <div className="lg:col-span-7 apple-card p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-black/10 dark:border-white/10">
-            <h3 className="font-semibold text-[15px]">
+        <div className="lg:col-span-7 apple-card p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between pb-2.5 border-b border-[var(--line)]">
+            <h3 className="font-semibold text-[13.5px] text-[var(--ink)]">
               Distribusi perangkat
             </h3>
-            <span className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
+            <span className="ds-badge">
               Total {totalDocsCount > 0 ? totalDocsCount : 10} dokumen
             </span>
           </div>
@@ -379,37 +381,37 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
           <DocumentTypeD3Donut data={donutData} />
         </div>
 
-        <div className="lg:col-span-5 apple-card p-6 space-y-3">
-          <h3 className="font-semibold text-[15px] pb-3 border-b border-black/10 dark:border-white/10">
+        <div className="lg:col-span-5 apple-card p-4 sm:p-5 space-y-2.5">
+          <h3 className="font-semibold text-[13.5px] text-[var(--ink)] pb-2.5 border-b border-[var(--line)]">
             Lencana guru
           </h3>
 
-          <div className="space-y-2.5">
-            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
-              <FileText className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <div className="p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] flex items-start gap-2.5">
+              <FileText className="w-4 h-4 shrink-0 mt-0.5 text-[var(--accent)]" />
               <div>
-                <h4 className="font-semibold text-[13.5px]">Penyusun modul diferensiasi</h4>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                <h4 className="font-semibold text-[12.5px] text-[var(--ink)]">Penyusun modul diferensiasi</h4>
+                <p className="text-[11.5px] text-[var(--muted)] mt-0.5">
                   Diferensiasi konten, proses, dan produk sesuai kebutuhan murid.
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
-              <HelpCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] flex items-start gap-2.5">
+              <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-[var(--accent)]" />
               <div>
-                <h4 className="font-semibold text-[13.5px]">Spesialis asesmen AKM & HOTS</h4>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                <h4 className="font-semibold text-[12.5px] text-[var(--ink)]">Spesialis asesmen AKM & HOTS</h4>
+                <p className="text-[11.5px] text-[var(--muted)] mt-0.5">
                   Paket soal sumatif dengan kisi-kisi dan level bernalar tinggi.
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/5 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--line)] flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-[var(--ok)]" />
               <div>
-                <h4 className="font-semibold text-[13.5px]">Belajar.id terverifikasi</h4>
-                <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+                <h4 className="font-semibold text-[12.5px] text-[var(--ink)]">Belajar.id terverifikasi</h4>
+                <p className="text-[11.5px] text-[var(--muted)] mt-0.5">
                   Terdaftar resmi di ekosistem Kurikulum Merdeka.
                 </p>
               </div>
@@ -420,45 +422,45 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
       </div>
 
       {/* 5. Riwayat Terbaru */}
-      <div className="apple-card p-6 space-y-3">
-        <div className="flex items-center justify-between pb-3 border-b border-black/10 dark:border-white/10">
-          <h3 className="font-semibold text-[15px]">
+      <div className="apple-card p-4 sm:p-5 space-y-2.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-[var(--line)]">
+          <h3 className="font-semibold text-[13.5px] text-[var(--ink)]">
             Baru disusun
           </h3>
           <button
             onClick={onCreateNew}
-            className="text-[13px] font-semibold hover:opacity-70 cursor-pointer"
+            className="text-[12px] font-medium text-[var(--accent)] hover:underline cursor-pointer"
           >
-            + Susun lagi
+            Susun lagi
           </button>
         </div>
 
         {effectiveDocs.length === 0 ? (
-          <div className="text-center py-8 text-[13.5px] text-[#6e6e73] dark:text-[#98989d]">
+          <div className="text-center py-8 text-[12.5px] text-[var(--muted)]">
             Belum ada modul yang dibuat. Mulai susun sekarang.
           </div>
         ) : (
-          <div className="divide-y divide-black/5 dark:divide-white/10">
+          <div className="divide-y divide-[var(--line)]">
             {effectiveDocs.slice(0, 5).map(doc => (
-              <div key={doc.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div key={doc.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10 shrink-0">
-                      {doc.jenjang} • {doc.tingkat}
+                    <span className="ds-badge shrink-0 !py-0.5 !text-[10.5px]">
+                      {doc.jenjang} · {doc.tingkat}
                     </span>
-                    <span className="text-[13.5px] font-semibold truncate">{doc.title}</span>
+                    <span className="text-[12.5px] font-semibold text-[var(--ink)] truncate">{doc.title}</span>
                   </div>
-                  <div className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
-                    {doc.mataPelajaran} • {doc.topik} • ~{doc.durationMinutes || 3.2} mnt
+                  <div className="text-[11.5px] text-[var(--muted)] mt-0.5">
+                    {doc.mataPelajaran} · {doc.topik} · ~{doc.durationMinutes || 3.2} mnt
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                   <button
                     onClick={() => onSelectDocument(doc)}
-                    className="px-4 py-1.5 rounded-full bg-black dark:bg-white dark:text-black text-white text-[12.5px] font-semibold transition-all flex items-center gap-1 cursor-pointer min-h-[34px]"
+                    className="btn-apple !min-h-[30px] !py-1 !px-2.5 !text-[11.5px]"
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <Eye className="w-3 h-3" />
                     Buka
                   </button>
 
@@ -471,10 +473,10 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
                       fase: doc.fase,
                       mapel: doc.mataPelajaran
                     })}
-                    className="px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[12.5px] font-semibold transition-colors cursor-pointer flex items-center gap-1 min-h-[34px]"
+                    className="rounded-md border border-[var(--line)] px-2.5 py-1 min-h-[30px] text-[11.5px] font-semibold text-[var(--ink-soft)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer flex items-center gap-1"
                     title="Unduh Format Word (.docx)"
                   >
-                    <Download className="w-3.5 h-3.5" />
+                    <Download className="w-3 h-3" />
                     <span>.docx</span>
                   </button>
                 </div>

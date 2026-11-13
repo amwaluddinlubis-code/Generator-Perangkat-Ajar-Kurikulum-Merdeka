@@ -1,5 +1,4 @@
-// REDESIGN: DaftarPaket baru (Worker B) — pencarian, filter Aktif/Arsip,
-// kartu paket dengan aksi, modal "Buat Paket", dan modal konfirmasi hapus.
+// DaftarPaket — daftar paket perangkat ajar dengan pencarian, filter, dan aksi.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus,
@@ -11,17 +10,14 @@ import {
   Sparkles,
   AlertTriangle,
   X,
+  ArrowRight,
 } from 'lucide-react';
-import { TeacherUser, Jenjang, Paket, DokumenPaket, VersiDokumen } from '../types';
+import { TeacherUser, Jenjang, Paket } from '../types';
 import { JENJANG_CONFIGS } from '../data/curriculumData';
 import { apiFetch, extractErrorMessage } from '../utils/api';
-// FRIENDLY: maskot Owi + sapaan hangat untuk empty state
 import { Maskot } from './Maskot';
 import { pesanKosong } from '../utils/sapaan';
 
-// GEL2: duplikasi tipe lokal (tech debt Gelombang 1) dihapus — pakai tipe
-// kanonik dari ../types. GET /api/pakets menyertakan ringkasan progress per
-// paket, jadi ditambah via interface turunan yang sempit.
 interface PaketTampil extends Paket {
   progress?: { totalDokumen: number; selesai: number };
 }
@@ -70,9 +66,12 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
     }
   }, []);
 
+  // Sertakan identitas pengguna: ganti akun harus memuat ulang daftar,
+  // bukan menampilkan data akun sebelumnya.
   useEffect(() => {
+    setPakets([]);
     muatPakets(tab);
-  }, [tab, muatPakets]);
+  }, [tab, muatPakets, currentUser.id]);
 
   const tersaring = useMemo(() => {
     const q = pencarian.trim().toLowerCase();
@@ -85,7 +84,6 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
     );
   }, [pakets, pencarian]);
 
-  // REDESIGN: arsipkan / kembalikan paket via kontrak API.
   const handleArsip = async (p: PaketTampil) => {
     setAksiId(p.id);
     try {
@@ -97,13 +95,12 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
       if (!res.ok) throw new Error('gagal mengubah status arsip');
       await muatPakets(tab);
     } catch {
-      /* REDESIGN: kegagalan aksi tidak menutup daftar — biarkan data lama tampil */
+      /* daftar tetap seperti semula */
     } finally {
       setAksiId(null);
     }
   };
 
-  // REDESIGN: duplikat paket via kontrak API.
   const handleDuplikat = async (p: PaketTampil) => {
     setAksiId(p.id);
     try {
@@ -111,13 +108,12 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
       if (!res.ok) throw new Error('gagal menduplikat paket');
       await muatPakets(tab);
     } catch {
-      /* abaikan — daftar tetap seperti semula */
+      /* daftar tetap seperti semula */
     } finally {
       setAksiId(null);
     }
   };
 
-  // REDESIGN: hapus paket — konfirmasi lewat modal DaisyUI, tanpa window.confirm.
   const handleHapus = async () => {
     if (!targetHapus) return;
     setAksiId(targetHapus.id);
@@ -127,179 +123,186 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
       setTargetHapus(null);
       await muatPakets(tab);
     } catch {
-      /* abaikan — daftar tetap seperti semula */
+      /* abaikan */
     } finally {
       setAksiId(null);
     }
   };
 
-  return (
-    <div className="space-y-4 sm:space-y-6 ux-view-enter">
-      {/* REDESIGN: baris judul + pencarian + filter tab + CTA */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Paket Perangkat Ajar
-          </h1>
-          <button
-            type="button"
-            onClick={() => setModalBuatTerbuka(true)}
-            className="btn btn-primary"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Buat Paket</span>
-          </button>
-        </div>
+  const IconAction: React.FC<{
+    onClick: () => void;
+    label: string;
+    danger?: boolean;
+    disabled?: boolean;
+    children: React.ReactNode;
+  }> = ({ onClick, label, danger, disabled, children }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      className={`w-8 h-8 rounded-md border border-transparent flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 ${
+        danger
+          ? 'text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]'
+          : 'text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]'
+      }`}
+    >
+      {children}
+    </button>
+  );
 
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <label className="input input-bordered flex items-center gap-2 flex-1">
-            <Search className="w-4 h-4 opacity-60 shrink-0" />
-            <input
-              type="search"
-              value={pencarian}
-              onChange={(e) => setPencarian(e.target.value)}
-              placeholder="Cari topik, mapel, atau kelas…"
-              className="grow bg-transparent outline-none"
-              aria-label="Cari paket"
-            />
-          </label>
-          {/* REDESIGN: filter Aktif | Arsip sebagai tabs DaisyUI */}
-          <div className="tabs tabs-box" role="tablist" aria-label="Filter status paket">
-            {(['aktif', 'arsip'] as StatusTab[]).map((s) => (
-              <button
-                key={s}
-                type="button"
-                role="tab"
-                aria-selected={tab === s}
-                onClick={() => setTab(s)}
-                className={`tab ${tab === s ? 'tab-active' : ''}`}
-              >
-                {s === 'aktif' ? 'Aktif' : 'Arsip'}
-              </button>
-            ))}
-          </div>
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.025em] text-[var(--ink)]">
+            Paket perangkat ajar
+          </h1>
+          <p className="apple-sub mt-1">
+            Satu paket berisi 7 dokumen Kurikulum Merdeka untuk satu topik.
+          </p>
+        </div>
+        <button type="button" onClick={() => setModalBuatTerbuka(true)} className="btn-apple shrink-0">
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Paket baru</span>
+        </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="search"
+            value={pencarian}
+            onChange={(e) => setPencarian(e.target.value)}
+            placeholder="Cari topik, mapel, atau kelas…"
+            className="apple-input !pl-9"
+            aria-label="Cari paket"
+          />
+        </div>
+        <div className="apple-segment" role="tablist" aria-label="Filter status paket">
+          {(['aktif', 'arsip'] as StatusTab[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={tab === s}
+              data-active={tab === s}
+              onClick={() => setTab(s)}
+            >
+              {s === 'aktif' ? 'Aktif' : 'Arsip'}
+            </button>
+          ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="card bg-base-100 shadow">
-              <div className="card-body">
-                <div className="skeleton h-5 w-3/4" />
-                <div className="skeleton h-4 w-1/2 mt-2" />
-                <div className="skeleton h-2 w-full mt-4" />
-              </div>
+            <div key={i} className="apple-card p-4">
+              <div className="skeleton h-4 w-3/4" />
+              <div className="skeleton h-3 w-1/3 mt-3" />
+              <div className="skeleton h-1.5 w-full mt-5" />
             </div>
           ))}
         </div>
       ) : tersaring.length === 0 ? (
-        /* FRIENDLY: empty state hangat bersama maskot Owi */
-        <div className="rgm-card p-8 sm:p-12 ux-pop-in">
+        <div className="apple-card py-14 px-6 ux-pop-in">
           <div className="flex flex-col items-center text-center max-w-md mx-auto">
-            <Maskot size={pencarian ? 88 : 110} />
-            <h2 className="text-xl font-black tracking-tight mt-4">
+            {!pencarian && <Maskot size={80} />}
+            <h2 className="text-[16px] font-semibold text-[var(--ink)] mt-3">
               {pencarian
-                ? 'Hmm, tidak ketemu — coba kata kunci lain 🔍'
+                ? 'Tidak ada paket yang cocok'
                 : tab === 'aktif'
                   ? pesanKosong('paket')
-                  : 'Arsip masih kosong 📦'}
+                  : 'Arsip masih kosong'}
             </h2>
-            <p className="py-3 text-sm opacity-70">
+            <p className="apple-sub mt-1.5">
               {pencarian
-                ? `Tidak ada paket yang cocok dengan “${pencarian}”. Coba ejaan lain, atau buat paket baru sekalian!`
+                ? `Tidak ada paket yang cocok dengan “${pencarian}”. Coba kata kunci lain.`
                 : tab === 'aktif'
-                  ? 'Susun 7 dokumen Kurikulum Merdeka dengan bantuan AI — semuanya beres dalam hitungan menit.'
+                  ? 'Susun 7 dokumen Kurikulum Merdeka untuk satu topik, dibantu AI.'
                   : 'Paket yang diarsipkan akan muncul di sini dan bisa dikembalikan kapan saja.'}
             </p>
             {!pencarian && tab === 'aktif' && (
-              <button
-                type="button"
-                onClick={() => setModalBuatTerbuka(true)}
-                className="btn btn-primary mt-2"
-              >
-                <Plus className="w-5 h-5" />
-                Buat Paket Baru 🎒
+              <button type="button" onClick={() => setModalBuatTerbuka(true)} className="btn-apple mt-5">
+                <Plus className="w-4 h-4" />
+                Buat paket baru
               </button>
             )}
           </div>
         </div>
       ) : (
-        /* REDESIGN: grid kartu responsif */
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {tersaring.map((p, i) => {
             const selesai = p.progress?.selesai ?? 0;
             const total = p.progress?.totalDokumen ?? 7;
+            const persen = total > 0 ? Math.round((selesai / total) * 100) : 0;
             const sibuk = aksiId === p.id;
             return (
               <div
                 key={p.id}
-                className="rgm-card ux-lift ux-stagger"
-                style={{ '--ux-delay': `${(i % 6) * 70}ms` } as React.CSSProperties}
+                className="apple-card ux-lift ux-stagger p-4 flex flex-col"
+                style={{ '--ux-delay': `${(i % 6) * 50}ms` } as React.CSSProperties}
               >
-                <div className="card-body">
-                  <h3 className="card-title text-base line-clamp-2">{p.topik}</h3>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    <span className="badge badge-outline">{p.mataPelajaran}</span>
-                    <span className="badge badge-outline">{p.tingkat}</span>
-                    <span className="badge badge-outline">{p.fase}</span>
+                <h3 className="text-[14.5px] font-semibold text-[var(--ink)] line-clamp-2 leading-snug">
+                  {p.topik}
+                </h3>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="ds-badge">{p.mataPelajaran}</span>
+                  <span className="ds-badge">{p.tingkat}</span>
+                  <span className="ds-badge">{p.fase}</span>
+                </div>
+
+                <div className="mt-auto pt-4">
+                  <div className="flex items-center justify-between text-[11.5px] text-[var(--muted)] mb-1.5">
+                    <span>
+                      {selesai}/{total} dokumen selesai
+                    </span>
+                    <span className="font-medium text-[var(--ink-soft)]">{persen}%</span>
                   </div>
-                  <div className="mt-3">
-                    <div className="text-xs opacity-70 mb-1">
-                      {selesai}/{total} dokumen
-                    </div>
-                    <progress
-                      className="progress progress-primary w-full"
-                      value={selesai}
-                      max={total}
-                      aria-label={`Progres ${selesai} dari ${total} dokumen`}
+                  <div
+                    className="h-1.5 w-full rounded-full bg-[var(--surface-3)] overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={selesai}
+                    aria-valuemin={0}
+                    aria-valuemax={total}
+                    aria-label={`Progres ${selesai} dari ${total} dokumen`}
+                  >
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300"
+                      style={{ width: `${persen}%` }}
                     />
                   </div>
-                  <div className="card-actions flex-wrap gap-2 mt-3">
+
+                  <div className="flex items-center justify-between mt-3">
                     <button
                       type="button"
                       onClick={() => onBukaPaket(p.id)}
-                      className="btn btn-primary btn-sm"
+                      className="btn-apple !min-h-[34px] !py-1.5 !px-3 !text-[12.5px]"
                       disabled={sibuk}
                     >
-                      Yuk, Buka 🚀
+                      Buka
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleArsip(p)}
-                      className="btn btn-ghost btn-sm"
-                      disabled={sibuk}
-                      title={tab === 'aktif' ? 'Arsipkan paket' : 'Kembalikan ke aktif'}
-                    >
-                      {tab === 'aktif' ? (
-                        <Archive className="w-4 h-4" />
-                      ) : (
-                        <ArchiveRestore className="w-4 h-4" />
-                      )}
-                      <span className="hidden md:inline">
-                        {tab === 'aktif' ? 'Arsipkan' : 'Kembalikan'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDuplikat(p)}
-                      className="btn btn-ghost btn-sm"
-                      disabled={sibuk}
-                      title="Duplikat paket"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <span className="hidden md:inline">Duplikat</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTargetHapus(p)}
-                      className="btn btn-ghost btn-sm text-error"
-                      disabled={sibuk}
-                      title="Hapus paket"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="hidden md:inline">Hapus</span>
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <IconAction
+                        onClick={() => handleArsip(p)}
+                        disabled={sibuk}
+                        label={tab === 'aktif' ? `Arsipkan ${p.topik}` : `Kembalikan ${p.topik}`}
+                      >
+                        {tab === 'aktif' ? <Archive className="w-4 h-4" /> : <ArchiveRestore className="w-4 h-4" />}
+                      </IconAction>
+                      <IconAction onClick={() => handleDuplikat(p)} disabled={sibuk} label={`Duplikat ${p.topik}`}>
+                        <Copy className="w-4 h-4" />
+                      </IconAction>
+                      <IconAction onClick={() => setTargetHapus(p)} disabled={sibuk} danger label={`Hapus ${p.topik}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </IconAction>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -308,7 +311,6 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
         </div>
       )}
 
-      {/* REDESIGN: modal "Buat Paket" DaisyUI */}
       {modalBuatTerbuka && (
         <BuatPaketModal
           currentUser={currentUser}
@@ -322,26 +324,23 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
         />
       )}
 
-      {/* REDESIGN: modal konfirmasi hapus DaisyUI (tanpa window.confirm) */}
       {targetHapus && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus paket">
-          {/* FRIENDLY: serius tapi ramah — sudut membulat, ikon peringatan lembut */}
-          <div className="modal-box rounded-3xl ux-pop-in">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <span className="p-2 rounded-2xl bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300">
-                <AlertTriangle className="w-5 h-5" />
+          <div className="modal-box ux-pop-in">
+            <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
+              <span className="w-8 h-8 rounded-md bg-[var(--danger-soft)] text-[var(--danger)] flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4" />
               </span>
               Hapus paket?
             </h3>
-            <p className="py-4 text-sm opacity-80">
-              Paket <span className="font-semibold">“{targetHapus.topik}”</span> beserta
+            <p className="py-4 text-[13px] leading-relaxed text-[var(--ink-soft)]">
+              Paket <span className="font-semibold text-[var(--ink)]">“{targetHapus.topik}”</span> beserta
               seluruh dokumennya akan dihapus permanen dan tidak bisa dikembalikan.
-              Pastikan dulu ya — keputusan ini tidak bisa dibatalkan.
             </p>
             <div className="modal-action">
               <button
                 type="button"
-                className="btn"
+                className="btn-apple-secondary"
                 onClick={() => setTargetHapus(null)}
                 disabled={aksiId === targetHapus.id}
               >
@@ -349,12 +348,12 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
               </button>
               <button
                 type="button"
-                className="btn btn-error"
+                className="btn-apple !bg-[var(--danger)] hover:!bg-[var(--danger)] hover:!brightness-110"
                 onClick={handleHapus}
                 disabled={aksiId === targetHapus.id}
               >
                 {aksiId === targetHapus.id ? (
-                  <span className="loading loading-spinner loading-sm" />
+                  <span className="loading loading-spinner loading-xs" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
@@ -372,7 +371,6 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
   );
 };
 
-// REDESIGN: form buat paket — mapel dari JENJANG_CONFIGS, prefill dari currentUser.
 const BuatPaketModal: React.FC<{
   currentUser: TeacherUser;
   onTutup: () => void;
@@ -398,7 +396,6 @@ const BuatPaketModal: React.FC<{
   const [galat, setGalat] = useState('');
   const [menyimpan, setMenyimpan] = useState(false);
 
-  // FRIENDLY: tutup dengan Escape (jangan tutup saat sedang menyimpan)
   useEffect(() => {
     const tangani = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !menyimpan) onTutup();
@@ -429,9 +426,8 @@ const BuatPaketModal: React.FC<{
 
   const handleSimpan = async (e: React.FormEvent) => {
     e.preventDefault();
-    // REDESIGN: validasi — topik wajib diisi.
     if (!form.topik.trim()) {
-      setGalat('Ups, topiknya masih kosong — yuk diisi dulu ✏️');
+      setGalat('Topik wajib diisi.');
       return;
     }
     setGalat('');
@@ -462,33 +458,32 @@ const BuatPaketModal: React.FC<{
     }
   };
 
+  const labelCls = 'block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5';
+
   return (
     <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Buat paket baru">
-      <div className="modal-box max-w-lg rounded-3xl ux-pop-in">
-        <div className="flex items-center justify-between mb-4">
-          {/* FRIENDLY: header hangat dengan ikon berkilau */}
-          <h3 className="font-bold text-lg flex items-center gap-2">
-            <span className="p-2 rounded-2xl bg-[#FFEEDB] text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
-              <Sparkles className="w-5 h-5" />
+      <div className="modal-box max-w-lg ux-pop-in">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
+            <span className="w-8 h-8 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
+              <Sparkles className="w-4 h-4" />
             </span>
-            Buat Paket Baru
+            Buat paket baru
           </h3>
           <button
             type="button"
-            className="btn btn-ghost btn-sm btn-circle"
+            className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center cursor-pointer"
             onClick={onTutup}
             aria-label="Tutup"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSimpan} className="space-y-4">
           <div>
-            <label className="label" htmlFor="buatpaket-topik">
-              <span className="label-text font-semibold">
-                Topik <span className="text-error">*</span>
-              </span>
+            <label className={labelCls} htmlFor="buatpaket-topik">
+              Topik <span className="text-[var(--danger)]">*</span>
             </label>
             <input
               id="buatpaket-topik"
@@ -496,95 +491,84 @@ const BuatPaketModal: React.FC<{
               value={form.topik}
               onChange={(e) => setForm((s) => ({ ...s, topik: e.target.value }))}
               placeholder="cth. Sistem Pencernaan Manusia"
-              className={`input input-bordered w-full ${galat && !form.topik.trim() ? 'input-error' : ''}`}
+              className={`apple-input ${galat && !form.topik.trim() ? '!border-[var(--danger)]' : ''}`}
+              aria-invalid={!!(galat && !form.topik.trim())}
               autoFocus
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label" htmlFor="buatpaket-mapel">
-                <span className="label-text font-semibold">Mata pelajaran</span>
-              </label>
+              <label className={labelCls} htmlFor="buatpaket-mapel">Mata pelajaran</label>
               <select
                 id="buatpaket-mapel"
                 value={form.mataPelajaran}
                 onChange={(e) => setForm((s) => ({ ...s, mataPelajaran: e.target.value }))}
-                className="select select-bordered w-full"
+                className="apple-input"
               >
                 {daftarMapel.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
+                  <option key={m} value={m}>{m}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="label" htmlFor="buatpaket-jenjang">
-                <span className="label-text font-semibold">Jenjang</span>
-              </label>
+              <label className={labelCls} htmlFor="buatpaket-jenjang">Jenjang</label>
               <select
                 id="buatpaket-jenjang"
                 value={form.jenjang}
                 onChange={(e) => ubahJenjang(e.target.value as Jenjang)}
-                className="select select-bordered w-full"
+                className="apple-input"
               >
                 {JENJANG_LIST.map((j) => (
-                  <option key={j} value={j}>
-                    {JENJANG_CONFIGS[j].label}
-                  </option>
+                  <option key={j} value={j}>{JENJANG_CONFIGS[j].label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="label" htmlFor="buatpaket-fase">
-                <span className="label-text font-semibold">Fase</span>
-              </label>
+              <label className={labelCls} htmlFor="buatpaket-fase">Fase</label>
               <select
                 id="buatpaket-fase"
                 value={form.fase}
                 onChange={(e) => ubahFase(e.target.value)}
-                className="select select-bordered w-full"
+                className="apple-input"
               >
                 {daftarFase.map((f) => (
-                  <option key={f.fase} value={f.fase}>
-                    {f.fase}
-                  </option>
+                  <option key={f.fase} value={f.fase}>{f.fase}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="label" htmlFor="buatpaket-tingkat">
-                <span className="label-text font-semibold">Tingkat</span>
-              </label>
+              <label className={labelCls} htmlFor="buatpaket-tingkat">Tingkat</label>
               <select
                 id="buatpaket-tingkat"
                 value={form.tingkat}
                 onChange={(e) => setForm((s) => ({ ...s, tingkat: e.target.value }))}
-                className="select select-bordered w-full"
+                className="apple-input"
               >
                 {faseAktif.kelas.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
+                  <option key={k} value={k}>{k}</option>
                 ))}
               </select>
             </div>
           </div>
 
           {galat && (
-            <div className="alert alert-error py-2.5 text-sm" role="alert">
+            <div
+              className="flex items-center gap-2 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-[12.5px] text-[var(--danger)]"
+              role="alert"
+            >
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               {galat}
             </div>
           )}
 
           <div className="modal-action">
-            <button type="button" className="btn" onClick={onTutup} disabled={menyimpan}>
+            <button type="button" className="btn-apple-secondary" onClick={onTutup} disabled={menyimpan}>
               Batal
             </button>
-            <button type="submit" className="btn btn-primary" disabled={menyimpan}>
-              {menyimpan && <span className="loading loading-spinner loading-sm" />}
-              Simpan & Buka Paket 🎉
+            <button type="submit" className="btn-apple" disabled={menyimpan}>
+              {menyimpan && <span className="loading loading-spinner loading-xs" />}
+              Simpan & buka paket
             </button>
           </div>
         </form>

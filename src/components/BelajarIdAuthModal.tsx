@@ -18,6 +18,9 @@ interface BelajarIdAuthModalProps {
   onLogout?: () => void;
 }
 
+const labelCls = 'block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5';
+const iconCls = 'w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none';
+
 export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   isOpen,
   onClose,
@@ -25,8 +28,6 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   onLogin,
   onLogout
 }) => {
-  if (!isOpen) return null;
-
   const [email, setEmail] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [schoolName, setSchoolName] = useState<string>('');
@@ -89,6 +90,8 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
     }
   ];
 
+  if (!isOpen) return null;
+
   const handleSelectPreset = async (acc: typeof demoAccounts[0]) => {
     setLoading(true);
     await onLogin({
@@ -118,28 +121,28 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="apple-card max-w-xl w-full overflow-hidden">
+    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Ganti akun Belajar.id">
+      <div className="modal-box max-w-xl p-0 overflow-hidden">
         
         {/* Header */}
-        <div className="p-6 pb-5 relative border-b border-black/10 dark:border-white/10">
+        <div className="relative border-b border-[var(--line)] px-5 py-4">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Tutup"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-black dark:bg-white dark:text-black text-white flex items-center justify-center shrink-0">
-              <GraduationCap className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
+              <GraduationCap className="w-5 h-5" />
             </div>
             <div className="pr-10">
-              <h3 className="text-[19px] font-semibold tracking-tight">
+              <h3 className="text-[16px] font-semibold tracking-[-0.02em] text-[var(--ink)]">
                 Ganti akun Belajar.id
               </h3>
-              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d]">
+              <p className="text-[12px] text-[var(--muted)] mt-0.5">
                 Akun baru berstatus menunggu verifikasi admin.
               </p>
             </div>
@@ -147,7 +150,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
         </div>
 
         {/* Tab Selection */}
-        <div className="px-6 pt-4">
+        <div className="px-5 pt-4">
           <div className="apple-segment w-full grid grid-cols-2" role="tablist" aria-label="Pilih cara masuk">
             <button
               type="button"
@@ -167,16 +170,16 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
         </div>
 
         {/* Body Content */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
+        <div className="max-h-[70vh] overflow-y-auto p-5">
           
           {/* TAB 1: PRESETS */}
           {activeTab === 'presets' && (
-            <div className="space-y-3">
-              <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d]">
-                Ketuk salah satu profil untuk beralih akun:
+            <div className="space-y-2.5">
+              <p className="text-[12px] text-[var(--muted)]">
+                Pilih salah satu profil untuk beralih akun.
               </p>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {demoAccounts.map((acc, idx) => {
                   const isCurrent = currentUser.email.toLowerCase() === acc.email.toLowerCase();
                   return (
@@ -184,44 +187,42 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                       key={idx}
                       disabled={loading}
                       onClick={() => handleSelectPreset(acc)}
-                      className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl border p-3 text-left transition-colors cursor-pointer disabled:opacity-60 ${
                         isCurrent
-                          ? 'border-black dark:border-white bg-black/[0.03] dark:bg-white/5'
-                          : 'border-black/10 dark:border-white/15 hover:border-black/30 dark:hover:border-white/30'
+                          ? 'border-[var(--accent)]/45 bg-[var(--accent-soft)]'
+                          : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[14px] shrink-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-[var(--surface-3)] text-[var(--ink-soft)] flex items-center justify-center font-semibold text-[12.5px] shrink-0">
                           {acc.name.charAt(0)}
                         </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-[13.5px]">
+                            <span className="text-[12.5px] font-semibold text-[var(--ink)]">
                               {acc.name}
                             </span>
-                            <span className="inline-flex items-center gap-1 text-[11.5px] text-[#6e6e73] dark:text-[#98989d]">
-                              <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'VERIFIED' ? 'bg-[#30b158]' : 'bg-[#ff9f0a]'}`} />
+                            <span className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)]">
+                              <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'VERIFIED' ? 'bg-[var(--ok)]' : 'bg-[var(--warn)]'}`} />
                               {acc.status === 'VERIFIED' ? 'Terverifikasi' : 'Menunggu'}
                             </span>
                           </div>
-                          <div className="text-[12px] text-[#6e6e73] dark:text-[#98989d] truncate">
+                          <div className="truncate text-[11.5px] text-[var(--muted)]">
                             {acc.email}
                           </div>
-                          <div className="text-[12px] text-[#86868b] truncate">
-                            {acc.school} • {acc.mapel}
+                          <div className="truncate text-[11.5px] text-[var(--muted)]">
+                            {acc.school} · {acc.mapel}
                           </div>
                         </div>
                       </div>
 
                       <div className="shrink-0 pl-2">
                         {isCurrent ? (
-                          <span className="px-2.5 py-1 rounded-full bg-black dark:bg-white dark:text-black text-white text-[12px] font-semibold">
-                            Aktif
-                          </span>
+                          <span className="ds-badge ds-badge-accent">Aktif</span>
                         ) : (
-                          <div className="p-2 rounded-full bg-black/5 dark:bg-white/10">
-                            <ArrowRight className="w-4 h-4" />
+                          <div className="w-7 h-7 rounded-md bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center">
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </div>
                         )}
                       </div>
@@ -234,64 +235,64 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
 
           {/* TAB 2: CUSTOM LOGIN / REGISTRATION */}
           {activeTab === 'custom' && (
-            <form onSubmit={handleCustomSubmit} className="space-y-3.5">
+            <form onSubmit={handleCustomSubmit} className="space-y-3">
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
+                <label className={labelCls}>
                   Email Belajar.id
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Mail className={iconCls} />
                   <input
                     type="email"
                     required
                     placeholder="nama.guru@guru.sd.belajar.id"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="apple-input !pl-10"
+                    className="apple-input !pl-9"
                   />
                 </div>
-                <p className="text-[12px] text-[#86868b] mt-1.5">
+                <p className="mt-1.5 text-[11px] text-[var(--muted)]">
                   @guru.sd / @guru.smp / @guru.sma / @guru.smk.belajar.id
                 </p>
               </div>
 
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
-                  Nama lengkap & gelar
+                <label className={labelCls}>
+                  Nama lengkap &amp; gelar
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <User className={iconCls} />
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Dra. Nurhayati, M.Pd."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="apple-input !pl-10"
+                    className="apple-input !pl-9"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[13px] font-semibold mb-1.5">
+                <label className={labelCls}>
                   Sekolah
                 </label>
                 <div className="relative">
-                  <School className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <School className={iconCls} />
                   <input
                     type="text"
                     required
                     placeholder="Contoh: SMP Negeri 2 Padang Panjang"
                     value={schoolName}
                     onChange={(e) => setSchoolName(e.target.value)}
-                    className="apple-input !pl-10"
+                    className="apple-input !pl-9"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">
+                  <label className={labelCls}>
                     Jenjang
                   </label>
                   <select
@@ -307,7 +308,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1.5">
+                  <label className={labelCls}>
                     Mata pelajaran
                   </label>
                   <input
@@ -323,9 +324,9 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="btn-apple w-full !bg-black dark:!bg-white dark:!text-black"
+                className="btn-apple w-full"
               >
-                {loading ? 'Memproses...' : 'Masuk dengan akun ini'}
+                {loading ? 'Memproses…' : 'Masuk dengan akun ini'}
               </button>
             </form>
           )}
@@ -333,9 +334,9 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-[12.5px] text-[#6e6e73] dark:text-[#98989d]">
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--line)] px-5 py-3 text-[11.5px] text-[var(--muted)]">
           <div className="truncate">
-            Aktif: <b>{currentUser.name}</b>
+            Aktif: <b className="text-[var(--ink-soft)]">{currentUser.name}</b>
           </div>
 
           {onLogout && (
@@ -345,7 +346,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
                 onClose();
                 onLogout();
               }}
-              className="px-3.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-[#ff3b30] font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-semibold text-[var(--danger)] hover:bg-[var(--danger-soft)] transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>Keluar</span>
@@ -354,6 +355,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
         </div>
 
       </div>
+      <div className="modal-backdrop" onClick={onClose} />
     </div>
   );
 };

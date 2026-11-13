@@ -51,24 +51,20 @@ export default function NamaFileModal({ terbuka, nilaiAwal, onSimpan, onBatal, i
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onBatal}
+      className="modal modal-open"
       role="dialog"
       aria-modal="true"
       aria-label="Nama file"
     >
-      <div
-        className="apple-card w-full max-w-sm p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="text-[17px] font-semibold tracking-tight mb-1">
+      <div className="modal-box max-w-sm">
+        <h3 className="mb-1 text-[15px] font-semibold text-[var(--ink)]">
           Nama file
         </h3>
-        <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mb-4">
+        <p className="mb-4 text-[12px] text-[var(--muted)]">
           Ubah bila perlu sebelum berkas diunduh.
         </p>
 
-        <label className="block text-[13px] font-medium mb-1.5" htmlFor="rgm-namafile-input">
+        <label className="mb-1.5 block text-[12px] font-medium text-[var(--ink-soft)]" htmlFor="rgm-namafile-input">
           Nama berkas
         </label>
         <input
@@ -82,33 +78,33 @@ export default function NamaFileModal({ terbuka, nilaiAwal, onSimpan, onBatal, i
           autoFocus
           maxLength={120}
           placeholder="Nama_Berkas"
-          className="w-full rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-black/20 px-3.5 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-[#F59E0B]/60"
+          className="apple-input !text-[13px]"
         />
 
         {/* Pratinjau hasil sanitasi live */}
-        <div className="mt-3 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] px-3.5 py-2.5">
-          <div className="text-[11.5px] uppercase tracking-wide text-[#6e6e73] dark:text-[#98989d] mb-1">
+        <div className="mt-3 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] px-3.5 py-2.5">
+          <div className="mb-1 text-[10.5px] font-medium uppercase tracking-[0.06em] text-[var(--muted)]">
             Pratinjau nama file
           </div>
-          <div className="text-[14px] font-mono break-all">
+          <div className="break-all font-mono text-[12.5px]">
             {valid ? (
-              <span className="text-[#1d1d1f] dark:text-white">{hasil}</span>
+              <span className="text-[var(--ink)]">{hasil}</span>
             ) : (
-              <span className="text-red-500 italic">Nama tidak boleh kosong</span>
+              <span className="italic text-[var(--danger)]">Nama tidak boleh kosong</span>
             )}
           </div>
           {infoEkstensi && valid && (
-            <div className="text-[12px] text-[#6e6e73] dark:text-[#98989d] mt-1">
+            <div className="mt-1 text-[11px] text-[var(--muted)]">
               {infoEkstensi}
             </div>
           )}
         </div>
 
-        <div className="flex gap-2.5 mt-5">
+        <div className="modal-action">
           <button
             type="button"
             onClick={onBatal}
-            className="btn-apple-secondary flex-1 !rounded-full cursor-pointer"
+            className="btn-apple-secondary flex-1"
           >
             Batal
           </button>
@@ -116,12 +112,13 @@ export default function NamaFileModal({ terbuka, nilaiAwal, onSimpan, onBatal, i
             type="button"
             onClick={simpan}
             disabled={!valid}
-            className="btn-apple flex-1 !rounded-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-apple flex-1"
           >
             Simpan
           </button>
         </div>
       </div>
+      <div className="modal-backdrop" onClick={onBatal} />
     </div>
   );
 }

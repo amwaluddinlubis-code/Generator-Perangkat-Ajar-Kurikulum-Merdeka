@@ -34,7 +34,7 @@ export interface AuthUser {
   nip?: string;
   jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK';
   mataPelajaran: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'KEPALA_SEKOLAH' | 'GURU';
   status: 'VERIFIED' | 'PENDING' | 'REJECTED';
   avatarUrl?: string;
   registeredAt: string;
@@ -270,8 +270,12 @@ export function rateLimit(opts: RateLimitOptions) {
     while (i < arr.length && arr[i] <= windowStart) i++;
     if (i > 0) arr.splice(0, i);
     arr.push(now);
-    // cegah map membesar tanpa batas
-    if (hits.size > 20000) hits.clear();
+    // cegah map membesar tanpa batas: hapus key paling lama, jangan clear semua
+    // (clear semua sebelumnya me-reset counter semua user & membuka celah bypass).
+    if (hits.size > 20000) {
+      const oldest = hits.keys().next().value as string | undefined;
+      if (oldest) hits.delete(oldest);
+    }
     if (arr.length > opts.max) {
       return res.status(429).json({
         success: false,

@@ -21,7 +21,7 @@ export interface TeacherUser {
   nip?: string;
   jenjang: Jenjang;
   mataPelajaran: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'KEPALA_SEKOLAH' | 'GURU';
   status: 'VERIFIED' | 'PENDING' | 'REJECTED';
   avatarUrl?: string;
   registeredAt: string;

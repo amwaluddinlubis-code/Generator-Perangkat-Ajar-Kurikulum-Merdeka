@@ -212,6 +212,8 @@ npm run dev
 - Standar naskah dinas di `.docx`: Times New Roman 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
 - Sprint UI/UX (Okt 2026): validasi inline per field di form generator (pesan dekat field, `aria-invalid`), form terkunci + banner progres saat AI menyusun, ringkasan tinjau dengan tombol "Ubah" per seksi, empty state arsip yang ramah + dialog hapus bergaya aplikasi + toast sukses/gagal unduh/salin/simpan, drawer sidebar mobile aksesibel keyboard (Escape, `aria-modal`), `aria-label`/`aria-current` di navigasi, fokus `:focus-visible` global, transisi antar tab, dan pesan error login yang jelas dengan label terasosiasi.
 
+> **Backlog perbaikan UI yang sedang berjalan:** lihat [`RENCANA-PERBAIKAN-UI.md`](./RENCANA-PERBAIKAN-UI.md) — hasil audit UI (Lighthouse 0.96 a11y), daftar temuan terukur (kontras 1.95:1 pada "Tandai Final", dark mode, alur paket, routing), rencana sprint, dan kriteria penerimaan.
+
 ---
 
 ## 7. Data & Akun Demo

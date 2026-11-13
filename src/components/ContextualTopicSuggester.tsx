@@ -1,18 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Jenjang } from '../types';
-import { getContextualTopics, CurriculumTopicItem, CURRICULUM_TOPICS } from '../data/topicCatalog';
+import { getContextualTopics, CurriculumTopicItem } from '../data/topicCatalog';
 import { 
   Lightbulb, 
-  Sparkles, 
   Check, 
   Search, 
-  BookOpen, 
-  Layers, 
-  Target, 
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  BookmarkPlus
 } from 'lucide-react';
 
 interface ContextualTopicSuggesterProps {
@@ -74,67 +69,56 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
     });
   };
 
+  const semesterBtn = (value: 'all' | 1 | 2, label: string) => (
+    <button
+      type="button"
+      onClick={() => setSelectedSemester(value)}
+      data-active={selectedSemester === value}
+      className="rounded-md px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition-colors cursor-pointer data-[active=true]:bg-[var(--surface)] data-[active=true]:text-[var(--ink)] data-[active=true]:shadow-sm"
+    >
+      {label}
+    </button>
+  );
+
   return (
-    <div className="bg-gradient-to-br from-blue-50/90 via-sky-50/60 to-indigo-50/40 rounded-2xl border border-blue-200/90 shadow-2xs overflow-hidden transition-all">
+    <div className="mt-3 overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--surface-2)]">
       
       {/* Suggester Header */}
-      <div className="p-4 sm:p-4.5 border-b border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/70">
-        <div className="flex items-start sm:items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5 sm:mt-0">
-            <Lightbulb className="w-4.5 h-4.5" />
+      <div className="flex flex-col justify-between gap-2.5 border-b border-[var(--line)] px-4 py-3 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-2.5 sm:items-center">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] sm:mt-0">
+            <Lightbulb className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                Inspirasi Topik & Materi Pokok Resmi (BSKAP 032/H/KR/2024)
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="text-[12.5px] font-semibold text-[var(--ink)]">
+                Inspirasi topik &amp; materi pokok
               </h4>
-              <span className="px-2 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">
-                {fase} • {tingkat} ({jenjang})
+              <span className="ds-badge !py-0 !text-[10px]">
+                {fase} · {tingkat} · {jenjang}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Materi pokok terstandar untuk mata pelajaran <b>{mataPelajaran}</b>. Klik kartu topik untuk menerapkan langsung ke formulir.
+            <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+              Materi terstandar BSKAP 032/H/KR/2024 untuk <b className="text-[var(--ink-soft)]">{mataPelajaran}</b>. Pilih kartu untuk menerapkan ke formulir.
             </p>
           </div>
         </div>
 
         {/* Toggle Collapse & Semester Filter */}
-        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-          <div className="flex items-center bg-white p-0.5 rounded-lg border border-slate-200 text-[10px] font-bold">
-            <button
-              type="button"
-              onClick={() => setSelectedSemester('all')}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Semua
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedSemester(1)}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 1 ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sem 1
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedSemester(2)}
-              className={`px-2 py-1 rounded transition-colors cursor-pointer ${
-                selectedSemester === 2 ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sem 2
-            </button>
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-0.5 rounded-lg border border-[var(--line)] bg-[var(--surface-3)] p-0.5">
+            {semesterBtn('all', 'Semua')}
+            {semesterBtn(1, 'Sem 1')}
+            {semesterBtn(2, 'Sem 2')}
           </div>
 
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-            title={isExpanded ? 'Tutup Rekomendasi' : 'Buka Rekomendasi'}
+            className="w-8 h-8 rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--ink)] flex items-center justify-center transition-colors cursor-pointer"
+            title={isExpanded ? 'Tutup rekomendasi' : 'Buka rekomendasi'}
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? 'Tutup rekomendasi topik' : 'Buka rekomendasi topik'}
           >
             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -143,111 +127,103 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
 
       {/* Suggester Body */}
       {isExpanded && (
-        <div className="p-4 sm:p-5 space-y-3.5">
+        <div className="space-y-3 p-4">
           
           {/* Quick Search in topics */}
           {matchingTopics.length > 3 && (
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-[var(--muted)]" />
               <input
-                type="text"
+                type="search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={`Cari topik khusus ${mataPelajaran}...`}
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={`Cari topik ${mataPelajaran}…`}
+                aria-label="Cari topik materi"
+                className="apple-input !py-1.5 !pl-8 !text-[12px]"
               />
             </div>
           )}
 
           {/* Contextual Topics Grid */}
           {matchingTopics.length === 0 ? (
-            <div className="p-4 rounded-xl bg-white/80 border border-slate-200 text-center space-y-2">
-              <p className="text-xs text-slate-600">
-                Belum ada topik tersimpan untuk kata kunci pencarian. Anda dapat mengetik materi khusus atau memilih topik populer di bawah:
+            <div className="space-y-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 text-center">
+              <p className="text-[12px] text-[var(--muted)]">
+                Belum ada topik untuk kata kunci ini. Ketik materi khusus atau pilih inspirasi berikut.
               </p>
-              <div className="flex flex-wrap justify-center gap-2 pt-1">
+              <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                 {[
-                  `Penerapan Kontekstual ${mataPelajaran} dalam Kehidupan Nyata`,
-                  `Studi Kasus & Analisis Fenomena Berbasis Masalah (${mataPelajaran})`,
-                  `Projek Kreatif & Literasi Numerasi (${mataPelajaran})`
+                  `Penerapan kontekstual ${mataPelajaran} dalam kehidupan nyata`,
+                  `Studi kasus & analisis fenomena berbasis masalah (${mataPelajaran})`,
+                  `Projek kreatif & literasi numerasi (${mataPelajaran})`
                 ].map((sug, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => handleQuickCustomSuggest(sug)}
-                    className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold border border-blue-200 transition-colors cursor-pointer"
+                    className="rounded-md border border-[var(--line)] bg-[var(--accent-soft)] px-2.5 py-1.5 text-[11.5px] font-medium text-[var(--accent-ink)] transition-colors hover:border-[var(--accent)]/40 cursor-pointer"
                   >
-                    + {sug}
+                    {sug}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               {matchingTopics.map((item) => {
                 const isSelected = currentTopik.trim().toLowerCase() === item.topik.trim().toLowerCase();
 
-                // UX: kartu sebagai <button> agar bisa diakses keyboard & screen reader (sebelumnya div onClick)
                 return (
                   <button
                     type="button"
                     key={item.id}
                     onClick={() => onSelectTopic(item)}
                     aria-pressed={isSelected}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group text-left w-full ${
+                    className={`flex w-full flex-col justify-between rounded-lg border p-3 text-left transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/40'
-                        : 'bg-white hover:bg-blue-50/60 border-slate-200/90 hover:border-blue-300 shadow-2xs'
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                        : 'border-[var(--line)] bg-[var(--surface)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]'
                     }`}
                   >
                     <div>
                       {/* Top Badges */}
-                      <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-700'
-                        }`}>
-                          Semester {item.semester} • {item.tingkat}
+                      <div className="mb-1.5 flex items-center justify-between gap-1.5">
+                        <span className="text-[10px] font-medium uppercase tracking-[0.05em] text-[var(--muted)]">
+                          Semester {item.semester} · {item.tingkat}
                         </span>
 
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span className="text-[10px] font-medium text-[var(--muted)]">
                           {item.rekomendasiModel.split(' - ')[0]}
                         </span>
                       </div>
 
                       {/* Topic Title */}
-                      <h5 className={`font-bold text-xs sm:text-sm leading-snug line-clamp-2 ${
-                        isSelected ? 'text-white' : 'text-slate-900 group-hover:text-blue-700'
+                      <h5 className={`text-[12.5px] font-semibold leading-snug line-clamp-2 ${
+                        isSelected ? 'text-[var(--accent-ink)]' : 'text-[var(--ink)]'
                       }`}>
                         {item.topik}
                       </h5>
 
                       {/* TP Preview */}
-                      <p className={`text-[11px] mt-1.5 line-clamp-2 leading-relaxed ${
-                        isSelected ? 'text-blue-100' : 'text-slate-500'
-                      }`}>
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-[var(--muted)]">
                         {item.deskripsiTP}
                       </p>
                     </div>
 
                     {/* Footer Action */}
-                    <div className="mt-3 pt-2 border-t border-slate-100/50 flex items-center justify-between text-[11px]">
-                      <span className={`font-medium ${isSelected ? 'text-blue-100' : 'text-slate-400'}`}>
+                    <div className="mt-2.5 flex items-center justify-between border-t border-[var(--line)] pt-2 text-[10.5px]">
+                      <span className="truncate font-medium text-[var(--muted)]">
                         {item.kataKunci.slice(0, 2).map(k => `#${k}`).join(' ')}
                       </span>
 
-                      <span className={`font-bold flex items-center gap-1 ${
-                        isSelected ? 'text-white' : 'text-blue-600 group-hover:translate-x-0.5 transition-transform'
-                      }`}>
+                      <span className="flex shrink-0 items-center gap-1 font-medium text-[var(--accent)]">
                         {isSelected ? (
                           <>
-                            <Check className="w-3.5 h-3.5" />
-                            Topik Terpilih
+                            <Check className="w-3 h-3" />
+                            Terpilih
                           </>
                         ) : (
                           <>
-                            Pilih Topik
+                            Pilih
                             <ArrowRight className="w-3 h-3" />
                           </>
                         )}
@@ -261,9 +237,11 @@ export const ContextualTopicSuggester: React.FC<ContextualTopicSuggesterProps> =
           )}
 
           {/* Quick Notice footer */}
-          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-            <span>Ditemukan <b>{matchingTopics.length}</b> inspirasi materi pokok sesuai <b>{mataPelajaran} {tingkat} ({fase})</b></span>
-            <span className="hidden sm:inline">Kurikulum Nasional Permendikbudristek 12/2024</span>
+          <div className="flex items-center justify-between gap-2 pt-1 text-[10.5px] text-[var(--muted)]">
+            <span>
+              {matchingTopics.length} inspirasi materi untuk <b className="text-[var(--ink-soft)]">{mataPelajaran} {tingkat} ({fase})</b>
+            </span>
+            <span className="hidden sm:inline">Kurikulum Nasional · Permendikdasmen 13/2025</span>
           </div>
 
         </div>

@@ -92,7 +92,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
     }
   };
 
-  // UX: konfirmasi hapus bergaya aplikasi + loading + feedback (menggantikan confirm bawaan browser)
+  // UX: konfirmasi hapus bergaya aplikasi + loading + feedback
   const handleConfirmDelete = async () => {
     if (!docToDelete) return;
     setIsDeleting(true);
@@ -108,34 +108,38 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       
       {/* Header */}
-      <div className="text-center max-w-xl mx-auto">
-        <p className="apple-eyebrow">Bank perangkat</p>
-        <h2 className="apple-headline !text-[28px] sm:!text-[34px] mt-1">Arsip dokumen.</h2>
-        <p className="apple-sub mt-2 !text-[15px]">
-          Modul Ajar, RPP, Soal, dan LKPD tersimpan rapi — buka, cetak, atau unduh kapan pun.
-        </p>
-        <button
-          onClick={onCreateNew}
-          className="btn-apple mt-5"
-        >
-          <Sparkles className="w-4 h-4" />
-          Susun perangkat baru
-        </button>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.025em] text-[var(--ink)]">Arsip dokumen</h1>
+          <p className="apple-sub mt-1 max-w-2xl">
+            Modul ajar, RPP, soal, dan LKPD tersimpan rapi — buka, cetak, atau unduh kapan pun.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isTrulyEmpty && (
+            <span className="ds-badge">{documents.length} dokumen</span>
+          )}
+          <button onClick={onCreateNew} className="btn-apple">
+            <Sparkles className="w-4 h-4" />
+            Susun perangkat baru
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="apple-card p-3.5 flex flex-col md:flex-row items-center justify-between gap-2.5">
+      <div className="apple-card p-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
         <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-[#86868b] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
-            type="text"
-            placeholder="Cari materi, mata pelajaran, atau penyusun..."
+            type="search"
+            placeholder="Cari materi, mata pelajaran, atau penyusun…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="apple-input !pl-10"
+            className="apple-input !pl-9"
+            aria-label="Cari dokumen"
           />
         </div>
 
@@ -143,27 +147,29 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
           <select
             value={docTypeFilter}
             onChange={(e) => setDocTypeFilter(e.target.value)}
-            className="apple-input !w-auto !py-2.5 text-[13.5px] font-semibold"
+            className="apple-input !w-auto shrink-0 !py-2 !text-[12.5px]"
+            aria-label="Filter jenis perangkat"
           >
-            <option value="ALL">Semua Jenis Perangkat</option>
+            <option value="ALL">Semua jenis</option>
             <option value="modul_ajar">Modul Ajar</option>
             <option value="rpp">RPP Ringkas</option>
             <option value="soal_ujian">Bank Soal Ujian</option>
             <option value="lkpd">LKPD</option>
-            <option value="kktp_atp">ATP & KKTP</option>
-            <option value="prota_promes">Prota & Promes</option>
+            <option value="kktp_atp">ATP &amp; KKTP</option>
+            <option value="prota_promes">Prota &amp; Promes</option>
             <option value="modul_p5">Modul Projek</option>
           </select>
 
           <select
             value={jenjangFilter}
             onChange={(e) => setJenjangFilter(e.target.value)}
-            className="apple-input !w-auto !py-2.5 text-[13.5px] font-semibold"
+            className="apple-input !w-auto shrink-0 !py-2 !text-[12.5px]"
+            aria-label="Filter jenjang"
           >
-            <option value="ALL">Semua Jenjang</option>
-            <option value="SD">SD (Fase A-C)</option>
+            <option value="ALL">Semua jenjang</option>
+            <option value="SD">SD (Fase A–C)</option>
             <option value="SMP">SMP (Fase D)</option>
-            <option value="SMA">SMA (Fase E-F)</option>
+            <option value="SMA">SMA (Fase E–F)</option>
             <option value="SMK">SMK</option>
           </select>
         </div>
@@ -171,120 +177,108 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
 
       {/* UX: jumlah hasil — pengguna tahu berapa dokumen yang sedang ditampilkan */}
       {!isTrulyEmpty && (
-        <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] -mt-4" aria-live="polite">
+        <p className="text-[12px] text-[var(--muted)]" aria-live="polite">
           Menampilkan {filteredDocs.length} dari {documents.length} dokumen
         </p>
       )}
 
       {/* Grid Cards of Documents */}
-      {/* UX: bedakan arsip kosong total (empty state ramah + CTA) dari hasil filter yang kosong */}
       {isTrulyEmpty ? (
-        <div className="apple-card p-10 sm:p-14 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#e8f0ff] to-[#f3e8ff] dark:from-[#1c2b4a] dark:to-[#2b1c4a] flex items-center justify-center mx-auto mb-4">
-            <Archive className="w-9 h-9 text-[#0a84ff]" />
+        <div className="apple-card px-6 py-14 text-center">
+          <div className="w-14 h-14 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center mx-auto mb-4">
+            <Archive className="w-6 h-6" />
           </div>
-          <h3 className="text-[18px] font-semibold tracking-tight">Arsip Anda masih kosong</h3>
-          <p className="text-[14px] text-[#6e6e73] dark:text-[#98989d] mt-1.5 max-w-sm mx-auto">
+          <h3 className="text-[16px] font-semibold text-[var(--ink)]">Arsip Anda masih kosong</h3>
+          <p className="text-[13px] text-[var(--muted)] mt-1.5 max-w-sm mx-auto">
             Setiap perangkat yang Anda susun dengan generator akan tersimpan otomatis di sini — siap dibuka, dicetak, atau diunduh kapan pun.
           </p>
-          <button
-            onClick={onCreateNew}
-            className="btn-apple mt-6"
-          >
+          <button onClick={onCreateNew} className="btn-apple mt-6">
             <Sparkles className="w-4 h-4" />
-            Buat perangkat pertama saya
+            Buat perangkat pertama
           </button>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="apple-card p-12 text-center">
-          <BookOpen className="w-12 h-12 text-[#86868b] mx-auto mb-3" />
-          <h3 className="text-[16px] font-semibold">Tidak ada perangkat ditemukan</h3>
-          <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mt-1 max-w-sm mx-auto">
+        <div className="apple-card px-6 py-14 text-center">
+          <BookOpen className="w-6 h-6 text-[var(--muted)] mx-auto mb-3" />
+          <h3 className="text-[15px] font-semibold text-[var(--ink)]">Tidak ada perangkat ditemukan</h3>
+          <p className="text-[12.5px] text-[var(--muted)] mt-1 max-w-sm mx-auto">
             Coba kata kunci lain, atau bersihkan pencarian dan filter untuk melihat semua dokumen.
           </p>
-          <button
-            onClick={resetFilters}
-            className="btn-apple-secondary mt-5"
-          >
+          <button onClick={resetFilters} className="btn-apple-secondary mt-5">
             <X className="w-4 h-4" />
             Bersihkan pencarian &amp; filter
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {filteredDocs.map((doc) => {
             const typeConfig = DOC_TYPE_INFO[doc.docType] || DOC_TYPE_INFO.modul_ajar;
             const isAuthor = doc.authorId === currentUser.id;
 
             return (
-              <div
-                key={doc.id}
-                className="apple-card p-5 flex flex-col justify-between group hover:-translate-y-0.5 transition-all"
-              >
+              <div key={doc.id} className="apple-card ux-lift p-4 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-black/5 dark:bg-white/10">
-                      {doc.jenjang} • {doc.tingkat} ({doc.fase})
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="ds-badge">
+                      {doc.jenjang} · {doc.tingkat} · {doc.fase}
                     </span>
-
-                    <span className="text-[11px] font-semibold text-[#6e6e73] dark:text-[#98989d]">
+                    <span className="text-[11px] font-medium text-[var(--muted)] shrink-0">
                       {typeConfig.badge}
                     </span>
                   </div>
 
                   <h3 
                     onClick={() => onSelectDocument(doc)}
-                    className="font-semibold text-[15px] leading-snug cursor-pointer line-clamp-2"
+                    className="text-[14.5px] font-semibold leading-snug text-[var(--ink)] cursor-pointer line-clamp-2 hover:text-[var(--accent)]"
                   >
                     {doc.title}
                   </h3>
 
-                  <div className="text-[13px] font-medium mt-2 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white shrink-0" />
-                    <span>{doc.mataPelajaran}</span>
+                  <div className="mt-2 flex items-center gap-1.5 text-[12.5px] text-[var(--ink-soft)]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] shrink-0" />
+                    <span className="truncate">{doc.mataPelajaran}</span>
                   </div>
 
-                  <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-1 line-clamp-2">
+                  <p className="mt-1 text-[12px] text-[var(--muted)] line-clamp-2">
                     Topik: {doc.topik}
                   </p>
                 </div>
 
-                <div className="pt-4 mt-4 border-t border-black/10 dark:border-white/10">
-                  <div className="flex items-center justify-between text-[12px] text-[#6e6e73] dark:text-[#98989d] mb-3">
+                <div className="mt-4 border-t border-[var(--line)] pt-3">
+                  <div className="mb-3 flex items-center justify-between text-[11.5px] text-[var(--muted)]">
                     <span className="truncate max-w-[150px]">{doc.authorName}</span>
                     <span>{new Date(doc.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 justify-end">
+                  <div className="flex items-center justify-end gap-1.5">
                     <button
                       onClick={() => onSelectDocument(doc)}
-                      className="px-4 py-2 rounded-full bg-black dark:bg-white dark:text-black text-white text-[13px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+                      className="btn-apple !min-h-[32px] !py-1 !px-3 !text-[12px]"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Buka
                     </button>
 
-                    {/* UX: tombol unduh dengan loading per kartu + toast sukses/gagal */}
                     <button
                       onClick={() => handleDownloadDocx(doc)}
                       disabled={downloadingId === doc.id}
-                      className="px-3.5 py-2 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-[13px] font-semibold transition-colors cursor-pointer flex items-center gap-1 min-h-[38px] disabled:opacity-60"
-                      title="Unduh Format Microsoft Word (.docx)"
+                      className="btn-apple-secondary !min-h-[32px] !py-1 !px-2.5 !text-[12px]"
+                      title="Unduh format Microsoft Word (.docx)"
                     >
                       {downloadingId === doc.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Download className="w-3.5 h-3.5" />
                       )}
-                      <span>{downloadingId === doc.id ? 'Menyiapkan...' : '.docx'}</span>
+                      <span>{downloadingId === doc.id ? 'Menyiapkan…' : '.docx'}</span>
                     </button>
 
-                    {/* UX: buka dialog konfirmasi hapus bergaya aplikasi (bukan confirm bawaan browser) */}
                     {(isAuthor || currentUser.role === 'SUPER_ADMIN') && (
                       <button
                         onClick={() => setDocToDelete(doc)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Hapus Dokumen"
+                        className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] flex items-center justify-center transition-colors cursor-pointer"
+                        title="Hapus dokumen"
+                        aria-label={`Hapus ${doc.title}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -298,50 +292,47 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
         </div>
       )}
 
-      {/* UX: dialog konfirmasi hapus bergaya aplikasi — klik backdrop untuk batal */}
+      {/* UX: dialog konfirmasi hapus bergaya aplikasi */}
       {docToDelete && (
         <div
-          className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+          className="modal modal-open"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="delete-doc-title"
-          onClick={() => { if (!isDeleting) setDocToDelete(null); }}
         >
-          <div
-            className="apple-card max-w-sm w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-12 h-12 rounded-2xl bg-[#fff1f1] dark:bg-[#3a1512] flex items-center justify-center mb-3">
-              <Trash2 className="w-6 h-6 text-[#b3261e] dark:text-[#ff9d97]" />
+          <div className="modal-box max-w-sm">
+            <div className="w-10 h-10 rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] flex items-center justify-center mb-3">
+              <Trash2 className="w-4 h-4" />
             </div>
-            <h3 id="delete-doc-title" className="text-[17px] font-semibold tracking-tight">
+            <h3 id="delete-doc-title" className="text-[15px] font-semibold text-[var(--ink)]">
               Hapus dokumen?
             </h3>
-            <p className="text-[13.5px] text-[#6e6e73] dark:text-[#98989d] mt-1.5 line-clamp-3">
+            <p className="mt-1.5 text-[12.5px] text-[var(--muted)] line-clamp-3">
               &ldquo;{docToDelete.title}&rdquo; akan dihapus permanen dari arsip dan tidak dapat dikembalikan.
             </p>
-            <div className="flex items-center gap-2 mt-5">
+            <div className="modal-action">
               <button
                 onClick={() => setDocToDelete(null)}
                 disabled={isDeleting}
-                className="btn-apple-secondary flex-1 disabled:opacity-60"
+                className="btn-apple-secondary"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full bg-[#b3261e] hover:bg-[#9c1f18] text-white text-[14px] font-semibold transition-colors cursor-pointer disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 rounded-[10px] bg-[var(--danger)] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:opacity-90 cursor-pointer disabled:opacity-60"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Trash2 className="w-4 h-4" />
                 )}
-                {isDeleting ? 'Menghapus...' : 'Hapus'}
+                {isDeleting ? 'Menghapus…' : 'Hapus'}
               </button>
             </div>
           </div>
+          <div className="modal-backdrop" onClick={() => { if (!isDeleting) setDocToDelete(null); }} />
         </div>
       )}
 
@@ -350,20 +341,20 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-2xl shadow-xl text-[13.5px] font-medium max-w-[calc(100vw-2rem)] bg-[#1c1c1e] text-white dark:bg-white dark:text-black"
+          className="fixed bottom-5 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-3.5 pr-2 text-[12.5px] font-medium text-[var(--ink)] shadow-lg"
         >
           {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#30d158]" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
           ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[#ff9d97]" />
+            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
           ) : (
-            <Info className="w-4 h-4 shrink-0" />
+            <Info className="w-4 h-4 shrink-0 text-[var(--muted)]" />
           )}
           <span className="truncate">{toast.message}</span>
           <button
             onClick={() => setToast(null)}
             aria-label="Tutup notifikasi"
-            className="p-1.5 rounded-full hover:bg-white/10 dark:hover:bg-black/10 shrink-0 cursor-pointer"
+            className="ml-1 shrink-0 cursor-pointer rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)]"
           >
             <X className="w-3.5 h-3.5" />
           </button>

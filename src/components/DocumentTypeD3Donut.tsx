@@ -10,9 +10,9 @@ export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }
   const svgRef = useRef<SVGSVGElement | null>(null);
   const { theme } = useTheme();
   const dark = theme === 'dark';
-  const ink = dark ? '#f5f5f7' : '#1d1d1f';
-  const subtle = dark ? '#98989d' : '#6e6e73';
-  const track = dark ? 'rgba(255,255,255,0.12)' : '#e8e8ed';
+  const ink = dark ? '#e8eaed' : '#0f172a';
+  const subtle = dark ? '#8b94a3' : '#5b6675';
+  const track = dark ? 'rgba(255,255,255,0.10)' : '#e2e6ee';
 
   useEffect(() => {
     if (!svgRef.current || !data || data.length === 0) return;
@@ -107,7 +107,7 @@ export const DocumentTypeD3Donut: React.FC<DocumentTypeD3DonutProps> = ({ data }
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
               <span className="font-medium truncate max-w-[150px]">{item.label}</span>
             </div>
-            <span className="font-semibold bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded-full text-[12px]">
+            <span className="rounded-md bg-[var(--surface-3)] px-2 py-0.5 text-[11.5px] font-semibold text-[var(--ink-soft)] tabular-nums">
               {item.count}
             </span>
           </div>

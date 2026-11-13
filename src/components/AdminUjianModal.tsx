@@ -32,8 +32,7 @@ interface AdminUjianModalProps {
   onUnduh: (docs: DokumenUnduhan[]) => void;
 }
 
-const inputCls =
-  'w-full rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--apple-blue)]/40';
+const labelCls = 'mb-1.5 block text-[12px] font-medium text-[var(--ink-soft)]';
 
 export const AdminUjianModal: React.FC<AdminUjianModalProps> = ({
   terbuka,
@@ -79,115 +78,116 @@ export const AdminUjianModal: React.FC<AdminUjianModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="apple-card max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Paket admin ujian">
+      <div className="modal-box max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         {/* Header */}
-        <div className="p-5 pb-4 relative shrink-0 border-b border-black/10 dark:border-white/10">
+        <div className="relative shrink-0 border-b border-[var(--line)] px-5 py-4">
           <button
             onClick={onBatal}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Tutup"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
-          <p className="apple-eyebrow">Administrasi ujian</p>
-          <h2 className="text-[20px] font-bold tracking-tight mt-0.5 pr-10 flex items-center gap-2">
-            <ClipboardList className="w-5 h-5" />
-            Paket Admin Ujian
+          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+            Administrasi ujian
+          </p>
+          <h2 className="mt-1 flex items-center gap-2 pr-10 text-[16px] font-semibold tracking-[-0.02em] text-[var(--ink)]">
+            <ClipboardList className="w-4 h-4 text-[var(--accent)]" />
+            Paket admin ujian
           </h2>
-          <p className="text-[13px] text-[#6e6e73] dark:text-[#98989d] mt-0.5">
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">
             Berita acara, daftar hadir, dan kartu hasil — siap diunduh sebagai 3 dokumen.
           </p>
         </div>
 
         {/* Form */}
-        <div className="p-5 overflow-y-auto space-y-4 text-[14px]">
+        <div className="space-y-3.5 overflow-y-auto p-5">
           <div>
-            <label className="font-semibold block mb-1.5">Daftar siswa</label>
+            <label className={labelCls} htmlFor="admin-ujian-daftar">Daftar siswa</label>
             <textarea
+              id="admin-ujian-daftar"
               value={daftarTeks}
               onChange={(e) => setDaftarTeks(e.target.value)}
               rows={6}
               placeholder={'Satu nama per baris.\nContoh:\nAhmad Fauzi - 12345\nSiti Aminah | 12346\nBudi Santoso'}
-              className={`${inputCls} font-mono resize-y`}
+              className="apple-input resize-y font-mono !text-[12.5px]"
             />
-            <p className="text-[12.5px] text-[#6e6e73] dark:text-[#98989d] mt-1.5 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" />
+            <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-[var(--muted)]">
+              <Users className="w-3.5 h-3.5 shrink-0" />
               <span>
-                <b>{siswa.length} siswa terbaca</b>
-                {' '}— format opsional: "Nama - NIS" atau "Nama | NIS".
+                <b className="text-[var(--ink-soft)]">{siswa.length} siswa terbaca</b>
+                {' '}— format opsional: &quot;Nama - NIS&quot; atau &quot;Nama | NIS&quot;.
               </span>
             </p>
           </div>
 
           <div>
-            <label className="font-semibold block mb-1.5">
-              Hari / tanggal <span className="text-red-500">*</span>
+            <label className={labelCls} htmlFor="admin-ujian-tanggal">
+              Hari / tanggal <span className="text-[var(--danger)]">*</span>
             </label>
             <input
+              id="admin-ujian-tanggal"
               value={hariTanggal}
               onChange={(e) => setHariTanggal(e.target.value)}
-              placeholder='Contoh: Senin, 20 Oktober 2026'
-              className={inputCls}
+              placeholder="Contoh: Senin, 20 Oktober 2026"
+              className="apple-input"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="font-semibold block mb-1.5">Pengawas</label>
+              <label className={labelCls} htmlFor="admin-ujian-pengawas">Pengawas</label>
               <input
+                id="admin-ujian-pengawas"
                 value={pengawas}
                 onChange={(e) => setPengawas(e.target.value)}
                 placeholder="Nama pengawas ujian"
-                className={inputCls}
+                className="apple-input"
               />
             </div>
             <div>
-              <label className="font-semibold block mb-1.5">Mata pelajaran</label>
+              <label className={labelCls} htmlFor="admin-ujian-mapel">Mata pelajaran</label>
               <input
+                id="admin-ujian-mapel"
                 value={mapel}
                 onChange={(e) => setMapel(e.target.value)}
                 placeholder="Contoh: Informatika"
-                className={inputCls}
+                className="apple-input"
               />
             </div>
           </div>
 
           <div>
-            <label className="font-semibold block mb-1.5">Kelas</label>
+            <label className={labelCls} htmlFor="admin-ujian-kelas">Kelas</label>
             <input
+              id="admin-ujian-kelas"
               value={kelas}
               onChange={(e) => setKelas(e.target.value)}
               placeholder="Contoh: VIII-1"
-              className={inputCls}
+              className="apple-input"
             />
           </div>
 
           {!valid && (
-            <p className="text-[12.5px] text-amber-600 dark:text-amber-400">
+            <p className="rounded-lg border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-3 py-2 text-[11.5px] text-[var(--warn)]">
               Isi minimal 1 nama siswa dan hari/tanggal untuk mengunduh dokumen.
             </p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-black/10 dark:border-white/10 flex justify-end gap-2.5 shrink-0">
-          <button
-            onClick={onBatal}
-            className="px-4 py-2 rounded-full text-sm font-medium border border-black/15 dark:border-white/15 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-          >
+        <div className="modal-action shrink-0 border-t border-[var(--line)] px-5 py-3.5">
+          <button onClick={onBatal} className="btn-apple-secondary">
             Batal
           </button>
-          <button
-            onClick={handleUnduh}
-            disabled={!valid}
-            className="btn-apple !min-h-[40px] px-5 text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          <button onClick={handleUnduh} disabled={!valid} className="btn-apple">
             <Download className="w-4 h-4" />
-            Unduh Semua (3 dokumen)
+            Unduh semua (3 dokumen)
           </button>
         </div>
       </div>
+      <div className="modal-backdrop" onClick={onBatal} />
     </div>
   );
 };

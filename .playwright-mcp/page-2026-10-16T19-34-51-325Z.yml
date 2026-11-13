@@ -1,0 +1,56 @@
+- generic [ref=f6e3]:
+  - complementary "Navigasi utama" [ref=f6e4]:
+    - generic [ref=f6e5]:
+      - button "Ruang Guru Merdeka — ke Beranda" [ref=f6e6] [cursor=pointer]:
+        - generic [ref=f6e11]:
+          - paragraph [ref=f6e12]: Ruang Guru
+          - paragraph [ref=f6e13]: Merdeka
+      - button "Tutup menu navigasi" [ref=f6e15] [cursor=pointer]
+    - navigation "Menu utama" [ref=f6e19]:
+      - button "Beranda Ringkasan & mulai" [ref=f6e20] [cursor=pointer]:
+        - generic [ref=f6e25]:
+          - generic [ref=f6e26]: Beranda
+          - generic [ref=f6e27]: Ringkasan & mulai
+      - button "Paket Saya Perangkat per kelas" [ref=f6e28] [cursor=pointer]:
+        - generic [ref=f6e34]:
+          - generic [ref=f6e35]: Paket Saya
+          - generic [ref=f6e36]: Perangkat per kelas
+      - button "Perpustakaan Bank perangkat sekolah" [ref=f6e37] [cursor=pointer]:
+        - generic [ref=f6e41]:
+          - generic [ref=f6e42]: Perpustakaan
+          - generic [ref=f6e43]: Bank perangkat sekolah
+      - button "Panduan Kurikulum Merdeka" [ref=f6e44] [cursor=pointer]:
+        - generic [ref=f6e48]:
+          - generic [ref=f6e49]: Panduan
+          - generic [ref=f6e50]: Kurikulum Merdeka
+    - button "Menu pengguna Siti Nurhaliza, S.Pd.SD" [ref=f6e53] [cursor=pointer]:
+      - generic [ref=f6e54]: S
+      - generic [ref=f6e56]:
+        - generic [ref=f6e57]: Siti Nurhaliza, S.Pd.SD
+        - generic [ref=f6e58]: Guru
+  - generic [ref=f6e61]:
+    - banner [ref=f6e62]:
+      - generic [ref=f6e63]:
+        - generic [ref=f6e64]:
+          - button "Buka menu" [ref=f6e65] [cursor=pointer]
+          - generic [ref=f6e67]:
+            - paragraph [ref=f6e68]: Ruang Guru Merdeka
+            - heading "Beranda" [level=2] [ref=f6e71]
+        - generic [ref=f6e72]:
+          - generic [ref=f6e73]: Terverifikasi
+          - button "Aktifkan mode gelap" [ref=f6e77] [cursor=pointer]
+          - button "Profil Siti Nurhaliza, S.Pd.SD — buka pengaturan akun" [ref=f6e80] [cursor=pointer]:
+            - generic [ref=f6e81]: S
+            - generic [ref=f6e82]: Siti Nurhaliza, S.Pd.SD
+          - button "Keluar dari akun" [ref=f6e83] [cursor=pointer]
+    - main [ref=f6e87]:
+      - generic [ref=f6e91]:
+        - generic [ref=f6e92]:
+          - paragraph [ref=f6e93]: 📅 Sabtu, 17 Oktober 2026
+          - heading "Selamat pagi, Pak Siti 👋" [level=1] [ref=f6e94]
+          - paragraph [ref=f6e95]: Yuk, susun perangkat ajar yang seru hari ini! Setiap paket berisi 7 dokumen Kurikulum Merdeka — dari Modul Ajar sampai Modul P5.
+        - generic [ref=f6e96]:
+          - img "Maskot burung hantu Owi" [ref=f6e97]
+          - button "Yuk, Buat Paket Baru ✨" [ref=f6e124] [cursor=pointer]
+    - contentinfo [ref=f6e142]:
+      - paragraph [ref=f6e143]: Ruang Guru Merdeka · Permendikdasmen No. 13 Tahun 2025

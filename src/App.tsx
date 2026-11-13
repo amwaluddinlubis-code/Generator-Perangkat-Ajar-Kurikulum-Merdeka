@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   TeacherUser, 
   EducationalDocument, 
@@ -74,17 +74,39 @@ export default function App() {
   const [guideModalOpen, setGuideModalOpen] = useState<boolean>(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const toastTimer = useRef<number | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
   };
 
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
-      // Load available demo or registered users
-      const usersRes = await apiFetch('/api/users');
+      const punyaSesi = (() => {
+        try { return !!localStorage.getItem('ruang_guru_session_token'); }
+        catch { return false; }
+      })();
+      // Tanpa sesi: langsung ke profil demo publik agar tidak memicu 401 noise di console.
+      if (!punyaSesi) {
+        const demoRes = await apiFetch('/api/users/demo');
+        if (demoRes.ok) {
+          const demoData = await demoRes.json();
+          if (demoData.users) setUsers(demoData.users);
+        }
+        return;
+      }
+      // Load available demo or registered users — cek peran dulu agar GURU
+      // tidak memicu 403 noise (/api/users khusus verifier).
+      const meRes = await apiFetch('/api/users/current');
+      let peran: string | undefined;
+      if (meRes.ok) {
+        try { peran = (await meRes.json()).user?.role; } catch { peran = undefined; }
+      }
+      const bolehLihatSemua = peran === 'ADMIN' || peran === 'SUPER_ADMIN' || peran === 'KEPALA_SEKOLAH';
+      const usersRes = bolehLihatSemua ? await apiFetch('/api/users') : ({ ok: false } as Response);
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         if (usersData.users) {
@@ -144,10 +166,19 @@ export default function App() {
 
   useEffect(() => {
     loadInitialData();
-    // Revalidasi tiap jendela kembali fokus (kembali dari tab admin, dsb.)
-    const onFocus = () => loadInitialData();
+    // Revalidasi tiap jendela kembali fokus — debounce 5 dtk agar alt-tab tak spam fetch.
+    let lastFocus = 0;
+    const onFocus = () => {
+      const now = Date.now();
+      if (now - lastFocus < 5000) return;
+      lastFocus = now;
+      loadInitialData();
+    };
     window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
   }, []);
 
   // Handle Login / Belajar.id Switcher
@@ -386,11 +417,11 @@ export default function App() {
         {/* Toast Notification — Apple pill */}
         {/* UX: umumkan toast ke screen reader; jangan ikut tercetak */}
         {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
-            <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md">
-              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158]" />}
-              {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961]" />}
-              {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a]" />}
+          <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
+            <div className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-3.5 pr-4 text-[12.5px] font-medium text-[var(--ink)] shadow-lg">
+              {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[var(--ok)]" />}
+              {toast.type === 'error' && <Clock className="w-4 h-4 text-[var(--danger)]" />}
+              {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[var(--accent)]" />}
               <span>{toast.message}</span>
             </div>
           </div>
@@ -430,16 +461,16 @@ export default function App() {
   ].includes(activeTarget);
 
   return (
-    <div className="min-h-screen text-[#1d1d1f] dark:text-[#f5f5f7] flex">
+    <div className="min-h-screen text-[var(--ink)] flex">
       
-      {/* Toast Notification — Apple pill */}
+      {/* Toast Notification — permukaan terangkat, bukan pil hitam */}
       {/* UX: umumkan toast ke screen reader */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
-          <div className="px-5 py-3 rounded-full shadow-lg text-[13.5px] font-medium flex items-center gap-2 bg-black/85 text-white backdrop-blur-md max-w-[92vw]">
-            {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[#30d158] shrink-0" />}
-            {toast.type === 'error' && <Clock className="w-4 h-4 text-[#ff6961] shrink-0" />}
-            {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[#ffd60a] shrink-0" />}
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 no-print" role="status" aria-live="polite">
+          <div className="px-3.5 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[13px] font-medium flex items-center gap-2.5 text-[var(--ink)] max-w-[92vw] ux-pop-in">
+            {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-[var(--ok)] shrink-0" />}
+            {toast.type === 'error' && <Clock className="w-4 h-4 text-[var(--danger)] shrink-0" />}
+            {toast.type === 'info' && <Sparkles className="w-4 h-4 text-[var(--accent)] shrink-0" />}
             <span className="truncate">{toast.message}</span>
           </div>
         </div>
@@ -465,12 +496,12 @@ export default function App() {
         onLogout={() => setLogoutModalOpen(true)}
       />
 
-      {/* Main App Layout Area — offset mengikuti lebar sidebar Apple */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
-        isSidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[280px]'
+      {/* Main App Layout Area — offset mengikuti lebar sidebar */}
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
+        isSidebarCollapsed ? 'lg:pl-[72px]' : 'lg:pl-[264px]'
       }`}>
         
-        {/* Streamlined Top Header */}
+        {/* Top bar */}
         <TopHeader
           currentUser={currentUser}
           activeTarget={activeTarget}
@@ -481,8 +512,8 @@ export default function App() {
           pendingCount={pendingUsersCount}
         />
 
-        {/* Content View Container — lega ala Apple */}
-        <main className="flex-1 px-4 sm:px-8 lg:px-12 py-6 sm:py-10 max-w-[1400px] w-full mx-auto">
+        {/* Content View Container */}
+        <main id="main" className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-[1360px] w-full mx-auto">
 
           {/* REDESIGN: bila ada paket aktif, tampilkan workspace paket */}
           {paketAktifId ? (
@@ -642,70 +673,71 @@ export default function App() {
           {/* VIEW 5: PANDUAN KURIKULUM MERDEKA */}
           {activeTarget === 'guide' && (
             <div className="space-y-4 ux-view-enter">
-              <div className="text-center max-w-xl mx-auto mb-2">
-                <p className="apple-eyebrow">Regulasi resmi 📜</p>
-                <h2 className="apple-headline !text-[28px] sm:!text-[34px] mt-1">Panduan Kurikulum Merdeka.</h2>
-                <p className="apple-sub mt-2 !text-[15px]">Bacaan ringan untuk menyusun Modul Ajar, RPP, Soal, dan perangkat kelas — biar makin pede! 💪</p>
+              <div className="mb-2 max-w-xl">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">Regulasi resmi</p>
+                <h2 className="mt-1 text-[23px] font-semibold tracking-[-0.03em] text-[var(--ink)]">Panduan Kurikulum Merdeka</h2>
+                <p className="apple-sub mt-1.5">
+                  Rujukan singkat untuk menyusun Modul Ajar, RPP, soal, dan perangkat kelas.
+                </p>
               </div>
-              <div className="apple-card p-6 sm:p-10 max-w-4xl mx-auto">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FFEEDB] text-[#B45309] dark:bg-amber-900/30 dark:text-amber-300 flex items-center justify-center font-bold">
-                    <BookOpen className="w-6 h-6" />
+              <div className="apple-card p-5 sm:p-8 max-w-4xl">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+                    <BookOpen className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-[#f5f5f7]">
-                      Panduan & Regulasi Kurikulum Merdeka Terbaru 📖
+                    <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--ink)]">
+                      Panduan &amp; regulasi terbaru
                     </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-[#a1a1a6]">
-                      Rujukan resmi penyusunan Modul Ajar, RPP, Soal Ujian, dan Perangkat Kelas untuk Guru Indonesia
+                    <p className="text-[12px] text-[var(--muted)] mt-0.5">
+                      Rujukan resmi penyusunan perangkat ajar untuk guru Indonesia
                     </p>
                   </div>
                 </div>
 
-                <div className="prose-educational space-y-4">
-                  {/* UX: panel ikut dark mode agar konsisten */}
-                  <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
-                    <h3 className="text-[14.5px] font-semibold mb-1">
-                      ⚖️ Landasan hukum kurikulum nasional 2024
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+                    <h3 className="mb-1 text-[13px] font-semibold text-[var(--ink)]">
+                      Landasan hukum kurikulum nasional
                     </h3>
-                    <p className="!text-[13.5px] !text-[#424245] dark:!text-[#e8e8ed]">
-                      Berdasarkan <b>Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, mendalam (berkesadaran, bermakna, menggembirakan), dan berorientasi Profil Lulusan 8 dimensi.
+                    <p className="text-[12.5px] leading-relaxed text-[var(--ink-soft)]">
+                      Berdasarkan <b className="text-[var(--ink)]">Permendikdasmen No. 13 Tahun 2025</b>, Kurikulum Merdeka menjadi kurikulum nasional. Pembelajaran berpusat pada peserta didik, berdiferensiasi, mendalam (berkesadaran, bermakna, menggembirakan), dan berorientasi Profil Lulusan 8 dimensi.
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
-                      <h4 className="font-semibold text-[14px] mb-2">
-                        🗺️ Fase pembelajaran
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+                      <h4 className="mb-2 text-[12.5px] font-semibold text-[var(--ink)]">
+                        Fase pembelajaran
                       </h4>
-                      <ul className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
-                        <li><b>Fase A</b>: Kelas 1–2 SD</li>
-                        <li><b>Fase B</b>: Kelas 3–4 SD</li>
-                        <li><b>Fase C</b>: Kelas 5–6 SD</li>
-                        <li><b>Fase D</b>: Kelas 7–9 SMP</li>
-                        <li><b>Fase E</b>: Kelas 10 SMA/SMK</li>
-                        <li><b>Fase F</b>: Kelas 11–12 SMA/SMK</li>
+                      <ul className="space-y-1.5 text-[12px] text-[var(--ink-soft)]">
+                        <li><b className="text-[var(--ink)]">Fase A</b>: Kelas 1–2 SD</li>
+                        <li><b className="text-[var(--ink)]">Fase B</b>: Kelas 3–4 SD</li>
+                        <li><b className="text-[var(--ink)]">Fase C</b>: Kelas 5–6 SD</li>
+                        <li><b className="text-[var(--ink)]">Fase D</b>: Kelas 7–9 SMP</li>
+                        <li><b className="text-[var(--ink)]">Fase E</b>: Kelas 10 SMA/SMK</li>
+                        <li><b className="text-[var(--ink)]">Fase F</b>: Kelas 11–12 SMA/SMK</li>
                       </ul>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
-                      <h4 className="font-semibold text-[14px] mb-2">
-                        🧩 3 komponen esensial Modul Ajar
+                    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+                      <h4 className="mb-2 text-[12.5px] font-semibold text-[var(--ink)]">
+                        Tiga komponen esensial modul ajar
                       </h4>
-                      <ol className="!text-[13px] space-y-1.5 !text-[#424245] dark:!text-[#e8e8ed]">
-                        <li>1. <b>Tujuan Pembelajaran</b> dari CP BSKAP 046/H/KR/2025.</li>
-                        <li>2. <b>Langkah pembelajaran</b> berdiferensiasi.</li>
-                        <li>3. <b>Rencana asesmen</b> + rubrik KKTP.</li>
+                      <ol className="space-y-1.5 text-[12px] text-[var(--ink-soft)]">
+                        <li><b className="text-[var(--ink)]">Tujuan pembelajaran</b> dari CP BSKAP 046/H/KR/2025.</li>
+                        <li><b className="text-[var(--ink)]">Langkah pembelajaran</b> berdiferensiasi.</li>
+                        <li><b className="text-[var(--ink)]">Rencana asesmen</b> beserta rubrik KKTP.</li>
                       </ol>
                     </div>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-[#FFEEDB]/60 dark:bg-amber-900/15 border border-[#F5C77E]/30">
-                    <h4 className="font-semibold text-[14px] mb-1.5">
-                      ✅ Alur verifikasi guru
+                  <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+                    <h4 className="mb-1.5 text-[12.5px] font-semibold text-[var(--ink)]">
+                      Alur verifikasi guru
                     </h4>
-                    <p className="!text-[13px] !text-[#424245] dark:!text-[#e8e8ed] leading-relaxed">
-                      Guru dengan akun <code>@guru.sd/smp/sma.belajar.id</code> terdaftar otomatis, lalu divalidasi verifikator kurikulum sebelum mendapat akses penuh pembuatan perangkat. Santai — pendaftaran hanya butuh semenit! ⏱️
+                    <p className="text-[12px] leading-relaxed text-[var(--ink-soft)]">
+                      Guru dengan akun <code className="rounded bg-[var(--surface-3)] px-1 py-0.5 text-[11.5px] text-[var(--ink)]">@guru.sd/smp/sma.belajar.id</code> terdaftar otomatis, lalu divalidasi verifikator kurikulum sebelum mendapat akses penuh pembuatan perangkat.
                     </p>
                   </div>
                 </div>
@@ -718,8 +750,8 @@ export default function App() {
         </main>
 
         {/* Global Footer — minimal */}
-        <footer className="py-6 px-6 text-center text-[12.5px] text-[#6e6e73] dark:text-[#98989d] no-print mt-auto">
-          <p><span className="font-semibold dark:text-[#f5f5f7]">Ruang Guru Merdeka</span> · Permendikdasmen No. 13 Tahun 2025</p>
+        <footer className="mt-auto px-6 py-5 text-center text-[11.5px] text-[var(--muted)] no-print">
+          <p><span className="font-medium text-[var(--ink-soft)]">Ruang Guru Merdeka</span> · Permendikdasmen No. 13 Tahun 2025</p>
         </footer>
 
       </div>

@@ -62,6 +62,15 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Header keamanan ringan tanpa dependensi baru (pengganti helmet minimal).
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 // Initialize Google Gemini AI SDK
 const ai = new GoogleGenAI();
 
@@ -75,7 +84,7 @@ interface TeacherUser {
   nip?: string;
   jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK';
   mataPelajaran: string;
-  role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'KEPALA_SEKOLAH' | 'GURU';
   status: 'VERIFIED' | 'PENDING' | 'REJECTED';
   avatarUrl?: string;
   registeredAt: string;
@@ -504,7 +513,11 @@ const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
 function saveDBNow() {
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, slidePaket, ulasanPaket, sessions: getSessions() }, null, 2));
+    const payload = JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, slidePaket, ulasanPaket, sessions: getSessions() }, null, 2);
+    // Tulis atomik: temp + rename agar crash di tengah tulis tidak merusak db.json
+    const tmpPath = `${DB_PATH}.tmp`;
+    fs.writeFileSync(tmpPath, payload);
+    fs.renameSync(tmpPath, DB_PATH);
   } catch (err) {
     console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
   }
@@ -524,9 +537,11 @@ function loadDB() {
     }
     const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
     if (Array.isArray(raw.users) && raw.users.length > 0) {
+      // Pertahankan status verifikasi dari DB; hanya normalisasi nilai tak dikenal.
+      const VALID_STATUS = new Set(['PENDING', 'VERIFIED', 'REJECTED']);
       users = raw.users.map((u: TeacherUser) => ({
         ...u,
-        status: 'VERIFIED',
+        status: VALID_STATUS.has((u as TeacherUser).status) ? (u as TeacherUser).status : 'PENDING',
       }));
     }
     if (Array.isArray(raw.documents)) documents = raw.documents;
@@ -602,18 +617,27 @@ migrasiDokumenLama();
 
 // ---------------------------------------------------------------------------
 // KREDENSIAL DEMO — PENTING:
-// Semua akun seed memakai password awal dari env SEED_PASSWORD (default 'guru123').
-// Ini HANYA untuk demo/pilot. Di produksi: set SEED_PASSWORD yang kuat via secret
-// manager, lalu WAJIB ganti password tiap akun via POST /api/auth/change-password
-// (atau endpoint admin), dan JANGAN biarkan password default tetap aktif.
+// Semua akun seed memakai password awal dari env SEED_PASSWORD.
+// Di produksi (NODE_ENV=production) SEED_PASSWORD WAJIB diisi & >= 12 karakter,
+// jika tidak server tetap jalan tapi seed memakai password acak sekali-pakai
+// (dicetak sekali ke log) agar tidak ada kredensial default yang bisa ditebak.
 // ---------------------------------------------------------------------------
-const SEED_PASSWORD = process.env.SEED_PASSWORD || 'guru123';
+const SEED_PASSWORD: string = (() => {
+  const fromEnv = (process.env.SEED_PASSWORD || '').trim();
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === 'production') {
+    const acak = `Guru-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}!`;
+    console.warn('[Auth] SEED_PASSWORD kosong di production — memakai password seed acak sekali-pakai. Set SEED_PASSWORD & ganti password akun.');
+    console.warn(`[Auth] Seed password acak (catat sekali, tidak disimpan plaintext): ${acak}`);
+    return acak;
+  }
+  return 'guru123';
+})();
 function ensurePasswordHashes() {
-  let cached = '';
+  // Hash per-user (salt acak tiap akun) — jangan pakai satu hash cached bersama.
   for (const u of users) {
     if (!u.passwordHash) {
-      if (!cached) cached = hashPassword(SEED_PASSWORD);
-      u.passwordHash = cached;
+      u.passwordHash = hashPassword(SEED_PASSWORD);
     }
   }
 }
@@ -625,6 +649,8 @@ const requireAuth = createRequireAuth(
   (id: string) => users.find(u => u.id === id) as AuthUser | undefined
 );
 const requireAdmin = requireRole('ADMIN', 'SUPER_ADMIN');
+// Kepsek boleh verifikasi guru & supervisi paket, tapi tidak mengelola user/admin.
+const requireVerifier = requireRole('ADMIN', 'SUPER_ADMIN', 'KEPALA_SEKOLAH');
 
 /** Ambil record user penuh (internal) dari req.user yang sudah terverifikasi. */
 function currentDbUser(req: Request): TeacherUser | undefined {
@@ -634,7 +660,7 @@ function currentDbUser(req: Request): TeacherUser | undefined {
 /** Syarat: user login & status VERIFIED (SUPER_ADMIN & ADMIN selalu lolos). */
 function requireVerified(req: Request, res: Response, next: () => void) {
   const me = currentDbUser(req);
-  if (!me || (me.status !== 'VERIFIED' && me.role !== 'SUPER_ADMIN' && me.role !== 'ADMIN')) {
+  if (!me || (me.status !== 'VERIFIED' && me.role !== 'SUPER_ADMIN' && me.role !== 'ADMIN' && me.role !== 'KEPALA_SEKOLAH')) {
     return res.status(403).json({
       success: false,
       message: 'Akun Anda belum diverifikasi admin. Hubungi administrator sekolah.',
@@ -645,6 +671,13 @@ function requireVerified(req: Request, res: Response, next: () => void) {
 }
 
 // Rate limiter AI: 20 generate/jam & 10 gambar/jam per user (hemat kuota & cegah abuse).
+// Login dibatasi 30x/15 mnt per IP agar brute-force terhambat tanpa mengganggu guru.
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyFn: (req) => req.ip || 'unknown',
+  message: 'Terlalu banyak percobaan masuk. Coba lagi 15 menit.'
+});
 const generateRateLimit = rateLimit({
   windowMs: 3600 * 1000,
   max: 20,
@@ -689,7 +722,7 @@ app.get('/api/users/current', requireAuth, (req: Request, res: Response) => {
 });
 
 // 1b. Login dengan email + password → session cookie httpOnly.
-app.post('/api/auth/login', (req: Request, res: Response) => {
+app.post('/api/auth/login', loginRateLimit, (req: Request, res: Response) => {
   const { email, password } = (req.body || {}) as { email?: string; password?: string };
   const cleanEmail = String(email || '').toLowerCase().trim();
   const user = users.find(u => u.email.toLowerCase() === cleanEmail);
@@ -845,13 +878,13 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
   });
 });
 
-// 3. User list (for Admin verification panel) — hanya ADMIN/SUPER_ADMIN, tanpa passwordHash.
-app.get('/api/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
+// 3. User list (for Admin verification panel) — ADMIN/SUPER_ADMIN/KEPALA_SEKOLAH, tanpa passwordHash.
+app.get('/api/users', requireAuth, requireVerifier, (req: Request, res: Response) => {
   res.json({ success: true, users: users.map(u => publicUser(u as AuthUser)) });
 });
 
 // 4. Admin verify / reject / update teacher status
-app.post('/api/users/verify', requireAuth, requireAdmin, (req: Request, res: Response) => {
+app.post('/api/users/verify', requireAuth, requireVerifier, (req: Request, res: Response) => {
   const { userId, status } = req.body;
   if (!userId || !['VERIFIED', 'PENDING', 'REJECTED'].includes(status)) {
     return res.status(400).json({ success: false, message: 'Data verifikasi tidak valid' });
@@ -997,6 +1030,15 @@ app.post('/api/documents', requireAuth, requireVerified, (req: Request, res: Res
   if (!title || !content) {
     return res.status(400).json({ success: false, message: 'Judul dan konten dokumen wajib diisi' });
   }
+  if (String(title).length > 200) {
+    return res.status(400).json({ success: false, message: 'Judul maksimal 200 karakter' });
+  }
+  if (String(content).length > 200000) {
+    return res.status(400).json({ success: false, message: 'Konten maksimal 200.000 karakter' });
+  }
+  if (topik && String(topik).length > 500) {
+    return res.status(400).json({ success: false, message: 'Topik maksimal 500 karakter' });
+  }
   if (docType && !(DOC_TYPES as readonly string[]).includes(String(docType))) {
     return res.status(400).json({ success: false, message: 'Jenis dokumen tidak valid' });
   }
@@ -1056,7 +1098,7 @@ app.delete('/api/documents/:id', requireAuth, (req: Request, res: Response) => {
 // mengakses paket miliknya, ADMIN/SUPER_ADMIN boleh semua.
 
 function isPaketAdmin(role: string | undefined): boolean {
-  return role === 'ADMIN' || role === 'SUPER_ADMIN';
+  return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'KEPALA_SEKOLAH';
 }
 
 function aksesPaket(me: { id: string; role: string }, paket: Paket): boolean {
@@ -1210,7 +1252,8 @@ app.post('/api/pakets/:id/arsip', requireAuth, (req: Request, res: Response) => 
   res.json({ success: true, message: paket.status === 'arsip' ? 'Paket diarsipkan' : 'Paket diaktifkan kembali', paket });
 });
 
-// POST /api/pakets/:id/duplikat — salin paket, dokumen mulai bersih (tanpa versi).
+// POST /api/pakets/:id/duplikat — salin paket BESERTA versi aktif tiap dokumen
+// (sebelumnya bersih tanpa isi sehingga duplikat dari Perpustakaan membuang teladan).
 app.post('/api/pakets/:id/duplikat', requireAuth, (req: Request, res: Response) => {
   const sumber = paketAkses(req, res);
   if (!sumber) return;
@@ -1231,14 +1274,15 @@ app.post('/api/pakets/:id/duplikat', requireAuth, (req: Request, res: Response) 
   };
   pakets.push(paket);
   for (const docType of DOC_TYPES) {
-    dokumenPaket.push({
-      id: newRedesignId('dpaket'),
-      paketId: paket.id,
-      docType,
-      status: 'belum',
-      versiAktif: 0,
-      diperbaruiPada: now
-    });
+    const dpId = newRedesignId('dpaket');
+    const sumberDp = dokumenPaket.find(d => d.paketId === sumber.id && d.docType === docType);
+    const sumberVersi = sumberDp ? versiDokumen.find(v => v.dokumenPaketId === sumberDp.id && v.nomorVersi === sumberDp.versiAktif) : undefined;
+    if (sumberVersi) {
+      dokumenPaket.push({ id: dpId, paketId: paket.id, docType, status: 'draf', versiAktif: 1, diperbaruiPada: now });
+      versiDokumen.push({ id: newRedesignId('versi'), dokumenPaketId: dpId, nomorVersi: 1, content: sumberVersi.content, title: sumberVersi.title, dibuatPada: now, dibuatOleh: me.id });
+    } else {
+      dokumenPaket.push({ id: dpId, paketId: paket.id, docType, status: 'belum', versiAktif: 0, diperbaruiPada: now });
+    }
   }
   saveDB();
   auditLog('paket_duplicate', me.id, { paketId: paket.id, dariPaketId: sumber.id });
@@ -1368,6 +1412,14 @@ function markdownKeParagraf(markdown: string): Paragraph[] {
   for (const mentah of String(markdown || '').split('\n')) {
     const baris = mentah.trim();
     if (!baris) continue;
+    // Tabel markdown: render sebagai baris teks bertanda | agar tidak hilang total
+    if (baris.startsWith('|') && baris.endsWith('|')) {
+      const sel = baris.slice(1, -1).split('|').map(s => s.trim()).filter(s => s && !/^-+$/.test(s));
+      if (sel.length > 0) {
+        hasil.push(new Paragraph({ children: barisBold(sel.join(' | '), 22) }));
+        continue;
+      }
+    }
     if (baris.startsWith('### ')) {
       hasil.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: barisBold(baris.slice(4), 24, { bold: true }) }));
     } else if (baris.startsWith('## ')) {
@@ -1435,6 +1487,16 @@ app.get('/api/pakets/:id/bundle', requireAuth, async (req: Request, res: Respons
       })())
     );
   }
+  // Lembar pengesahan di akhir bundle (nama/NIP diisi saat unduh bila tersedia)
+  const pemilik = users.find(u => u.id === paket.pemilikId);
+  anak.push(
+    new Paragraph({ children: [new PageBreak()] }),
+    new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: 'LEMBAR PENGESAHAN', bold: true, size: 32, font: 'Times New Roman' })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: `${paket.topik} — ${tanggal}`, size: 22, font: 'Times New Roman' })] }),
+    new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: `Mengetahui, Kepala Satuan Pendidikan${pemilik?.schoolName ? ` ${pemilik.schoolName}` : ''}`, size: 24, font: 'Times New Roman' })] }),
+    new Paragraph({ spacing: { after: 400 }, children: [new TextRun({ text: '( ........................................... )   NIP. ...........................', size: 24, font: 'Times New Roman' })] }),
+    new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: `Guru Penyusun: ${pemilik?.name || ''}${pemilik?.nip ? `   NIP. ${pemilik.nip}` : ''}`, size: 24, font: 'Times New Roman' })] }),
+  );
   const doc = new Document({ sections: [{ children: anak }] });
   try {
     const buffer = await Packer.toBuffer(doc);
@@ -1835,8 +1897,8 @@ KOMPONEN WAJIB:
 `
     };
 
-    // FITUR 1: LKPD 3 tingkat diferensiasi — flag `tiered` dari body.
-    const tieredLkpd = docType === 'lkpd' && (tiered as any) === true;
+    // FITUR 1: LKPD 3 tingkat diferensiasi — flag `tiered` dari body (terima true/"true"/1/"1").
+    const tieredLkpd = docType === 'lkpd' && (tiered === true || tiered === 1 || tiered === 'true' || tiered === '1');
     const specificInstructions = tieredLkpd ? promptInstructions.lkpd_tiered : (promptInstructions[docType] || promptInstructions.modul_ajar);
 
     const fullPrompt = `
@@ -2401,6 +2463,9 @@ app.post('/api/generate-image', requireAuth, imageRateLimit, async (req: Request
 
     if (!prompt || !String(prompt).trim()) {
       return res.status(400).json({ success: false, message: 'Deskripsi gambar (prompt) wajib diisi.' });
+    }
+    if (String(prompt).length > 1000) {
+      return res.status(400).json({ success: false, message: 'Deskripsi gambar maksimal 1000 karakter.' });
     }
     if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_API_KEY) {
       return res.status(400).json({

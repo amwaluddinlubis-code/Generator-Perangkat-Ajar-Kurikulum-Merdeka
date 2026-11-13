@@ -3,7 +3,16 @@ import { TeacherUser, DocType } from '../types';
 import { NavigationTarget } from './Sidebar';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
 import { useTheme } from '../theme';
-import { Menu, CheckCircle2, Clock, ShieldCheck, ChevronRight, LogOut, Sun, Moon } from 'lucide-react';
+import {
+  Menu,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  LogOut,
+  Sun,
+  Moon,
+  ChevronDown,
+} from 'lucide-react';
 
 interface TopHeaderProps {
   currentUser: TeacherUser;
@@ -23,66 +32,98 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onLogout,
 }) => {
   const { theme, toggle } = useTheme();
-  const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
+  const isSuperAdmin =
+    currentUser.role === 'SUPER_ADMIN' ||
+    currentUser.role === 'ADMIN' ||
+    currentUser.role === 'KEPALA_SEKOLAH';
   const isVerified = currentUser.status === 'VERIFIED';
 
-  const getTitle = (): { kicker: string; title: string } => {
-    // REDESIGN: judul untuk target navigasi baru Gelombang 1
-    if (activeTarget === 'beranda') return { kicker: 'Ruang Guru Merdeka', title: 'Beranda' };
-    if (activeTarget === 'paket') return { kicker: 'Ruang kerja', title: 'Paket Saya' };
-    if (activeTarget === 'perpustakaan') return { kicker: 'Ruang kerja', title: 'Perpustakaan' };
-    if (activeTarget === 'profile') return { kicker: 'Ruang kerja', title: 'Profil saya' };
-    if (activeTarget === 'stats') return { kicker: 'Ruang kerja', title: 'Statistik' };
-    if (activeTarget === 'repository') return { kicker: 'Ruang kerja', title: 'Arsip dokumen' };
-    if (activeTarget === 'admin') return { kicker: 'Admin', title: 'Verifikasi guru' };
-    if (activeTarget === 'guide') return { kicker: 'Regulasi', title: 'Panduan Kurikulum Merdeka' };
+  const getTitle = (): { section: string; title: string } => {
+    if (activeTarget === 'beranda') return { section: 'Ruang kerja', title: 'Beranda' };
+    if (activeTarget === 'paket') return { section: 'Ruang kerja', title: 'Paket Saya' };
+    if (activeTarget === 'perpustakaan') return { section: 'Ruang kerja', title: 'Perpustakaan' };
+    if (activeTarget === 'profile') return { section: 'Akun', title: 'Profil saya' };
+    if (activeTarget === 'stats') return { section: 'Akun', title: 'Statistik' };
+    if (activeTarget === 'repository') return { section: 'Arsip', title: 'Arsip dokumen' };
+    if (activeTarget === 'admin') return { section: 'Administrasi', title: 'Verifikasi guru' };
+    if (activeTarget === 'guide') return { section: 'Referensi', title: 'Panduan Kurikulum Merdeka' };
     const info = DOC_TYPE_INFO[activeTarget as DocType];
-    return { kicker: 'Buat perangkat', title: info ? info.label : 'Generator' };
+    return { section: 'Generator', title: info ? info.label : 'Buat perangkat' };
   };
   const t = getTitle();
 
   return (
     <header className="sticky top-0 z-30 apple-nav no-print">
-      <div className="px-4 sm:px-8 lg:px-12 h-[60px] flex items-center justify-between gap-3 max-w-[1400px] mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 h-[56px] flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <button onClick={onOpenMobileSidebar} className="lg:hidden p-2.5 -ml-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer" aria-label="Buka menu">
+          <button
+            onClick={onOpenMobileSidebar}
+            className="lg:hidden p-2 -ml-1.5 rounded-md text-[var(--ink-soft)] hover:bg-[var(--surface-2)] cursor-pointer"
+            aria-label="Buka menu"
+          >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="min-w-0">
-            <p className="text-[12px] font-medium text-[#6e6e73] dark:text-[#98989d] flex items-center gap-1 leading-none">
-              {t.kicker} <ChevronRight className="w-3 h-3" />
-            </p>
-            <h2 className="text-[17px] font-semibold tracking-tight truncate leading-tight">{t.title}</h2>
+          <div className="min-w-0 flex items-baseline gap-2">
+            <span className="hidden sm:inline text-[12.5px] text-[var(--muted)] whitespace-nowrap">
+              {t.section}
+            </span>
+            <span className="hidden sm:inline text-[12.5px] text-[var(--line-strong)]">/</span>
+            <h1 className="text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--ink)] truncate">
+              {t.title}
+            </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="hidden md:inline-flex items-center gap-1.5 text-[12.5px] font-medium px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/10">
-            {isSuperAdmin ? <><ShieldCheck className="w-3.5 h-3.5" /> Admin</>
-            : isVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#30b158]" /> Terverifikasi</>
-            : <><Clock className="w-3.5 h-3.5 text-[#ff9f0a]" /> Menunggu verifikasi</>}
+        <div className="flex items-center gap-1">
+          <span className="hidden md:inline-flex items-center gap-1.5 text-[11.5px] font-medium px-2.5 py-1 rounded-full border border-[var(--line)] bg-[var(--surface)] text-[var(--ink-soft)]">
+            {isSuperAdmin ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent)]" /> Admin
+              </>
+            ) : isVerified ? (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--ok)]" /> Terverifikasi
+              </>
+            ) : (
+              <>
+                <Clock className="w-3.5 h-3.5 text-[var(--warn)]" /> Menunggu verifikasi
+              </>
+            )}
           </span>
 
-          {/* Toggle tema */}
           <button
             onClick={toggle}
-            className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer"
+            className="p-2 rounded-md text-[var(--ink-soft)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
             title={theme === 'dark' ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
             aria-label={theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
           >
-            {theme === 'dark' ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px] text-[#424245] dark:text-[#f5f5f7]" />}
+            {theme === 'dark' ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
           </button>
 
-          {/* UX: label aksesibel eksplisit (title saja tak selalu dibaca screen reader) */}
-          <button onClick={onOpenAuthModal} className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Profil" aria-label={`Profil ${currentUser.name} — buka pengaturan akun`}>
-            <div className="w-8 h-8 rounded-full bg-black dark:bg-white dark:text-black text-white flex items-center justify-center font-semibold text-[13px]">
+          <div className="w-px h-5 bg-[var(--line)] mx-1.5" aria-hidden="true" />
+
+          <button
+            onClick={onOpenAuthModal}
+            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-md hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
+            title="Profil"
+            aria-label={`${currentUser.name} — buka pengaturan akun`}
+          >
+            <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[12px]">
               {currentUser.name.charAt(0)}
             </div>
-            <span className="hidden sm:block text-[13.5px] font-semibold max-w-[140px] truncate">{currentUser.name}</span>
+            <span className="hidden sm:block text-[13px] font-medium text-[var(--ink)] max-w-[130px] truncate">
+              {currentUser.name}
+            </span>
+            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-[var(--muted)]" aria-hidden="true" />
           </button>
-          {/* UX: label aksesibel eksplisit untuk tombol keluar */}
-          <button onClick={onLogout} className="p-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer" title="Keluar" aria-label="Keluar dari akun">
-            <LogOut className="w-[18px] h-[18px]" />
+
+          <button
+            onClick={onLogout}
+            className="p-2 rounded-md text-[var(--muted)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] transition-colors cursor-pointer"
+            title="Keluar"
+            aria-label="Keluar dari akun"
+          >
+            <LogOut className="w-[17px] h-[17px]" />
           </button>
         </div>
       </div>

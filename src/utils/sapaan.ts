@@ -9,10 +9,10 @@ export function sapaanWaktu(tanggal: Date = new Date()): WaktuHari {
   return 'malam';
 }
 
-/** "Selamat pagi, Pak Amwal 👋" — sapaan default 'Pak', bisa diganti. */
+/** "Selamat pagi, Pak Amwal" — sapaan default 'Pak', bisa diganti. */
 export function salamHangat(namaLengkap: string, sapaan = 'Pak'): string {
   const depan = namaLengkap.trim().split(/\s+/)[0] || namaLengkap;
-  return `Selamat ${sapaanWaktu()}, ${sapaan} ${depan} 👋`;
+  return `Selamat ${sapaanWaktu()}, ${sapaan} ${depan}`;
 }
 
 /** Kalimat ajakan acak yang ramah untuk hero/empty state. */
@@ -31,12 +31,12 @@ export function ajakanAcak(): string {
 export function pesanKosong(konteks: 'paket' | 'dokumen' | 'perpustakaan' | 'aktivitas'): string {
   switch (konteks) {
     case 'paket':
-      return 'Belum ada paket — yuk buat yang pertama! 🎒';
+      return 'Belum ada paket — mulai dari yang pertama.';
     case 'dokumen':
-      return 'Belum ada dokumen di sini. Tenang, membuatnya cuma butuh beberapa menit ✨';
+      return 'Belum ada dokumen di sini. Membuatnya hanya butuh beberapa menit.';
     case 'perpustakaan':
-      return 'Rak perpustakaan masih kosong. Jadilah yang pertama berbagi! 📚';
+      return 'Rak perpustakaan masih kosong. Jadilah yang pertama berbagi.';
     case 'aktivitas':
-      return 'Belum ada aktivitas. Mulai dari satu dokumen kecil dulu, yuk! 🌱';
+      return 'Belum ada aktivitas. Mulai dari satu dokumen kecil dulu.';
   }
 }

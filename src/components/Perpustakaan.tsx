@@ -1,15 +1,12 @@
-// GEL2: Perpustakaan — Worker D. Bank perangkat sekolah: daftar paket yang
-// dipublikasikan guru lain, lengkap dengan aksi "Duplikat ke Paket Saya".
+// Perpustakaan — bank perangkat sekolah: paket terpublikasi guru lain.
 import React, { useEffect, useState } from 'react';
-import { Copy, FileText, UserRound, RefreshCw } from 'lucide-react';
+import { Copy, FileText, UserRound, RefreshCw, MessageSquare, X } from 'lucide-react';
 import { TeacherUser } from '../types';
 import { apiFetch } from '../utils/api';
 import Maskot from './Maskot';
 import { pesanKosong } from '../utils/sapaan';
-// FITUR 5: telaah & umpan balik rekan sejawat
 import UlasanPaket from './UlasanPaket';
 
-// GEL2: mengikuti kontrak API GET /api/perpustakaan (Worker C).
 interface PaketPublik {
   id: string;
   topik: string;
@@ -28,7 +25,7 @@ interface PerpustakaanProps {
 }
 
 export const Perpustakaan: React.FC<PerpustakaanProps> = ({
-  currentUser: _currentUser,
+  currentUser,
   onBukaPaket,
   notify,
 }) => {
@@ -36,7 +33,6 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [duplikatId, setDuplikatId] = useState<string | null>(null);
-  // FITUR 5: paket yang sedang dilihat detail + ulasannya
   const [paketAktif, setPaketAktif] = useState<PaketPublik | null>(null);
 
   const muatPerpustakaan = async () => {
@@ -56,18 +52,18 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
     }
   };
 
+  // Muat ulang saat identitas berubah agar tidak menampilkan data basi.
   useEffect(() => {
     muatPerpustakaan();
-  }, []);
+  }, [currentUser.id]);
 
-  // GEL2: duplikat paket publik menjadi milik guru yang masuk.
   const handleDuplikat = async (p: PaketPublik) => {
     setDuplikatId(p.id);
     try {
       const res = await apiFetch(`/api/pakets/${p.id}/duplikat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId: _currentUser.id }),
+        body: JSON.stringify({ requesterId: currentUser.id }),
       });
       if (!res.ok) throw new Error('gagal menduplikat paket');
       const data = await res.json();
@@ -84,141 +80,157 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
   const formatTanggal = (iso: string) => {
     if (!iso) return '';
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return Number.isNaN(d.getTime())
+      ? ''
+      : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
-    <div className="ux-view-enter space-y-6">
-      {/* GEL2: kepala halaman perpustakaan */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Perpustakaan</h1>
-          <p className="text-[14px] opacity-70 mt-1">
+          <h1 className="text-[22px] font-semibold tracking-[-0.025em] text-[var(--ink)]">Perpustakaan</h1>
+          <p className="apple-sub mt-1 max-w-2xl">
             Bank perangkat sekolah — teladani paket dari guru lain, lalu duplikat ke Paket Saya.
           </p>
         </div>
         {!loading && !error && pakets.length > 0 && (
-          <div className="badge badge-primary badge-soft">{pakets.length} paket terbit</div>
+          <span className="ds-badge ds-badge-accent">{pakets.length} paket terbit</span>
         )}
       </div>
 
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4" aria-busy="true" aria-label="Memuat perpustakaan">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" aria-busy="true" aria-label="Memuat perpustakaan">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="card bg-base-100 shadow p-5">
-              <div className="skeleton h-5 w-3/4 mb-3" />
-              <div className="flex gap-2 mb-4">
-                <div className="skeleton h-6 w-20 rounded-full" />
-                <div className="skeleton h-6 w-16 rounded-full" />
+            <div key={i} className="apple-card p-4">
+              <div className="skeleton h-4 w-3/4" />
+              <div className="flex gap-2 mt-3">
+                <div className="skeleton h-5 w-20 rounded-full" />
+                <div className="skeleton h-5 w-16 rounded-full" />
               </div>
-              <div className="skeleton h-4 w-1/2 mb-2" />
-              <div className="skeleton h-9 w-full rounded-full" />
+              <div className="skeleton h-3 w-1/2 mt-4" />
+              <div className="skeleton h-8 w-full mt-4" />
             </div>
           ))}
         </div>
       )}
 
       {!loading && error && (
-        <div role="alert" className="alert alert-error">
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-[13px] text-[var(--danger)]"
+        >
           <span>{error}</span>
-          <button className="btn btn-sm btn-ghost" onClick={muatPerpustakaan}>
-            <RefreshCw className="w-4 h-4" /> Coba lagi
+          <button className="btn-apple-secondary !min-h-[32px] !py-1.5 !px-3 !text-[12.5px]" onClick={muatPerpustakaan}>
+            <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
           </button>
         </div>
       )}
 
       {!loading && !error && pakets.length === 0 && (
-        <div className="hero min-h-[52vh] rounded-[20px] bg-[#FFFBF5] dark:bg-white/5 border border-[#F5C77E]/40">
-          <div className="hero-content text-center">
-            <div className="max-w-md px-4 py-8">
-              <Maskot size={120} melayang={true} className="mx-auto mb-5" />
-              <h2 className="text-2xl font-bold tracking-tight">Belum ada paket yang dipublikasikan</h2>
-              <p className="py-4 text-[14px] opacity-70">
-                {pesanKosong('perpustakaan')} Buat paket di Paket Saya, lengkapi dokumennya, lalu publikasikan agar bisa diteladani guru lain di sini.
-              </p>
-            </div>
-          </div>
+        <div className="apple-card py-14 px-6 text-center">
+          <Maskot size={84} melayang={true} className="mx-auto mb-4" />
+          <h2 className="text-[16px] font-semibold text-[var(--ink)]">Belum ada paket yang dipublikasikan</h2>
+          <p className="apple-sub mt-1.5 max-w-md mx-auto">
+            {pesanKosong('perpustakaan')} Buat paket di Paket Saya, lengkapi dokumennya, lalu publikasikan
+            agar bisa diteladani guru lain di sini.
+          </p>
         </div>
       )}
 
       {!loading && !error && pakets.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {pakets.map((p) => (
-            <div key={p.id} className="rgm-card ux-lift card bg-base-100 shadow">
-              <div className="card-body p-5">
-                <h2 className="card-title text-[16px] leading-snug line-clamp-2">{p.topik}</h2>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  <div className="badge rgm-badge-warm">{p.mataPelajaran}</div>
-                  <div className="badge badge-ghost">
-                    {p.jenjang}{p.tingkat ? ` · ${p.tingkat}` : ''}
-                  </div>
-                </div>
-                <div className="mt-3 space-y-1.5 text-[13px] opacity-70">
-                  <p className="flex items-center gap-1.5">
-                    <UserRound className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">oleh {p.pemilikNama}</span>
-                  </p>
-                  <p className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 shrink-0" />
-                    <span>{p.jumlahDokumen} dokumen{formatTanggal(p.diperbaruiPada) ? ` · diperbarui ${formatTanggal(p.diperbaruiPada)}` : ''}</span>
-                  </p>
-                </div>
-                <div className="card-actions justify-end mt-4">
-                  {/* FITUR 5: lihat detail + telaah rekan sejawat */}
-                  <button
-                    className="btn btn-ghost btn-sm rounded-full"
-                    onClick={() => setPaketAktif(p)}
-                    title="Lihat detail & beri ulasan"
-                  >
-                    💬 Ulasan
-                  </button>
-                  <button
-                    className="btn btn-primary btn-sm rounded-full"
-                    onClick={() => handleDuplikat(p)}
-                    disabled={duplikatId === p.id}
-                    title="Duplikat ke Paket Saya"
-                  >
-                    {duplikatId === p.id ? (
-                      <span className="loading loading-spinner loading-sm" aria-hidden="true" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                    Duplikat, yuk! 📥
-                  </button>
-                </div>
+            <div key={p.id} className="apple-card ux-lift p-4 flex flex-col">
+              <h2 className="text-[14.5px] font-semibold text-[var(--ink)] leading-snug line-clamp-2">
+                {p.topik}
+              </h2>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="ds-badge ds-badge-accent">{p.mataPelajaran}</span>
+                <span className="ds-badge">
+                  {p.jenjang}
+                  {p.tingkat ? ` · ${p.tingkat}` : ''}
+                </span>
+              </div>
+              <div className="mt-3 space-y-1.5 text-[12px] text-[var(--muted)]">
+                <p className="flex items-center gap-1.5">
+                  <UserRound className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">oleh {p.pemilikNama}</span>
+                </p>
+                <p className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    {p.jumlahDokumen} dokumen
+                    {formatTanggal(p.diperbaruiPada) ? ` · diperbarui ${formatTanggal(p.diperbaruiPada)}` : ''}
+                  </span>
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-auto pt-4">
+                <button
+                  className="btn-apple-secondary flex-1 !min-h-[34px] !py-1.5 !text-[12.5px]"
+                  onClick={() => setPaketAktif(p)}
+                  title="Lihat detail & beri ulasan"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Ulasan
+                </button>
+                <button
+                  className="btn-apple flex-1 !min-h-[34px] !py-1.5 !text-[12.5px]"
+                  onClick={() => handleDuplikat(p)}
+                  disabled={duplikatId === p.id}
+                  title="Duplikat ke Paket Saya"
+                >
+                  {duplikatId === p.id ? (
+                    <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  Duplikat
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* FITUR 5: modal detail paket + telaah rekan sejawat */}
       {paketAktif && (
         <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Detail ${paketAktif.topik}`}>
-          <div className="modal-box max-w-2xl rounded-3xl ux-pop-in max-h-[90vh] overflow-y-auto">
+          <div className="modal-box max-w-2xl ux-pop-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
-              <h3 className="font-bold text-lg leading-snug">{paketAktif.topik}</h3>
+              <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug">{paketAktif.topik}</h3>
               <button
                 type="button"
-                className="btn btn-ghost btn-sm btn-circle shrink-0"
+                className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center shrink-0 cursor-pointer"
                 onClick={() => setPaketAktif(null)}
                 aria-label="Tutup detail"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              <div className="badge rgm-badge-warm">{paketAktif.mataPelajaran}</div>
-              <div className="badge badge-ghost">
-                {paketAktif.jenjang}{paketAktif.tingkat ? ` · ${paketAktif.tingkat}` : ''}
-              </div>
-              <div className="badge badge-ghost">oleh {paketAktif.pemilikNama}</div>
-              <div className="badge badge-ghost">{paketAktif.jumlahDokumen} dokumen</div>
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
+              <span className="ds-badge ds-badge-accent">{paketAktif.mataPelajaran}</span>
+              <span className="ds-badge">
+                {paketAktif.jenjang}
+                {paketAktif.tingkat ? ` · ${paketAktif.tingkat}` : ''}
+              </span>
+              <span className="ds-badge">oleh {paketAktif.pemilikNama}</span>
+              <span className="ds-badge">{paketAktif.jumlahDokumen} dokumen</span>
             </div>
-            <div className="divider" />
+            <div className="h-px bg-[var(--line)] my-4" />
             <UlasanPaket paketId={paketAktif.id} />
             <div className="modal-action">
-              <button type="button" className="btn btn-ghost rounded-full" onClick={() => setPaketAktif(null)}>
+              <button
+                type="button"
+                className="btn-apple-secondary"
+                onClick={() => {
+                  setPaketAktif(null);
+                  void handleDuplikat(paketAktif);
+                }}
+              >
+                <Copy className="w-4 h-4" />
+                Duplikat ke Paket Saya
+              </button>
+              <button type="button" className="btn-apple-ghost" onClick={() => setPaketAktif(null)}>
                 Tutup
               </button>
             </div>
