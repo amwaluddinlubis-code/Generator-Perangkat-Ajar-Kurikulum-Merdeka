@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TeacherUser, Jenjang } from '../types';
+import { DemoUser, Jenjang } from '../types';
 import Maskot from './Maskot';
 import {
   GraduationCap,
   ShieldCheck,
   ArrowRight,
   Mail,
+  Lock,
   CheckCircle2,
   FileText,
   Download,
@@ -13,16 +14,24 @@ import {
   BarChart3,
 } from 'lucide-react';
 
+export interface LoginResult {
+  pending?: boolean;
+  message?: string;
+}
+
 interface LoginPageProps {
   onLogin: (data: {
     email: string;
+    password: string;
     name?: string;
     schoolName?: string;
     jenjang?: Jenjang;
     mataPelajaran?: string;
     nip?: string;
-  }) => Promise<void>;
-  demoUsers: TeacherUser[];
+  }) => Promise<LoginResult | void>;
+  /** Login cepat akun demo — hanya tersedia di server pengembangan. */
+  onDemoLogin: (userId: string) => Promise<void>;
+  demoUsers: DemoUser[];
   isLoading?: boolean;
 }
 
@@ -35,15 +44,19 @@ const FEATURES = [
 
 export const LoginPage: React.FC<LoginPageProps> = ({
   onLogin,
+  onDemoLogin,
   demoUsers,
   isLoading = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [infoMessage, setInfoMessage] = useState<string>('');
 
   const [regName, setRegName] = useState<string>('');
   const [regEmail, setRegEmail] = useState<string>('');
+  const [regPassword, setRegPassword] = useState<string>('');
   const [regSchool, setRegSchool] = useState<string>('');
   const [regJenjang, setRegJenjang] = useState<Jenjang>('SD');
   const [regMapel, setRegMapel] = useState<string>('Guru Kelas / IPAS');
@@ -57,48 +70,57 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setInfoMessage('');
     if (!loginEmail.trim()) {
       setErrorMessage('Masukkan email profil guru Anda untuk melanjutkan.');
       return;
     }
+    if (!loginPassword) {
+      setErrorMessage('Masukkan kata sandi akun Anda.');
+      return;
+    }
     try {
-      await onLogin({ email: loginEmail.trim() });
+      await onLogin({ email: loginEmail.trim(), password: loginPassword });
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk. Periksa kembali email Anda.');
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk. Periksa email dan kata sandi Anda.');
     }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setInfoMessage('');
     if (!regEmail.trim()) { setErrorMessage('Email Belajar.id wajib diisi.'); return; }
     if (!regName.trim()) { setErrorMessage('Nama lengkap guru wajib diisi.'); return; }
+    if (regPassword.length < 8) { setErrorMessage('Kata sandi minimal 8 karakter.'); return; }
     try {
-      await onLogin({
+      const hasil = await onLogin({
         email: regEmail.trim(),
+        password: regPassword,
         name: regName.trim(),
         schoolName: regSchool.trim() || 'Satuan Pendidikan Kurikulum Merdeka',
         jenjang: regJenjang,
         mataPelajaran: regMapel.trim() || 'Semua Mata Pelajaran',
         nip: regNip.trim(),
       });
+      if (hasil?.pending) {
+        setInfoMessage(hasil.message || 'Pendaftaran berhasil. Akun menunggu verifikasi admin.');
+        setLoginEmail(regEmail.trim());
+        setRegPassword('');
+        setActiveTab('login');
+      }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Gagal mendaftarkan akun guru.');
     }
   };
 
-  const handleQuickLogin = async (user: TeacherUser) => {
+  const handleQuickLogin = async (user: DemoUser) => {
     setErrorMessage('');
+    setInfoMessage('');
     try {
-      await onLogin({
-        email: user.email,
-        name: user.name,
-        schoolName: user.schoolName,
-        jenjang: user.jenjang,
-        mataPelajaran: user.mataPelajaran,
-      });
+      await onDemoLogin(user.id);
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk dengan akun terpilih.');
+      setErrorMessage(err instanceof Error ? err.message : 'Gagal masuk dengan akun demo.');
     }
   };
 
@@ -178,7 +200,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </h2>
               <p className="apple-sub mt-1">
                 {activeTab === 'login'
-                  ? 'Gunakan email profil guru Anda untuk melanjutkan.'
+                  ? 'Masuk dengan email dan kata sandi akun guru Anda.'
                   : 'Ajukan akun baru — administrator akan memverifikasi.'}
               </p>
             </div>
@@ -220,6 +242,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
               )}
 
+              {infoMessage && (
+                <div
+                  className="mt-4 rounded-lg border border-[var(--ok)]/40 bg-[var(--ok-soft)] text-[var(--ok)] text-[12.5px] font-medium px-3 py-2.5"
+                  role="status"
+                >
+                  {infoMessage}
+                </div>
+              )}
+
               {activeTab === 'login' ? (
                 <form onSubmit={handleLoginSubmit} className="mt-5 space-y-3.5">
                   <div>
@@ -249,43 +280,63 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       ))}
                     </div>
                     <p className="text-[11.5px] text-[var(--muted)] mt-2">
-                      Hanya email sebagai identitas profil — tanpa kata sandi Belajar.id.
+                      Gunakan kata sandi akun Anda. Lupa kata sandi? Hubungi administrator sekolah.
                     </p>
+                  </div>
+
+                  <div>
+                    <label className={labelCls} htmlFor="login-password">Kata sandi</label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-[var(--muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="login-password"
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="apple-input !pl-9"
+                        autoComplete="current-password"
+                        required
+                      />
+                    </div>
                   </div>
 
                   <button type="submit" disabled={isLoading} className="btn-apple w-full">
-                    {isLoading ? 'Membuka ruang kerja…' : 'Lanjutkan'}
+                    {isLoading ? 'Membuka ruang kerja…' : 'Masuk'}
                     {!isLoading && <ArrowRight className="w-4 h-4" />}
                   </button>
 
-                  <div className="pt-4 border-t border-[var(--line)]">
-                    <p className="text-[12px] font-medium text-[var(--ink-soft)] mb-2">
-                      Masuk cepat akun demo
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {demoUsers.slice(0, 4).map((user) => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          disabled={isLoading}
-                          onClick={() => handleQuickLogin(user)}
-                          className="rounded-lg border border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] transition-colors text-left p-2 flex items-center gap-2 min-h-[48px] disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                          <span className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[12px] shrink-0">
-                            {user.name.charAt(0)}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block text-[12.5px] font-semibold text-[var(--ink)] truncate">
-                              {user.name}
+                  {demoUsers.length > 0 && (
+                    <div className="pt-4 border-t border-[var(--line)]">
+                      <p className="text-[12px] font-medium text-[var(--ink-soft)] mb-2">
+                        Masuk cepat akun demo
+                        <span className="font-normal text-[var(--muted)]"> · hanya di server pengembangan</span>
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {demoUsers.slice(0, 4).map((user) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            disabled={isLoading}
+                            onClick={() => handleQuickLogin(user)}
+                            className="rounded-lg border border-[var(--line)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] transition-colors text-left p-2 flex items-center gap-2 min-h-[48px] disabled:opacity-60 disabled:cursor-not-allowed"
+                          >
+                            <span className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[12px] shrink-0">
+                              {user.name.charAt(0)}
                             </span>
-                            <span className="block text-[11px] text-[var(--muted)] truncate">
-                              {user.schoolName}
+                            <span className="min-w-0">
+                              <span className="block text-[12.5px] font-semibold text-[var(--ink)] truncate">
+                                {user.name}
+                              </span>
+                              <span className="block text-[11px] text-[var(--muted)] truncate">
+                                {user.schoolName}
+                              </span>
                             </span>
-                          </span>
-                        </button>
-                      ))}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </form>
               ) : (
                 <form onSubmit={handleRegisterSubmit} className="mt-5 space-y-3">
@@ -300,6 +351,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   <div>
                     <label className={labelCls} htmlFor="reg-email">Email Belajar.id *</label>
                     <input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="nama@guru.smp.belajar.id" className="apple-input" required autoComplete="email" />
+                  </div>
+                  <div>
+                    <label className={labelCls} htmlFor="reg-password">
+                      Kata sandi * <span className="font-normal text-[var(--muted)]">(min. 8 karakter)</span>
+                    </label>
+                    <input
+                      id="reg-password"
+                      type="password"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="apple-input"
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>

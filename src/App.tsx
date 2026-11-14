@@ -4,6 +4,7 @@ import {
   EducationalDocument, 
   GeneratorParams, 
   DocType,
+  DemoUser,
   Jenjang 
 } from './types';
 import { Sidebar, NavigationTarget } from './components/Sidebar';
@@ -19,6 +20,11 @@ function targetDariHash(): NavigationTarget {
   const h = window.location.hash.replace(/^#\/?/, '');
   return (DAFTAR_TARGET as string[]).includes(h) ? (h as NavigationTarget) : 'beranda';
 }
+
+// Penanda lokal bahwa cookie sesi httpOnly kemungkinan masih aktif.
+// Ini BUKAN token: hanya nilai "1" tanpa data sensitif, dipakai agar UI tidak
+// memanggil endpoint terproteksi sebelum ada sesi (mengurangi noise 401).
+const KUNCI_SESI_AKTIF = 'rgm_sesi_aktif';
 import { TopHeader } from './components/TopHeader';
 // REDESIGN: view gelombang 2 — komponen dibuat worker lain, App hanya mengintegrasikan
 import { Beranda } from './components/Beranda';
@@ -68,6 +74,8 @@ export default function App() {
   });
 
   const [users, setUsers] = useState<TeacherUser[]>([]);
+  // Profil demo publik untuk "masuk cepat" — tanpa email, seperti yang dikirim server.
+  const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
   const [documents, setDocuments] = useState<EducationalDocument[]>([]);
   const [currentDoc, setCurrentDoc] = useState<EducationalDocument | null>(null);
   const [showDocumentResult, setShowDocumentResult] = useState<boolean>(false);
@@ -121,22 +129,37 @@ export default function App() {
   // Fetch initial data from server
   const loadInitialData = async () => {
     try {
+      // Profil demo publik (tanpa email) untuk pilihan cepat di halaman masuk.
+      // Di produksi server mengirim daftar kosong.
+      const muatProfilDemo = async () => {
+        const demoRes = await apiFetch('/api/users/demo');
+        if (demoRes.ok) {
+          const demoData = await demoRes.json();
+          if (Array.isArray(demoData.users)) setDemoUsers(demoData.users);
+        }
+      };
+
       const punyaSesi = (() => {
-        try { return !!localStorage.getItem('ruang_guru_session_token'); }
+        try { return !!localStorage.getItem(KUNCI_SESI_AKTIF); }
         catch { return false; }
       })();
       // Tanpa sesi: langsung ke profil demo publik agar tidak memicu 401 noise di console.
       if (!punyaSesi) {
-        const demoRes = await apiFetch('/api/users/demo');
-        if (demoRes.ok) {
-          const demoData = await demoRes.json();
-          if (demoData.users) setUsers(demoData.users);
-        }
+        await muatProfilDemo();
         return;
       }
       // Load available demo or registered users — cek peran dulu agar GURU
       // tidak memicu 403 noise (/api/users khusus verifier).
       const meRes = await apiFetch('/api/users/current');
+      if (meRes.status === 401) {
+        // Cookie sesi kedaluwarsa atau dicabut admin: jangan biarkan UI
+        // mengaku masih login dengan profil cache lokal.
+        localStorage.removeItem(KUNCI_SESI_AKTIF);
+        localStorage.removeItem('ruang_guru_current_user');
+        setCurrentUser(null);
+        await muatProfilDemo();
+        return;
+      }
       let peran: string | undefined;
       if (meRes.ok) {
         try { peran = (await meRes.json()).user?.role; } catch { peran = undefined; }
@@ -175,13 +198,7 @@ export default function App() {
         }
       } else {
         // Fallback ke profil publik terverifikasi untuk switcher cepat
-        const demoRes = await apiFetch('/api/users/demo');
-        if (demoRes.ok) {
-          const demoData = await demoRes.json();
-          if (demoData.users) {
-            setUsers(demoData.users);
-          }
-        }
+        await muatProfilDemo();
       }
 
       // Load documents for the archive and recent activity.
@@ -217,15 +234,27 @@ export default function App() {
     };
   }, []);
 
-  // Handle Login / Belajar.id Switcher
+  // Terapkan sesi login: server sudah memasang cookie httpOnly, jadi klien
+  // hanya menyimpan profil publik (bukan token) + penanda sesi sederhana.
+  const terapkanSesiMasuk = (activeTeacher: TeacherUser) => {
+    setCurrentUser(activeTeacher);
+    localStorage.removeItem('ruang_guru_logged_out');
+    localStorage.setItem('ruang_guru_current_user', JSON.stringify(activeTeacher));
+    localStorage.setItem(KUNCI_SESI_AKTIF, '1');
+  };
+
+  // Handle Login / Belajar.id Switcher — WAJIB email + kata sandi.
+  // Mengembalikan { pending: true } untuk pendaftaran baru yang menunggu
+  // verifikasi admin (server tidak memberi sesi pada kasus itu).
   const handleLogin = async (data: { 
     email: string; 
+    password: string;
     name?: string; 
     schoolName?: string; 
     jenjang?: Jenjang; 
     mataPelajaran?: string;
     nip?: string;
-  }) => {
+  }): Promise<{ pending?: boolean; message?: string }> => {
     setIsAuthLoading(true);
     try {
       const res = await apiFetch('/api/auth/login-belajar-id', {
@@ -236,27 +265,49 @@ export default function App() {
 
       const resData = await res.json();
       if (!res.ok || !resData.success) {
-        throw new Error(resData.message || 'Gagal masuk akun');
+        throw new Error(resData.message || resData.error?.message || 'Gagal masuk akun');
+      }
+
+      if (resData.pending) {
+        showToast(resData.message || 'Pendaftaran berhasil. Menunggu verifikasi admin.', 'info');
+        return { pending: true, message: resData.message };
       }
 
       const activeTeacher: TeacherUser = resData.user;
-      setCurrentUser(activeTeacher);
-      localStorage.removeItem('ruang_guru_logged_out');
-      localStorage.setItem('ruang_guru_current_user', JSON.stringify(activeTeacher));
-      if (resData.token) {
-        localStorage.setItem('ruang_guru_session_token', resData.token);
-      }
-
-      // Reload users list
-      const usersRes = await apiFetch('/api/users');
-      if (usersRes.ok) {
-        const uJson = await usersRes.json();
-        setUsers(uJson.users);
-      }
+      terapkanSesiMasuk(activeTeacher);
+      // Ambil ulang daftar pengguna/dokumen sesuai peran akun yang baru masuk.
+      void loadInitialData();
 
       showToast(resData.message || `Selamat datang, ${activeTeacher.name}!`, 'success');
+      return { message: resData.message };
     } catch (err: any) {
       showToast(err.message || 'Gagal masuk akun', 'error');
+      throw err;
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  // Login cepat akun demo — hanya berfungsi bila server mengizinkannya
+  // (NODE_ENV !== production). Server memvalidasi userId terhadap daftar demo.
+  const handleDemoLogin = async (userId: string): Promise<void> => {
+    setIsAuthLoading(true);
+    try {
+      const res = await apiFetch('/api/auth/demo-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.message || resData.error?.message || 'Gagal masuk akun demo');
+      }
+      const activeTeacher: TeacherUser = resData.user;
+      terapkanSesiMasuk(activeTeacher);
+      void loadInitialData();
+      showToast(resData.message || `Masuk sebagai ${activeTeacher.name}`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal masuk akun demo', 'error');
       throw err;
     } finally {
       setIsAuthLoading(false);
@@ -272,8 +323,9 @@ export default function App() {
     }
     localStorage.setItem('ruang_guru_logged_out', 'true');
     localStorage.removeItem('ruang_guru_current_user');
-    localStorage.removeItem('ruang_guru_session_token');
+    localStorage.removeItem(KUNCI_SESI_AKTIF);
     setCurrentUser(null);
+    setUsers([]);
     // REDESIGN: keluar juga menutup workspace paket
     setPaketAktifId(null);
     setLogoutModalOpen(false);
@@ -413,6 +465,30 @@ export default function App() {
     }
   };
 
+  // Tambah guru manual (admin) — server membuat akun VERIFIED + kata sandi
+  // awal acak. Kata sandi itu hanya dikembalikan sekali untuk diteruskan admin.
+  const handleAddUser = async (
+    userData: Partial<TeacherUser>
+  ): Promise<{ initialPassword?: string }> => {
+    try {
+      const res = await apiFetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error?.message || 'Gagal menambah guru');
+      }
+      setUsers(prev => [data.user, ...prev.filter(u => u.id !== data.user.id)]);
+      showToast(data.message || 'Guru berhasil ditambahkan', 'success');
+      return { initialPassword: data.initialPassword };
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menambah guru', 'error');
+      throw err;
+    }
+  };
+
   // Handle Save Document to Repository
   const handleSaveDocument = async (doc: EducationalDocument) => {
     try {
@@ -465,20 +541,8 @@ export default function App() {
 
         <LoginPage
           onLogin={handleLogin}
-          demoUsers={users.length > 0 ? users : [
-            {
-              id: 'user-admin-1',
-              name: 'Amwaluddin Lubis, M.Pd.',
-              email: 'amwaluddin.lubis@gmail.com',
-              schoolName: 'Balai Penjaminan Mutu Pendidikan (BPMP)',
-              nip: '19820514 200801 1 008',
-              jenjang: 'SMA',
-              mataPelajaran: 'Pengawas Kurikulum & Bahasa',
-              role: 'SUPER_ADMIN',
-              status: 'VERIFIED',
-              registeredAt: '2026-01-10T08:00:00.000Z'
-            }
-          ]}
+          onDemoLogin={handleDemoLogin}
+          demoUsers={demoUsers}
           isLoading={isAuthLoading}
         />
       </>
@@ -697,15 +761,7 @@ export default function App() {
               onUpdateStatus={handleVerifyTeacher}
               onDeleteUser={handleDeleteUser}
               onUpdateUser={handleUpdateUser}
-              onAddUser={async (userData) => {
-                await handleLogin({
-                  email: userData.email || '',
-                  name: userData.name,
-                  schoolName: userData.schoolName,
-                  jenjang: userData.jenjang,
-                  mataPelajaran: userData.mataPelajaran
-                });
-              }}
+              onAddUser={handleAddUser}
             />
             </div>
           )}
@@ -801,7 +857,9 @@ export default function App() {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         currentUser={currentUser}
+        onDemoLogin={handleDemoLogin}
         onLogin={handleLogin}
+        demoUsers={demoUsers}
         onLogout={() => {
           setAuthModalOpen(false);
           setLogoutModalOpen(true);

@@ -155,10 +155,13 @@ Menu pengguna (avatar kanan atas): Profil, Statistik Saya, Admin, Keluar. View l
 
 | Method & Path | Fungsi | Catatan |
 |---|---|---|
-| `GET /api/users/current` | Profil aktif (header `x-user-id`, default Super Admin) | — |
-| `POST /api/auth/login-belajar-id` | Masuk/daftar; baru → `PENDING` | Validasi domain Belajar.id |
-| `POST /api/auth/logout` | Keluar (stateless) | — |
-| `GET /api/users` | Daftar guru (panel admin) | — |
+| `GET /api/users/current` | Profil sesuai cookie sesi `rgm_session` | Tanpa sesi → 401; header `x-user-id` tidak lagi dipercaya |
+| `POST /api/auth/login-belajar-id` | Masuk dengan email + kata sandi; email baru = pendaftaran `PENDING` | Kata sandi min. 8 karakter saat daftar; akun `PENDING` tidak mendapat sesi; rate limit per IP |
+| `POST /api/auth/demo-login` | Login cepat akun demo memakai `userId` | **Hanya** bila `NODE_ENV !== 'production'` (atau `ENABLE_DEMO_LOGIN=1`); di produksi → 403 `DEMO_DISABLED` |
+| `POST /api/auth/logout` | Keluar: hapus sesi server + cookie | — |
+| `GET /api/users/demo` | Profil publik untuk pilihan login demo | Tanpa email & tanpa hash; mengirim `[]` di produksi |
+| `GET /api/users` | Daftar guru (panel admin) | Butuh `ADMIN`/`SUPER_ADMIN`/`KEPALA_SEKOLAH` |
+| `POST /api/users` | Admin menambah guru langsung `VERIFIED` | Balikan memuat `initialPassword` sekali; kata sandi tidak disimpan plaintext |
 | `POST /api/users/verify` | Ubah status `VERIFIED/PENDING/REJECTED` | + `verifiedBy` |
 | `PUT /api/users/:id` | Ubah profil (butuh `requesterId`) | Admin: profil siapa pun + role GURU/ADMIN (kecuali SUPER_ADMIN & diri sendiri); Guru: hanya profil sendiri tanpa jenjang/role/status |
 | `DELETE /api/users/:id` | Hapus guru | — |
@@ -194,6 +197,12 @@ npm run dev
 3. Restart server. Tanda berhasil: badge hasil menjadi **"AI Gemini"**.
 4. Tanpa key: aplikasi tetap jalan memakai template cadangan (badge "Template cadangan").
 
+### Akun seed & kata sandi
+- `SEED_PASSWORD` mengisi kata sandi awal semua akun seed. Tanpa env ini, pengembangan lokal memakai `guru123`.
+- Di `NODE_ENV=production`, `SEED_PASSWORD` wajib diisi minimal 12 karakter; jika kosong server membuat kata sandi acak sekali-pakai dan mencetaknya **sekali** ke log. Segera ganti kata sandi akun seed setelah login pertama.
+- Pendaftaran mandiri sekarang membuat akun `PENDING` **tanpa sesi**; admin harus memverifikasi lewat panel Admin sebelum guru bisa masuk.
+- Login cepat akun demo hanya aktif di server pengembangan (`NODE_ENV !== 'production'`). Di produksi sembunyikan lewat env `ENABLE_DEMO_LOGIN` yang tidak diisi.
+
 ### Skrip npm
 | Skrip | Fungsi |
 |---|---|
@@ -219,9 +228,11 @@ npm run dev
 
 ## 7. Data & Akun Demo
 
-- Seed: 1 Super Admin (`amwaluddin.lubis@gmail.com`), 1 admin, 3 guru terverifikasi, 3 pendaftar PENDING, 5 dokumen contoh.
+- Seed: 1 Super Admin (`amwaluddin.lubis@gmail.com`), 1 admin (`admin@guru.belajar.id`), 6 guru terverifikasi, 5 dokumen contoh.
+- Kata sandi awal seluruh akun seed = `SEED_PASSWORD` (default pengembangan `guru123`). Produksi wajib mengisi `SEED_PASSWORD` ≥ 12 karakter.
 - Data tersimpan di `data/db.json`; hapus file untuk kembali ke data awal.
-- Login cepat 1-ketuk tersedia di halaman masuk dan modal ganti akun.
+- Login cepat 1-ketuk tersedia di halaman masuk dan modal ganti akun **hanya di server pengembangan**; endpoint `/api/users/demo` sengaja tidak mengirim email.
+- Pendaftaran mandiri (`Daftar`) membuat akun `PENDING` tanpa sesi; admin memverifikasi di panel Admin. Admin juga bisa menambah guru langsung terverifikasi — sistem menampilkan kata sandi awal satu kali.
 
 ## 8. Troubleshooting
 
@@ -251,8 +262,8 @@ Versi pada branch `main` saat ini adalah **prototype fungsional / pilot internal
 
 Fitur antarmuka dan alur utama sudah tersedia, tetapi produksi publik belum boleh dilakukan sebelum kontrol berikut selesai:
 
-- autentikasi dan sesi server yang nyata;
-- otorisasi terpusat pada seluruh endpoint;
+- ~~autentikasi dan sesi server yang nyata~~ — **selesai (Fase A)**: login wajib email + kata sandi (scrypt), sesi httpOnly di server, tidak ada token di `localStorage`;
+- otorisasi terpusat pada seluruh endpoint — **sebagian**: `requireAuth`/`requireRole` dipasang di route sensitif, tetapi belum ada uji integrasi HTTP menyeluruh;
 - database transaksional untuk multi-user;
 - perlindungan data pribadi guru dan sekolah;
 - sanitasi konten Markdown/HTML;
@@ -270,10 +281,10 @@ Status penilaian saat ini:
 | 7 jenis perangkat ajar | Tersedia |
 | AI dan fallback | Tersedia, belum memiliki validator output |
 | Ekspor Word/PDF | Tersedia, perlu pengujian dokumen panjang |
-| Autentikasi Belajar.id | Simulasi validasi domain, belum OAuth/OIDC |
-| Otorisasi API | Belum aman untuk produksi |
+| Autentikasi Belajar.id | Simulasi validasi domain + kata sandi lokal (scrypt), belum OAuth/OIDC |
+| Otorisasi API | Berbasis sesi server & peran; perlu uji integrasi menyeluruh |
 | Penyimpanan | File JSON lokal, hanya untuk pilot tunggal |
-| Testing | Belum tersedia secara memadai |
+| Testing | Modul inti teruji; route HTTP belum tercakup |
 | Observability | Belum tersedia |
 | Kesiapan produksi | Belum siap |
 

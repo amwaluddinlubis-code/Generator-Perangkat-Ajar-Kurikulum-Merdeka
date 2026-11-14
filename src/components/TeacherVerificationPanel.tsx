@@ -11,10 +11,12 @@ import {
   Mail,
   GraduationCap,
   Check,
+  Copy,
   Trash2,
   Crown,
   Pencil,
   X,
+  KeyRound,
 } from 'lucide-react';
 
 interface TeacherVerificationPanelProps {
@@ -22,7 +24,8 @@ interface TeacherVerificationPanelProps {
   currentUser: TeacherUser;
   onUpdateStatus: (userId: string, status: 'VERIFIED' | 'PENDING' | 'REJECTED') => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
-  onAddUser: (user: Partial<TeacherUser>) => Promise<void>;
+  /** Mengembalikan kata sandi awal (sekali tampil) untuk akun yang baru dibuat. */
+  onAddUser: (user: Partial<TeacherUser>) => Promise<{ initialPassword?: string } | void>;
   onUpdateUser: (userId: string, fields: Partial<TeacherUser>) => Promise<void>;
 }
 
@@ -47,6 +50,21 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
   const [newSchool, setNewSchool] = useState<string>('');
   const [newJenjang, setNewJenjang] = useState<Jenjang>('SD');
   const [newMapel, setNewMapel] = useState<string>('Guru Kelas');
+  const [addError, setAddError] = useState<string>('');
+  // Kredensial awal hanya ditampilkan sekali setelah akun dibuat.
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; initialPassword: string } | null>(null);
+  const [copiedPassword, setCopiedPassword] = useState<boolean>(false);
+
+  const tutupModalTambah = () => {
+    setShowAddModal(false);
+    setNewName('');
+    setNewEmail('');
+    setNewSchool('');
+    setNewMapel('Guru Kelas');
+    setAddError('');
+    setCreatedCredentials(null);
+    setCopiedPassword(false);
+  };
 
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN' || currentUser.role === 'KEPALA_SEKOLAH';
 
@@ -108,19 +126,36 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
   const handleCreateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail || !newName) return;
-    await onAddUser({
-      name: newName,
-      email: newEmail,
-      schoolName: newSchool || 'Satuan Pendidikan',
-      jenjang: newJenjang,
-      mataPelajaran: newMapel,
-      role: 'GURU',
-      status: 'VERIFIED' // admin manually adding is verified
-    });
-    setNewName('');
-    setNewEmail('');
-    setNewSchool('');
-    setShowAddModal(false);
+    setAddError('');
+    try {
+      const hasil = await onAddUser({
+        name: newName,
+        email: newEmail,
+        schoolName: newSchool || 'Satuan Pendidikan',
+        jenjang: newJenjang,
+        mataPelajaran: newMapel,
+        role: 'GURU',
+        status: 'VERIFIED' // admin manually adding is verified
+      });
+      if (hasil && hasil.initialPassword) {
+        setCreatedCredentials({ email: newEmail.trim(), initialPassword: hasil.initialPassword });
+        return;
+      }
+      tutupModalTambah();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Gagal menambah guru.');
+    }
+  };
+
+  const salinKataSandi = async () => {
+    if (!createdCredentials) return;
+    try {
+      await navigator.clipboard.writeText(createdCredentials.initialPassword);
+      setCopiedPassword(true);
+      window.setTimeout(() => setCopiedPassword(false), 2000);
+    } catch {
+      // Clipboard tidak tersedia (mis. konteks non-secure) — admin bisa salin manual.
+    }
   };
 
   const handleApproveAllPending = async () => {
@@ -481,17 +516,21 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
 
       {/* Manual Add Teacher Modal */}
       {showAddModal && (
-        <Modal label="Tambah guru baru" onClose={() => setShowAddModal(false)} boxClassName="max-w-md">
+        <Modal label="Tambah guru baru" onClose={tutupModalTambah} boxClassName="max-w-md">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-[15px] font-semibold text-[var(--ink)]">Tambah guru baru</h3>
+                <h3 className="text-[15px] font-semibold text-[var(--ink)]">
+                  {createdCredentials ? 'Akun guru dibuat' : 'Tambah guru baru'}
+                </h3>
                 <p className="text-[12px] text-[var(--muted)] mt-0.5">
-                  Langsung terverifikasi dengan akun Belajar.id.
+                  {createdCredentials
+                    ? 'Teruskan kata sandi awal ini ke guru. Kata sandi tidak dapat ditampilkan lagi.'
+                    : 'Langsung terverifikasi. Kata sandi awal dibuat otomatis oleh sistem.'}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                onClick={tutupModalTambah}
                 className="w-8 h-8 rounded-md text-[var(--muted)] hover:bg-[var(--surface-2)] flex items-center justify-center shrink-0 cursor-pointer"
                 aria-label="Tutup"
               >
@@ -499,7 +538,48 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
               </button>
             </div>
 
+            {createdCredentials ? (
+              <div className="space-y-3 mt-4">
+                <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-3.5">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--muted)]">Email</p>
+                  <p className="mt-0.5 break-all text-[13px] font-medium text-[var(--ink)]">
+                    {createdCredentials.email}
+                  </p>
+                  <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--muted)]">Kata sandi awal</p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <code className="break-all text-[13.5px] font-semibold text-[var(--ink)]">
+                      {createdCredentials.initialPassword}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={salinKataSandi}
+                      className="btn-apple-secondary shrink-0 !px-2.5 !py-1.5"
+                    >
+                      {copiedPassword ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedPassword ? 'Tersalin' : 'Salin'}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 rounded-lg border border-[var(--warn)]/40 bg-[var(--warn-soft)] px-3 py-2.5 text-[11.5px] text-[var(--warn)]">
+                  <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>Minta guru segera mengganti kata sandi setelah masuk pertama kali.</span>
+                </div>
+                <div className="modal-action">
+                  <button type="button" onClick={tutupModalTambah} className="btn-apple">
+                    Selesai
+                  </button>
+                </div>
+              </div>
+            ) : (
             <form onSubmit={handleCreateTeacher} className="space-y-3 mt-4">
+              {addError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-[var(--danger)]/40 bg-[var(--danger-soft)] px-3 py-2.5 text-[12px] text-[var(--danger)]"
+                >
+                  {addError}
+                </div>
+              )}
               <div>
                 <label className={labelCls}>
                   Nama lengkap & gelar
@@ -573,7 +653,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
               </div>
 
               <div className="modal-action">
-                <button type="button" onClick={() => setShowAddModal(false)} className="btn-apple-secondary">
+                <button type="button" onClick={tutupModalTambah} className="btn-apple-secondary">
                   Batal
                 </button>
                 <button type="submit" className="btn-apple">
@@ -581,6 +661,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
                 </button>
               </div>
             </form>
+            )}
     </Modal>
       )}
 

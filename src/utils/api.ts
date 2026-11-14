@@ -1,49 +1,30 @@
 /**
  * Utilitas API Fetch terpadu untuk Ruang Guru Merdeka.
- * Autentikasi HANYA via bukti sesi: cookie (credentials: include),
- * Authorization Bearer, atau x-session-token.
- * Header x-user-id/x-user-email SENGAJA tidak dikirim — server tidak lagi
+ *
+ * Autentikasi HANYA lewat cookie sesi httpOnly (`rgm_session`) yang dikirim
+ * otomatis dengan `credentials: 'include'`. Token TIDAK disimpan di
+ * localStorage: nilai yang bisa dibaca JavaScript sama rapuhnya dengan sesi
+ * biasa bila ada XSS, dan meniadakan manfaat httpOnly.
+ *
+ * Header `x-user-id` / `x-user-email` SENGAJA tidak dikirim — server tidak
  * memakainya sebagai bukti autentikasi (anti-spoofing, issue #2).
  */
 
 export function getAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {};
-  try {
-    const token = localStorage.getItem('ruang_guru_session_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      headers['x-session-token'] = token;
-    }
-  } catch {
-    // Abaikan kegagalan baca data lokal
-  }
-  return headers;
+  return {};
 }
 
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const authHeaders = getAuthHeaders();
   const mergedHeaders: Record<string, string> = {
-    ...authHeaders,
+    ...getAuthHeaders(),
     ...((init?.headers as Record<string, string>) || {}),
   };
 
-  const response = await fetch(input, {
+  return fetch(input, {
     credentials: 'include',
     ...init,
     headers: mergedHeaders,
   });
-
-  // Simpan token baru bila server memperbarui sesi
-  const newToken = response.headers.get('x-new-session-token');
-  if (newToken) {
-    try {
-      localStorage.setItem('ruang_guru_session_token', newToken);
-    } catch {
-      // Abaikan
-    }
-  }
-
-  return response;
 }
 
 export function extractErrorMessage(data: any, fallback = 'Terjadi kesalahan pada server'): string {

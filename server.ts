@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
@@ -691,6 +692,17 @@ const imageRateLimit = rateLimit({
   message: 'Batas 10x ilustrasi per jam tercapai. Silakan coba lagi nanti.'
 });
 
+// Login cepat akun demo (tanpa kata sandi) HANYA untuk pengembangan lokal.
+// Di produksi endpoint ini mati kecuali ENABLE_DEMO_LOGIN=1 dipasang sengaja —
+// mencegah siapa pun masuk sebagai admin hanya dengan menebak email.
+const demoLoginAktif = process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_LOGIN === '1';
+
+/** Enam akun terverifikasi yang boleh dipakai untuk login demo. Satu sumber
+ *  kebenaran agar /api/users/demo dan /api/auth/demo-login tidak menyimpang. */
+function daftarAkunDemo(): TeacherUser[] {
+  return users.filter(u => u.status === 'VERIFIED').slice(0, 6);
+}
+
 // Helper to validate Belajar.id email format
 function isBelajarIdEmail(email: string): boolean {
   if (!email) return false;
@@ -771,29 +783,44 @@ app.post('/api/auth/change-password', requireAuth, (req: Request, res: Response)
 });
 
 // 2. Belajar.id Login / Switcher
-app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
-  const { email, name, schoolName, jenjang, mataPelajaran } = req.body;
+// Pendaftaran / masuk akun Belajar.id — WAJIB kata sandi.
+// Sebelumnya endpoint ini memberi sesi hanya dengan email (siapa pun bisa
+// menyamar sebagai guru/admin hanya dengan menebak email). Sekarang:
+//  - akun terdaftar: email + kata sandi harus cocok (scrypt);
+//  - akun baru: wajib kata sandi >= 8 karakter dan berstatus PENDING
+//    (tanpa sesi) sampai admin memverifikasi;
+//  - peran tidak pernah ditentukan dari bentuk email (tidak ada admin otomatis).
+app.post('/api/auth/login-belajar-id', loginRateLimit, (req: Request, res: Response) => {
+  const body = (req.body || {}) as Record<string, unknown>;
+  const email = String(body.email || '').toLowerCase().trim();
+  const password = String(body.password || '');
 
   if (!email) {
     return res.status(400).json({ success: false, message: 'Email Belajar.id wajib diisi' });
   }
-
-  const cleanEmail = email.toLowerCase().trim();
-  if (!isBelajarIdEmail(cleanEmail)) {
+  if (!isBelajarIdEmail(email)) {
     return res.status(400).json({
       success: false,
       message: 'Gunakan email Belajar.id yang valid (contoh: nama@guru.smp.belajar.id)'
     });
   }
-  let existingUser = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  const existingUser = users.find(u => u.email.toLowerCase() === email);
 
   if (existingUser) {
-    // Samakan dengan /api/auth/login: akun non-VERIFIED tidak boleh dapat sesi baru (issue #2 P1).
+    // Akun non-VERIFIED tidak boleh mendapat sesi baru (issue #2 P1).
     if (existingUser.status !== 'VERIFIED') {
-      auditLog('login_belajar_id_blocked', existingUser.id, { email: cleanEmail, status: existingUser.status });
+      auditLog('login_belajar_id_blocked', existingUser.id, { email, status: existingUser.status });
       return res.status(403).json({
         success: false,
         error: { code: 'ACCOUNT_NOT_VERIFIED', message: 'Akun Anda belum diverifikasi admin atau sudah dinonaktifkan. Hubungi administrator.' }
+      });
+    }
+    if (!existingUser.passwordHash || !password || !verifyPassword(password, existingUser.passwordHash)) {
+      auditLog('login_failed', existingUser.id, { email, reason: 'wrong_password' });
+      return res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: 'Email atau kata sandi salah.' }
       });
     }
     const token = createSession(existingUser.id);
@@ -802,63 +829,94 @@ app.post('/api/auth/login-belajar-id', (req: Request, res: Response) => {
     res.setHeader('Set-Cookie', sessionCookieHeader(token));
     return res.json({
       success: true,
-      token,
       message: `Selamat datang kembali, ${existingUser.name}!`,
       user: publicUser(existingUser as AuthUser)
     });
   }
 
-  // Determine role and status
-  const isSuper = cleanEmail === 'amwaluddin.lubis@gmail.com' || cleanEmail.includes('admin@');
-  const role: 'SUPER_ADMIN' | 'ADMIN' | 'GURU' = isSuper ? 'SUPER_ADMIN' : 'GURU';
-  // Akun SSO Belajar.id otomatis terverifikasi sistem Kemendikbudristek
-  const status: 'VERIFIED' = 'VERIFIED';
+  // ---- Pendaftaran akun baru (belum ada di basis data) ----
+  const name = String(body.name || '').trim();
+  if (!name) {
+    return res.status(400).json({ success: false, message: 'Nama lengkap wajib diisi saat mendaftar.' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'WEAK_PASSWORD', message: 'Kata sandi minimal 8 karakter.' }
+    });
+  }
 
-  // Extract jenjang from email if not specified
-  let detectedJenjang: 'SD' | 'SMP' | 'SMA' | 'SMK' = jenjang || 'SMP';
-  if (cleanEmail.includes('.sd.')) detectedJenjang = 'SD';
-  else if (cleanEmail.includes('.smp.')) detectedJenjang = 'SMP';
-  else if (cleanEmail.includes('.sma.')) detectedJenjang = 'SMA';
-  else if (cleanEmail.includes('.smk.')) detectedJenjang = 'SMK';
+  // Jenjang hanya diturunkan dari email pada pendaftaran (bukan untuk login),
+  // dan peran SELALU GURU — tidak ada eskalasi lewat nama email.
+  let detectedJenjang: 'SD' | 'SMP' | 'SMA' | 'SMK' = 'SMP';
+  if (email.includes('.sd.')) detectedJenjang = 'SD';
+  else if (email.includes('.smp.')) detectedJenjang = 'SMP';
+  else if (email.includes('.sma.')) detectedJenjang = 'SMA';
+  else if (email.includes('.smk.')) detectedJenjang = 'SMK';
 
   const newUser: TeacherUser = {
-    id: `user-${Date.now()}`,
-    name: name || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase(),
-    email: cleanEmail,
-    schoolName: schoolName || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
-    nip: req.body.nip || undefined,
-    jenjang: detectedJenjang,
-    mataPelajaran: mataPelajaran || 'Semua Mata Pelajaran',
-    role,
-    status,
-    registeredAt: new Date().toISOString(),
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: 'Sistem SSO Belajar.id'
+    id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name,
+    email,
+    schoolName: String(body.schoolName || '').trim() || (detectedJenjang === 'SD' ? 'SD Negeri Inpres' : detectedJenjang === 'SMP' ? 'SMP Negeri 1' : 'SMA Negeri 1'),
+    nip: body.nip ? String(body.nip).trim() || undefined : undefined,
+    jenjang: (body.jenjang as TeacherUser['jenjang']) || detectedJenjang,
+    mataPelajaran: String(body.mataPelajaran || '').trim() || 'Semua Mata Pelajaran',
+    role: 'GURU',
+    status: 'PENDING',
+    registeredAt: new Date().toISOString()
   };
+  newUser.passwordHash = hashPassword(password);
 
   users.unshift(newUser);
-  const token = createSession(newUser.id);
   saveDB();
   auditLog('register_belajar_id', newUser.id, { email: newUser.email });
-  res.setHeader('Set-Cookie', sessionCookieHeader(token));
 
-  res.json({
+  return res.status(201).json({
     success: true,
-    token,
-    message: status === 'VERIFIED'
-      ? 'Akun Admin berhasil diaktifkan!'
-      : 'Pendaftaran Akun Belajar.id berhasil! Akun Anda sedang menunggu verifikasi oleh Admin Kurikulum (Bpk. Amwaluddin Lubis).',
-    user: publicUser(newUser as AuthUser)
+    pending: true,
+    message: 'Pendaftaran berhasil. Akun Anda menunggu verifikasi admin sebelum bisa masuk.'
   });
 });
 
-// 2-demo. Profil demo publik untuk pilihan cepat di Halaman Masuk
+// 2-demo. Profil demo publik untuk pilihan cepat di Halaman Masuk.
+// Email SENGAJA tidak dikirim: daftar ini bisa dibaca tanpa login, dan email
+// adalah setengah dari kredensial. Login demo memakai userId (khusus dev).
 app.get('/api/users/demo', (_req: Request, res: Response) => {
-  const sampleProfiles = users
-    .filter(u => u.status === 'VERIFIED')
-    .slice(0, 6)
-    .map(u => publicUser(u as AuthUser));
+  if (!demoLoginAktif) {
+    return res.json({ success: true, users: [] });
+  }
+  const sampleProfiles = daftarAkunDemo().map(u => {
+    const { email: _sembunyikan, ...profil } = publicUser(u as AuthUser);
+    return profil;
+  });
   res.json({ success: true, users: sampleProfiles });
+});
+
+// 2c-demo. Login cepat akun demo — HANYA aktif di luar produksi.
+// Menerima userId (bukan email) dan hanya untuk akun yang tampil di
+// /api/users/demo, sehingga tidak bisa dipakai menyasar akun sembarang.
+app.post('/api/auth/demo-login', loginRateLimit, (req: Request, res: Response) => {
+  if (!demoLoginAktif) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'DEMO_DISABLED', message: 'Login demo tidak tersedia. Silakan masuk dengan email dan kata sandi.' }
+    });
+  }
+  const userId = String((req.body || {}).userId || '');
+  const user = daftarAkunDemo().find(u => u.id === userId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'Akun demo tidak ditemukan.' });
+  }
+  const token = createSession(user.id);
+  saveDB();
+  auditLog('login_demo', user.id, { email: user.email });
+  res.setHeader('Set-Cookie', sessionCookieHeader(token));
+  res.json({
+    success: true,
+    message: `Masuk sebagai ${user.name} (akun demo).`,
+    user: publicUser(user as AuthUser)
+  });
 });
 
 // 2b. Logout — hapus session server-side + clear cookie.
@@ -881,6 +939,60 @@ app.post('/api/auth/logout', (req: Request, res: Response) => {
 // 3. User list (for Admin verification panel) — ADMIN/SUPER_ADMIN/KEPALA_SEKOLAH, tanpa passwordHash.
 app.get('/api/users', requireAuth, requireVerifier, (req: Request, res: Response) => {
   res.json({ success: true, users: users.map(u => publicUser(u as AuthUser)) });
+});
+
+// 3b. Admin menambah guru manual (langsung VERIFIED) + kata sandi awal.
+// Endpoint terpisah dari pendaftaran mandiri agar admin yang login TIDAK ikut
+// tergantikan sebagai pengguna baru, dan agar guru baru punya kredensial nyata.
+app.post('/api/users', requireAuth, requireAdmin, (req: Request, res: Response) => {
+  const body = (req.body || {}) as Record<string, unknown>;
+  const name = String(body.name || '').trim();
+  const email = String(body.email || '').toLowerCase().trim();
+  const schoolName = String(body.schoolName || '').trim();
+  const jenjang = String(body.jenjang || '') as TeacherUser['jenjang'];
+  const mataPelajaran = String(body.mataPelajaran || '').trim();
+  const nip = String(body.nip || '').trim() || undefined;
+
+  if (!name || !email || !schoolName || !mataPelajaran) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Nama, email, sekolah, dan mata pelajaran wajib diisi.' } });
+  }
+  if (!isBelajarIdEmail(email)) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Gunakan email Belajar.id yang valid.' } });
+  }
+  if (!['SD', 'SMP', 'SMA', 'SMK'].includes(jenjang)) {
+    return res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Jenjang tidak valid.' } });
+  }
+  if (users.some(u => u.email.toLowerCase() === email)) {
+    return res.status(409).json({ success: false, error: { code: 'EMAIL_TAKEN', message: 'Email tersebut sudah terdaftar.' } });
+  }
+
+  // Kata sandi awal acak — ditampilkan sekali ke admin, tidak pernah disimpan plaintext.
+  const initialPassword = `Rgm-${crypto.randomBytes(4).toString('hex')}`;
+  const newUser: TeacherUser = {
+    id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    name,
+    email,
+    schoolName,
+    nip,
+    jenjang,
+    mataPelajaran,
+    role: 'GURU',
+    status: 'VERIFIED',
+    registeredAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: req.user?.name || 'Administrator',
+    passwordHash: hashPassword(initialPassword)
+  };
+  users.unshift(newUser);
+  saveDB();
+  auditLog('user_create', req.user?.id, { targetUserId: newUser.id, email: newUser.email });
+
+  res.status(201).json({
+    success: true,
+    message: `Guru ${newUser.name} ditambahkan.`,
+    user: publicUser(newUser as AuthUser),
+    initialPassword
+  });
 });
 
 // 4. Admin verify / reject / update teacher status

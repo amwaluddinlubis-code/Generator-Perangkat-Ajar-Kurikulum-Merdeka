@@ -31,6 +31,22 @@ export interface TeacherUser {
   passwordHash?: string;
 }
 
+/**
+ * Profil publik untuk daftar "masuk cepat akun demo".
+ * Server tidak mengirim email pada daftar ini (bisa dibaca tanpa login);
+ * login demo memakai `id`.
+ */
+export interface DemoUser {
+  id: string;
+  name: string;
+  schoolName: string;
+  jenjang: Jenjang;
+  mataPelajaran: string;
+  role: TeacherUser['role'];
+  status: TeacherUser['status'];
+  avatarUrl?: string;
+}
+
 export interface EducationalDocument {
   id: string;
   title: string;
