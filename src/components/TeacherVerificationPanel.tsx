@@ -201,11 +201,12 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <div className="apple-segment shrink-0" role="tablist" aria-label="Filter status">
+          <div className="apple-segment shrink-0" role="group" aria-label="Filter status">
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
               data-active={statusFilter === 'ALL'}
+              aria-pressed={statusFilter === 'ALL'}
             >
               Semua
             </button>
@@ -213,6 +214,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
               type="button"
               onClick={() => setStatusFilter('PENDING')}
               data-active={statusFilter === 'PENDING'}
+              aria-pressed={statusFilter === 'PENDING'}
             >
               Menunggu{pendingUsers.length > 0 && ` (${pendingUsers.length})`}
             </button>
@@ -220,6 +222,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
               type="button"
               onClick={() => setStatusFilter('VERIFIED')}
               data-active={statusFilter === 'VERIFIED'}
+              aria-pressed={statusFilter === 'VERIFIED'}
             >
               Terverifikasi
             </button>

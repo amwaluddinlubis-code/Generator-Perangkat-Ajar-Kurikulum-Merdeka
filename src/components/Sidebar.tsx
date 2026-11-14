@@ -104,22 +104,21 @@ const UserMenu: React.FC<{
       <ul
         tabIndex={0}
         className="dropdown-content menu bg-base-100 rounded-xl z-[60] w-56 p-1.5 shadow-xl border border-[var(--line)] mb-2"
-        role="menu"
         aria-label="Menu pengguna"
       >
-        <li role="none">
-          <button role="menuitem" onClick={() => onNavigate('profile')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
+        <li>
+          <button type="button" onClick={() => onNavigate('profile')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
             <User className="w-4 h-4" /> Profil
           </button>
         </li>
-        <li role="none">
-          <button role="menuitem" onClick={() => onNavigate('stats')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
+        <li>
+          <button type="button" onClick={() => onNavigate('stats')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
             <BarChart3 className="w-4 h-4" /> Statistik Saya
           </button>
         </li>
         {isAdmin && (
-          <li role="none">
-            <button role="menuitem" onClick={() => onNavigate('admin')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
+          <li>
+            <button type="button" onClick={() => onNavigate('admin')} className="flex items-center gap-2.5 rounded-lg text-[13px]">
               <ShieldCheck className="w-4 h-4" /> Admin
               {pendingCount > 0 && (
                 <span className="ml-auto text-[10.5px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--danger)] text-white">
@@ -129,9 +128,9 @@ const UserMenu: React.FC<{
             </button>
           </li>
         )}
-        <li role="none" aria-hidden="true" className="border-t border-[var(--line)] my-1" />
-        <li role="none">
-          <button role="menuitem" onClick={onLogout} className="flex items-center gap-2.5 rounded-lg text-[13px] text-error">
+        <li aria-hidden="true" className="border-t border-[var(--line)] my-1" />
+        <li>
+          <button type="button" onClick={onLogout} className="flex items-center gap-2.5 rounded-lg text-[13px] text-error">
             <LogOut className="w-4 h-4" /> Keluar
           </button>
         </li>

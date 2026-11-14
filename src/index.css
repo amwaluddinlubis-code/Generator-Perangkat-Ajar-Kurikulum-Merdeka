@@ -510,6 +510,27 @@
 
 /* ————— Kertas dokumen formal A4 (tetap serif & putih saat dicetak) ————— */
 .doc-paper {
+  /* Kertas selalu terang, termasuk di dark mode — samakan token agar
+     komponen di dalamnya tetap kontras tinggi saat dicetak. */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --surface-3: #eef1f6;
+  --ink: #111111;
+  --ink-soft: #333333;
+  --muted: #5b6675;
+  --line: #e2e6ee;
+  --line-strong: #cfd6e0;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef0fe;
+  --accent-ink: #3730a3;
+  --ok: #047857;
+  --ok-soft: #ecfdf5;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
   background: #ffffff;
   color: #111111;
   width: min(210mm, 100%);

@@ -321,6 +321,8 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
             <div className="apple-segment" role="tablist" aria-label="Jenis grafik">
               <button
                 type="button"
+                role="tab"
+                aria-selected={chartType === 'area'}
                 onClick={() => setChartType('area')}
                 data-active={chartType === 'area'}
                 title="Kurva tren"
@@ -329,6 +331,8 @@ export const UserProfileStatsDashboard: React.FC<UserProfileStatsDashboardProps>
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={chartType === 'bar'}
                 onClick={() => setChartType('bar')}
                 data-active={chartType === 'bar'}
                 title="Grafik batang"

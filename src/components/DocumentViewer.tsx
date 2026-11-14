@@ -320,6 +320,14 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     setSoalErrors([]);
   }, [document?.content]);
 
+  // State ilustrasi AI — diletakkan sebelum early return agar urutan hook stabil
+  const [imgModalOpen, setImgModalOpen] = useState<boolean>(false);
+  const [imgPrompt, setImgPrompt] = useState<string>('');
+  const [imgRatio, setImgRatio] = useState<string>('16:9');
+  const [imgLoading, setImgLoading] = useState<boolean>(false);
+  const [imgError, setImgError] = useState<string>('');
+  const [imgResult, setImgResult] = useState<string>('');
+
   if (!document) {
     // GEL2: mode paket masih memuat riwayat versi
     if (isPaketMode && loadingVersi) {
@@ -583,13 +591,6 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   };
 
   // Ilustrasi AI (Gemini image generation)
-  const [imgModalOpen, setImgModalOpen] = useState<boolean>(false);
-  const [imgPrompt, setImgPrompt] = useState<string>('');
-  const [imgRatio, setImgRatio] = useState<string>('16:9');
-  const [imgLoading, setImgLoading] = useState<boolean>(false);
-  const [imgError, setImgError] = useState<string>('');
-  const [imgResult, setImgResult] = useState<string>('');
-
   const openImgModal = () => {
     setImgError('');
     setImgResult('');

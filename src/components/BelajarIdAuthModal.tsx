@@ -154,6 +154,8 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
           <div className="apple-segment w-full grid grid-cols-2" role="tablist" aria-label="Pilih cara masuk">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'presets'}
               onClick={() => setActiveTab('presets')}
               data-active={activeTab === 'presets'}
             >
@@ -161,6 +163,8 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'custom'}
               onClick={() => setActiveTab('custom')}
               data-active={activeTab === 'custom'}
             >

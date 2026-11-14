@@ -92,14 +92,14 @@ export const BankSoalPanel: React.FC<BankSoalPanelProps> = ({ paket, onImpor }) 
   };
 
   return (
-    <div className="rounded-2xl border border-base-300 bg-base-100 p-4 space-y-3">
+    <div className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
       <div className="flex items-center gap-2">
-        <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-        <h3 className="font-bold text-sm">Bank Soal — Impor / Ekspor XLSX</h3>
+        <FileSpreadsheet className="w-4 h-4 text-[var(--muted)]" />
+        <h3 className="text-[12.5px] font-semibold text-[var(--ink)]">Bank soal — impor / ekspor XLSX</h3>
       </div>
 
-      <p className="text-xs opacity-70 leading-relaxed">
-        Paket ini berisi <strong>{jumlahButir} butir soal</strong>. Impor menambahkan butir
+      <p className="text-[11.5px] leading-relaxed text-[var(--muted)]">
+        Paket ini berisi <strong className="text-[var(--ink-soft)]">{jumlahButir} butir soal</strong>. Impor menambahkan butir
         baru ke paket (nomor disusun ulang otomatis). Baris yang gagal divalidasi dilaporkan
         tanpa menggagalkan baris lainnya.
       </p>
@@ -107,39 +107,39 @@ export const BankSoalPanel: React.FC<BankSoalPanelProps> = ({ paket, onImpor }) 
       {jumlahButir > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {DAFTAR_BENTUK.map(b => (
-            <span key={b} className="badge badge-ghost badge-sm">
+            <span key={b} className="ds-badge">
               {LABEL_BENTUK[b]}: {dist[b]}
             </span>
           ))}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         <button
           onClick={tanganiUnduhTemplate}
           disabled={mengunduhTemplate}
-          className="btn btn-outline btn-sm"
+          className="btn-apple-secondary !min-h-[32px] !py-1 !px-2.5 !text-[12px]"
           title="Unduh template XLSX berisi header kolom + 2 baris contoh"
         >
-          {mengunduhTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-          Unduh Template
+          {mengunduhTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
+          Unduh template
         </button>
         <button
           onClick={() => inputRef.current?.click()}
           disabled={mengimpor}
-          className="btn btn-primary btn-sm"
+          className="btn-apple !min-h-[32px] !py-1 !px-2.5 !text-[12px]"
           title="Impor butir soal dari berkas .xlsx (sheet pertama)"
         >
-          {mengimpor ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
-          {mengimpor ? 'Mengimpor...' : 'Impor XLSX'}
+          {mengimpor ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />}
+          {mengimpor ? 'Mengimpor…' : 'Impor XLSX'}
         </button>
         <button
           onClick={tanganiEkspor}
           disabled={mengekspor || jumlahButir === 0}
-          className="btn btn-outline btn-sm"
+          className="btn-apple-secondary !min-h-[32px] !py-1 !px-2.5 !text-[12px]"
           title={jumlahButir === 0 ? 'Belum ada butir untuk diekspor' : 'Ekspor seluruh butir paket ke .xlsx'}
         >
-          {mengekspor ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {mengekspor ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           Ekspor XLSX
         </button>
         <input
@@ -153,24 +153,24 @@ export const BankSoalPanel: React.FC<BankSoalPanelProps> = ({ paket, onImpor }) 
       </div>
 
       {ringkasan && (
-        <div className="rounded-xl border border-base-300 p-3 space-y-2 text-sm">
+        <div className="space-y-2 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] p-3 text-[11.5px]">
           {ringkasan.jumlahValid > 0 ? (
-            <div className="flex items-start gap-2 text-emerald-700">
+            <div className="flex items-start gap-2 text-[var(--ok)]">
               <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
               <span><strong>{ringkasan.jumlahValid} butir valid</strong> berhasil diimpor ke paket.</span>
             </div>
           ) : (
-            <div className="flex items-start gap-2 text-amber-700">
+            <div className="flex items-start gap-2 text-[var(--warn)]">
               <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>Tidak ada butir yang berhasil diimpor.</span>
             </div>
           )}
           {ringkasan.errors.length > 0 && (
-            <details className="text-xs" open={ringkasan.jumlahValid === 0}>
-              <summary className="cursor-pointer font-semibold text-amber-700">
+            <details className="text-[11px]" open={ringkasan.jumlahValid === 0}>
+              <summary className="cursor-pointer font-medium text-[var(--warn)]">
                 {ringkasan.errors.length} baris bermasalah — klik untuk melihat
               </summary>
-              <ul className="mt-1.5 space-y-1 max-h-40 overflow-y-auto list-disc pl-5 opacity-80">
+              <ul className="mt-1.5 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-[var(--muted)]">
                 {ringkasan.errors.map((err, i) => (
                   <li key={i}>{err}</li>
                 ))}
