@@ -3,7 +3,8 @@
 Dokumen kerja untuk menindaklanjuti **analisis UI** (Nov 2026).
 Berisi temuan terukur, backlog berprioritas, rencana kerja bertahap, dan kriteria penerimaan.
 
-> Status: **rencana — belum ada implementasi**
+> Status: **sebagian besar terlaksana** — Sprint 1 + UI-03, UI-07, UI-15 terlaksana pada commit `c09180d` ("perbaikan UI", sistem desain "Slate Core"); UI-05, UI-06, dan UI-16 (robots.txt) menyusul sesudahnya. Sisa terbuka: UI-08, UI-09, UI-10, UI-11…UI-14. Rincian per item di §11.
+> **Keputusan yang menyimpang dari rencana awal:** aksen kanonik yang diterapkan adalah **indigo** ("Slate Core", `--accent: #4f46e5`), bukan amber seperti rancangan UI-01 di bawah — teks UI-01 dipertahankan sebagai catatan rancangan awal.
 > Cakupan: tampilan, interaksi, aksesibilitas, konsistensi desain.
 > Di luar cakupan: keamanan API, database, otorisasi (lihat `DOKUMENTASI.md` §10–§16).
 
@@ -323,3 +324,23 @@ UI-01 ──► UI-14 (avatar) ──► UI-13 (header)
 - Setiap PR sebaiknya menyentuh **satu ID** dari backlog agar mudah ditinjau dan di-rollback.
 - Lampirkan tangkapan layar sebelum/sesudah (terang + gelap) pada PR yang mengubah visual.
 - Dev server berjalan di `http://localhost:3001` (mengikuti `PORT` di `.env`), bukan 3000.
+
+---
+
+## 11. Status pelaksanaan (per 13 Nov 2026)
+
+| ID | Status | Bukti |
+|---|---|---|
+| UI-01 | ✅ Selesai (`c09180d`) | Token tunggal "Slate Core" di `src/index.css`; DaisyUI terpetakan ke token yang sama di dua tema; `--apple-*` hanya alias. Aksen kanonik: indigo (menyimpang dari rancangan amber — lihat catatan status di kepala dokumen) |
+| UI-02 | ✅ Selesai (`c09180d`) | Tombol "Final" kini ghost dengan teks `--ok` (≥ 5,9:1 terang); item aktif sidebar = latar `--accent-soft` + teks `--accent-ink` (≥ 7:1 kedua tema, tercatat di komentar `Sidebar.tsx`); `aria-label` tombol profil TopHeader memuat nama pengguna |
+| UI-03 | ✅ Selesai (`c09180d`) | `PaketWorkspace` membuka dokumen lewat `DocumentViewer` layar penuh (A4 + ekspor); tidak ada lagi `<pre>` markdown di alur paket |
+| UI-04 | ✅ Selesai (`c09180d`) | Sapuan token semantik; tidak ada lagi `text-amber-950`/`bg-white`/`bg-[#fff8e5]` di `GeneratorForm.tsx`; jembatan `.dark .bg-white` dsb. di `index.css` untuk sisa pemakaian lama |
+| UI-05 | ✅ Selesai (hash routing) | `App.tsx`: `activeTarget` <-> `#/<target>` dua arah — F5 bertahan di view yang sama, Back kembali ke view sebelumnya. Tanpa dependensi baru (opsi hash yang disarankan §5 UI-05). Substatus workspace paket (`paketAktifId`) belum masuk URL |
+| UI-06 | ✅ Selesai | `Sidebar.tsx`: grup "Generator Satuan" (7 generator) + grup "Arsip" (Arsip Dokumen) ditambahkan; seluruh 15 `NavigationTarget` kini terjangkau dari sidebar/menu pengguna |
+| UI-07 | ✅ Selesai (`c09180d`) | `DaftarPaket.tsx`: effect me-reset daftar dan bergantung pada `currentUser.id` |
+| UI-08 | ⬜ Terbuka | Standarisasi modal (satu komponen `ui/Modal`) belum dikerjakan |
+| UI-09 | 🟡 Sebagian | Toast aplikasi sudah terpusat di `App.tsx` dengan `role="status"`; toast lokal per komponen belum diaudit |
+| UI-10 | ⬜ Terbuka | Peringatan externalize modul Node saat build belum ditelusuri |
+| UI-11…UI-14 | ⬜ Terbuka | Penyempurnaan visual Sprint 4 |
+| UI-15 | ✅ Selesai (`c09180d`) | `@media (prefers-reduced-motion: reduce)` ada di `index.css` |
+| UI-16 | ✅ Selesai | `lang="id"` + meta description sudah ada di `index.html`; `public/robots.txt` ditambahkan |

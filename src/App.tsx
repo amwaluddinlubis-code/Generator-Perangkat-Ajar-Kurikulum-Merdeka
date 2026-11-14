@@ -7,6 +7,18 @@ import {
   Jenjang 
 } from './types';
 import { Sidebar, NavigationTarget } from './components/Sidebar';
+
+// UI-05: peta NavigationTarget <-> hash URL (#/paket, #/modul_ajar, dst).
+const DAFTAR_TARGET: NavigationTarget[] = [
+  'beranda', 'paket', 'perpustakaan',
+  'modul_ajar', 'rpp', 'soal_ujian', 'lkpd', 'kktp_atp', 'prota_promes', 'modul_p5',
+  'profile', 'stats', 'repository', 'admin', 'guide',
+];
+
+function targetDariHash(): NavigationTarget {
+  const h = window.location.hash.replace(/^#\/?/, '');
+  return (DAFTAR_TARGET as string[]).includes(h) ? (h as NavigationTarget) : 'beranda';
+}
 import { TopHeader } from './components/TopHeader';
 // REDESIGN: view gelombang 2 — komponen dibuat worker lain, App hanya mengintegrasikan
 import { Beranda } from './components/Beranda';
@@ -61,7 +73,26 @@ export default function App() {
   
   // Navigation State with dedicated sidebar targets
   // REDESIGN: view default setelah login = 'beranda'
-  const [activeTarget, setActiveTarget] = useState<NavigationTarget>('beranda');
+  // UI-05 (hash routing): URL mencerminkan view aktif — F5 tetap di view yang
+  // sama dan tombol Back kembali ke view sebelumnya. Tanpa dependensi baru.
+  const [activeTarget, setActiveTarget] = useState<NavigationTarget>(() => targetDariHash());
+  // UI-05: sinkronkan hash <-> activeTarget dua arah.
+  useEffect(() => {
+    const ingin = '#/' + activeTarget;
+    if (window.location.hash !== ingin) {
+      window.history.pushState(null, '', ingin);
+    }
+  }, [activeTarget]);
+
+  useEffect(() => {
+    const dengar = () => {
+      const t = targetDariHash();
+      setActiveTarget((prev) => (prev === t ? prev : t));
+    };
+    window.addEventListener('hashchange', dengar);
+    return () => window.removeEventListener('hashchange', dengar);
+  }, []);
+
   // REDESIGN: state paket aktif — bila di-set, render <PaketWorkspace/>
   const [paketAktifId, setPaketAktifId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);

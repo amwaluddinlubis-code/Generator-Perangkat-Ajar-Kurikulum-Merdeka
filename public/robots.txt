@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Aplikasi dipakai setelah masuk; halaman internal tidak perlu diindeks.
+Disallow: /api/

@@ -14,6 +14,14 @@ import {
   ChevronRight,
   ChevronsUpDown,
   X,
+  FileText,
+  ClipboardList,
+  HelpCircle,
+  NotebookPen,
+  Target,
+  CalendarRange,
+  Sparkles,
+  Archive,
 } from 'lucide-react';
 
 export type NavigationTarget =
@@ -167,6 +175,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { target: 'guide', label: 'Panduan', sub: 'Kurikulum Merdeka', icon: <BookOpen className="w-[17px] h-[17px]" /> },
   ];
 
+  // UI-06: semua NavigationTarget wajib punya pintu masuk. Grup generator
+  // satuan + arsip melengkapi menu utama agar tidak ada view yatim.
+  const generatorItems: { target: NavigationTarget; label: string; icon: React.ReactNode }[] = [
+    { target: 'modul_ajar', label: 'Modul Ajar', icon: <FileText className="w-[17px] h-[17px]" /> },
+    { target: 'rpp', label: 'RPP Ringkas', icon: <ClipboardList className="w-[17px] h-[17px]" /> },
+    { target: 'soal_ujian', label: 'Soal AKM/HOTS', icon: <HelpCircle className="w-[17px] h-[17px]" /> },
+    { target: 'lkpd', label: 'LKPD', icon: <NotebookPen className="w-[17px] h-[17px]" /> },
+    { target: 'kktp_atp', label: 'ATP & KKTP', icon: <Target className="w-[17px] h-[17px]" /> },
+    { target: 'prota_promes', label: 'Prota & Promes', icon: <CalendarRange className="w-[17px] h-[17px]" /> },
+    { target: 'modul_p5', label: 'Modul P5', icon: <Sparkles className="w-[17px] h-[17px]" /> },
+  ];
+
   const handleNavClick = (target: NavigationTarget) => {
     onSelectTarget(target);
     setMobileOpen(false);
@@ -278,6 +298,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          {!isCollapsed && (
+            <p className="px-2.5 pb-1.5 pt-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--muted)]">
+              Generator Satuan
+            </p>
+          )}
+          {isCollapsed && <div className="pt-3" />}
+          {generatorItems.map((item) => {
+            const active = activeTarget === item.target;
+            return (
+              <button
+                key={item.target}
+                onClick={() => handleNavClick(item.target)}
+                className={itemCls(active)}
+                title={isCollapsed ? item.label : undefined}
+                {...ariaCurrent(active)}
+              >
+                {active && !isCollapsed && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-r bg-[var(--accent)]" />
+                )}
+                <span className={`shrink-0 ${active ? 'text-[var(--accent)]' : ''}`}>{item.icon}</span>
+                {!isCollapsed && (
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-medium leading-tight truncate">{item.label}</span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {!isCollapsed && (
+            <p className="px-2.5 pb-1.5 pt-4 text-[10.5px] font-semibold uppercase tracking-[0.09em] text-[var(--muted)]">
+              Arsip
+            </p>
+          )}
+          {isCollapsed && <div className="pt-3" />}
+          <button
+            onClick={() => handleNavClick('repository')}
+            className={itemCls(activeTarget === 'repository')}
+            title={isCollapsed ? 'Arsip Dokumen' : undefined}
+            {...ariaCurrent(activeTarget === 'repository')}
+          >
+            {activeTarget === 'repository' && !isCollapsed && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-r bg-[var(--accent)]" />
+            )}
+            <span className={`shrink-0 ${activeTarget === 'repository' ? 'text-[var(--accent)]' : ''}`}>
+              <Archive className="w-[17px] h-[17px]" />
+            </span>
+            {!isCollapsed && (
+              <span className="flex-1 min-w-0">
+                <span className="block text-[13px] font-medium leading-tight truncate">Arsip Dokumen</span>
+              </span>
+            )}
+          </button>
         </nav>
 
         {/* Menu pengguna */}

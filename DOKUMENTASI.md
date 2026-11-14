@@ -111,7 +111,7 @@ Satuan kerja baru adalah **PAKET**: satu topik berisi 7 dokumen (modul_ajar, rpp
 |---|---|
 | `beranda` | Beranda (default setelah login): hero sapaan + "Buat Paket Baru", 3 paket terakhir, 5 dokumen terbaru, stats |
 | `paket` | Daftar Paket Saya: search, filter Aktif/Arsip, kartu progres, aksi Buka/Arsipkan/Duplikat/Hapus |
-| `perpustakaan` | Placeholder "Segera hadir — Gelombang 2" |
+| `perpustakaan` | Perpustakaan Sekolah (Gelombang 2 selesai — daftar paket terpublikasi satu sekolah; saat Gelombang 1 masih placeholder "Segera hadir") |
 | `guide` | Panduan regulasi (tetap) |
 
 Menu pengguna (avatar kanan atas): Profil, Statistik Saya, Admin, Keluar. View lama (7 generator, repository, viewer) tetap ada dan tidak diubah — diintegrasikan Gelombang 2.
@@ -184,7 +184,8 @@ cp .env.example .env        # Windows: copy .env.example .env
 npm install --legacy-peer-deps
 # 4. Jalan
 npm run dev
-# Buka http://localhost:3000
+# Buka http://localhost:3000 (bawaan) — mesin pengembangan proyek ini memakai
+# PORT=3001 di .env, jadi alamatnya http://localhost:3001
 ```
 
 ### API key Gemini (teks + gambar, satu kunci)
@@ -206,7 +207,7 @@ npm run dev
 
 ## 6. Desain & Tema
 
-- Bahasa visual Apple: latar aurora gradien lembut, kartu putih, pil hitam, aksen biru `#0071e3`, target sentuh ≥ 44px.
+- Bahasa visual **"Slate Core"** (satu sistem token di `src/index.css`): netral slate dingin + satu aksen indigo (`--accent`), permukaan ber-border tipis, token semantik `--bg/--surface/--ink/--muted` untuk tema terang & gelap; kelas lama `--apple-*`/`btn-apple`/`apple-card` dipertahankan hanya sebagai alias token. Target sentuh ≥ 44px. (Bahasa visual Apple biru `#0071e3` adalah desain sebelumnya — lihat `RENCANA-PERBAIKAN-UI.md` UI-01.)
 - Toggle bulan/matahari di header; pilihan tersimpan (`rgm-theme`); anti-kedip via skrip `index.html`.
 - Kertas dokumen (`.doc-paper`): lebar 210mm, serif formal, kop + ornamen + pengesahan; cetak via `@page A4`.
 - Standar naskah dinas di `.docx`: Times New Roman 12pt, justify, spasi 1.5, margin atas 4cm / lain 3cm.
