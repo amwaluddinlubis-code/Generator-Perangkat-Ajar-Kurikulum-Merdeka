@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from './ui/Modal';
 import { TeacherUser, Jenjang } from '../types';
 import {
   GraduationCap,
@@ -121,8 +122,7 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
   };
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Ganti akun Belajar.id">
-      <div className="modal-box max-w-xl p-0 overflow-hidden">
+    <Modal label="Ganti akun Belajar.id" onClose={onClose} boxClassName="max-w-xl p-0 overflow-hidden">
         
         {/* Header */}
         <div className="relative border-b border-[var(--line)] px-5 py-4">
@@ -353,9 +353,6 @@ export const BelajarIdAuthModal: React.FC<BelajarIdAuthModalProps> = ({
             </button>
           )}
         </div>
-
-      </div>
-      <div className="modal-backdrop" onClick={onClose} />
-    </div>
+    </Modal>
   );
 };

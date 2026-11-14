@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Modal } from './ui/Modal';
 import { EducationalDocument, TeacherUser } from '../types';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
 import {
@@ -16,6 +17,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { exportToDocx } from '../utils/exportUtils';
+import { notifyToast } from './ui/toast';
 
 interface DocumentRepositoryProps {
   documents: EducationalDocument[];
@@ -40,15 +42,8 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   // UX: id dokumen yang sedang diunduh .docx — indikator loading per kartu
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  // UX: toast lokal untuk umpan balik aksi (unduh / hapus / salin)
-  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' | 'info' } | null>(null);
-  const toastTimer = useRef<number | null>(null);
-  const showToast = (message: string, kind: 'success' | 'error' | 'info' = 'success') => {
-    setToast({ message, kind });
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
-  };
-  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
+  // UI-09: toast terpusat — showToast meneruskan ke viewport App (ui/toast).
+  const showToast = notifyToast;
 
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch = 
@@ -294,13 +289,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
 
       {/* UX: dialog konfirmasi hapus bergaya aplikasi */}
       {docToDelete && (
-        <div
-          className="modal modal-open"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="delete-doc-title"
-        >
-          <div className="modal-box max-w-sm">
+        <Modal label="Hapus dokumen ini?" onClose={() => setDocToDelete(null)} sibuk={isDeleting} boxClassName="max-w-sm">
             <div className="w-10 h-10 rounded-lg bg-[var(--danger-soft)] text-[var(--danger)] flex items-center justify-center mb-3">
               <Trash2 className="w-4 h-4" />
             </div>
@@ -331,34 +320,7 @@ export const DocumentRepository: React.FC<DocumentRepositoryProps> = ({
                 {isDeleting ? 'Menghapus…' : 'Hapus'}
               </button>
             </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => { if (!isDeleting) setDocToDelete(null); }} />
-        </div>
-      )}
-
-      {/* UX: toast lokal — umpan balik unduh & hapus */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 left-1/2 z-[70] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] py-2.5 pl-3.5 pr-2 text-[12.5px] font-medium text-[var(--ink)] shadow-lg"
-        >
-          {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
-          ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
-          ) : (
-            <Info className="w-4 h-4 shrink-0 text-[var(--muted)]" />
-          )}
-          <span className="truncate">{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            aria-label="Tutup notifikasi"
-            className="ml-1 shrink-0 cursor-pointer rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+    </Modal>
       )}
 
     </div>

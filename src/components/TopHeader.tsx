@@ -3,6 +3,7 @@ import { TeacherUser, DocType } from '../types';
 import { NavigationTarget } from './Sidebar';
 import { DOC_TYPE_INFO } from '../data/curriculumData';
 import { useTheme } from '../theme';
+import { Avatar } from './ui/Avatar';
 import {
   Menu,
   CheckCircle2,
@@ -108,9 +109,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             title="Profil"
             aria-label={`${currentUser.name} — buka pengaturan akun`}
           >
-            <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[12px]">
-              {currentUser.name.charAt(0)}
-            </div>
+            <Avatar name={currentUser.name} size={28} />
             <span className="hidden sm:block text-[13px] font-medium text-[var(--ink)] max-w-[130px] truncate">
               {currentUser.name}
             </span>

@@ -1,5 +1,6 @@
 // Perpustakaan — bank perangkat sekolah: paket terpublikasi guru lain.
 import React, { useEffect, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { Copy, FileText, UserRound, RefreshCw, MessageSquare, X } from 'lucide-react';
 import { TeacherUser } from '../types';
 import { apiFetch } from '../utils/api';
@@ -21,12 +22,14 @@ interface PaketPublik {
 interface PerpustakaanProps {
   currentUser: TeacherUser;
   onBukaPaket?: (paketId: string) => void;
+  onBuatPaket?: () => void;
   notify?: (msg: string, kind: 'success' | 'error' | 'info') => void;
 }
 
 export const Perpustakaan: React.FC<PerpustakaanProps> = ({
   currentUser,
   onBukaPaket,
+  onBuatPaket,
   notify,
 }) => {
   const [pakets, setPakets] = useState<PaketPublik[]>([]);
@@ -128,13 +131,18 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
       )}
 
       {!loading && !error && pakets.length === 0 && (
-        <div className="apple-card py-14 px-6 text-center">
-          <Maskot size={84} melayang={true} className="mx-auto mb-4" />
+        <div className="apple-card py-8 px-6 text-center">
+          <Maskot size={56} melayang={true} className="mx-auto mb-3" />
           <h2 className="text-[16px] font-semibold text-[var(--ink)]">Belum ada paket yang dipublikasikan</h2>
           <p className="apple-sub mt-1.5 max-w-md mx-auto">
             {pesanKosong('perpustakaan')} Buat paket di Paket Saya, lengkapi dokumennya, lalu publikasikan
             agar bisa diteladani guru lain di sini.
           </p>
+          {onBuatPaket && (
+            <button className="btn-apple mt-4 !min-h-[38px] !py-2 !px-4 !text-[13px]" onClick={onBuatPaket}>
+              Buat Paket Pertama
+            </button>
+          )}
         </div>
       )}
 
@@ -194,8 +202,7 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
       )}
 
       {paketAktif && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Detail ${paketAktif.topik}`}>
-          <div className="modal-box max-w-2xl ux-pop-in max-h-[90vh] overflow-y-auto">
+        <Modal label={`Detail ${paketAktif.topik}`} onClose={() => setPaketAktif(null)} boxClassName="max-w-2xl ux-pop-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-[15px] font-semibold text-[var(--ink)] leading-snug">{paketAktif.topik}</h3>
               <button
@@ -234,9 +241,7 @@ export const Perpustakaan: React.FC<PerpustakaanProps> = ({
                 Tutup
               </button>
             </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => setPaketAktif(null)} />
-        </div>
+    </Modal>
       )}
     </div>
   );

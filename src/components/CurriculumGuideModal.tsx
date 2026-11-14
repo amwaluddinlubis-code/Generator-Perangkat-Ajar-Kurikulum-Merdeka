@@ -1,4 +1,5 @@
 import React from 'react';
+import { Modal } from './ui/Modal';
 import {
   X,
   Layers,
@@ -23,8 +24,7 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Panduan regulasi kurikulum">
-      <div className="modal-box max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+    <Modal label="Panduan regulasi kurikulum" onClose={onClose} boxClassName="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
         
         {/* Header */}
         <div className="relative shrink-0 border-b border-[var(--line)] px-5 py-4">
@@ -192,9 +192,6 @@ export const CurriculumGuideModal: React.FC<CurriculumGuideModalProps> = ({
             Mengerti
           </button>
         </div>
-
-      </div>
-      <div className="modal-backdrop" onClick={onClose} />
-    </div>
+    </Modal>
   );
 };

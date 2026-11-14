@@ -6,6 +6,7 @@
  * dari shared/kopPengesahan.ts. Simpan mengirim hasil sanitasi; tolak kosong.
  */
 import { useEffect, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { sanitasiNamaFile } from '@/shared/kopPengesahan.ts';
 
 interface Props {
@@ -50,13 +51,7 @@ export default function NamaFileModal({ terbuka, nilaiAwal, onSimpan, onBatal, i
   };
 
   return (
-    <div
-      className="modal modal-open"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Nama file"
-    >
-      <div className="modal-box max-w-sm">
+    <Modal label="Nama file" onClose={onBatal} boxClassName="max-w-sm">
         <h3 className="mb-1 text-[15px] font-semibold text-[var(--ink)]">
           Nama file
         </h3>
@@ -117,8 +112,6 @@ export default function NamaFileModal({ terbuka, nilaiAwal, onSimpan, onBatal, i
             Simpan
           </button>
         </div>
-      </div>
-      <div className="modal-backdrop" onClick={onBatal} />
-    </div>
+    </Modal>
   );
 }

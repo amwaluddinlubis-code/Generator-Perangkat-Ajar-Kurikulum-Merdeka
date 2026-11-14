@@ -1,5 +1,6 @@
 // DaftarPaket — daftar paket perangkat ajar dengan pencarian, filter, dan aksi.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal } from './ui/Modal';
 import {
   Plus,
   Search,
@@ -325,8 +326,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
       )}
 
       {targetHapus && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi hapus paket">
-          <div className="modal-box ux-pop-in">
+        <Modal label="Konfirmasi hapus paket" onClose={() => setTargetHapus(null)} sibuk={aksiId === targetHapus.id} boxClassName="max-w-lg ux-pop-in">
             <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
               <span className="w-8 h-8 rounded-md bg-[var(--danger-soft)] text-[var(--danger)] flex items-center justify-center">
                 <AlertTriangle className="w-4 h-4" />
@@ -360,12 +360,7 @@ export const DaftarPaket: React.FC<DaftarPaketProps> = ({
                 Ya, hapus
               </button>
             </div>
-          </div>
-          <div
-            className="modal-backdrop"
-            onClick={() => (aksiId === targetHapus.id ? undefined : setTargetHapus(null))}
-          />
-        </div>
+    </Modal>
       )}
     </div>
   );
@@ -461,8 +456,7 @@ const BuatPaketModal: React.FC<{
   const labelCls = 'block text-[12px] font-medium text-[var(--ink-soft)] mb-1.5';
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Buat paket baru">
-      <div className="modal-box max-w-lg ux-pop-in">
+    <Modal label="Buat paket baru" onClose={onTutup} sibuk={menyimpan} boxClassName="max-w-lg ux-pop-in">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
             <span className="w-8 h-8 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
@@ -572,9 +566,7 @@ const BuatPaketModal: React.FC<{
             </button>
           </div>
         </form>
-      </div>
-      <div className="modal-backdrop" onClick={() => !menyimpan && onTutup()} />
-    </div>
+    </Modal>
   );
 };
 

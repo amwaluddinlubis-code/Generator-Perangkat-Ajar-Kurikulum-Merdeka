@@ -3,7 +3,7 @@
 Dokumen kerja untuk menindaklanjuti **analisis UI** (Nov 2026).
 Berisi temuan terukur, backlog berprioritas, rencana kerja bertahap, dan kriteria penerimaan.
 
-> Status: **sebagian besar terlaksana** — Sprint 1 + UI-03, UI-07, UI-15 terlaksana pada commit `c09180d` ("perbaikan UI", sistem desain "Slate Core"); UI-05, UI-06, dan UI-16 (robots.txt) menyusul sesudahnya. Sisa terbuka: UI-08, UI-09, UI-10, UI-11…UI-14. Rincian per item di §11.
+> Status: **seluruh backlog terlaksana** — Sprint 1 + UI-03, UI-07, UI-15 pada commit `c09180d` ("perbaikan UI", sistem desain "Slate Core"); UI-05, UI-06, UI-16 menyusul; Sprint 3–4 (UI-08, UI-09, UI-10, UI-11…UI-14) dituntaskan sesudahnya. Rincian per item di §11.
 > **Keputusan yang menyimpang dari rencana awal:** aksen kanonik yang diterapkan adalah **indigo** ("Slate Core", `--accent: #4f46e5`), bukan amber seperti rancangan UI-01 di bawah — teks UI-01 dipertahankan sebagai catatan rancangan awal.
 > Cakupan: tampilan, interaksi, aksesibilitas, konsistensi desain.
 > Di luar cakupan: keamanan API, database, otorisasi (lihat `DOKUMENTASI.md` §10–§16).
@@ -338,9 +338,12 @@ UI-01 ──► UI-14 (avatar) ──► UI-13 (header)
 | UI-05 | ✅ Selesai (hash routing) | `App.tsx`: `activeTarget` <-> `#/<target>` dua arah — F5 bertahan di view yang sama, Back kembali ke view sebelumnya. Tanpa dependensi baru (opsi hash yang disarankan §5 UI-05). Substatus workspace paket (`paketAktifId`) belum masuk URL |
 | UI-06 | ✅ Selesai | `Sidebar.tsx`: grup "Generator Satuan" (7 generator) + grup "Arsip" (Arsip Dokumen) ditambahkan; seluruh 15 `NavigationTarget` kini terjangkau dari sidebar/menu pengguna |
 | UI-07 | ✅ Selesai (`c09180d`) | `DaftarPaket.tsx`: effect me-reset daftar dan bergantung pada `currentUser.id` |
-| UI-08 | ⬜ Terbuka | Standarisasi modal (satu komponen `ui/Modal`) belum dikerjakan |
-| UI-09 | 🟡 Sebagian | Toast aplikasi sudah terpusat di `App.tsx` dengan `role="status"`; toast lokal per komponen belum diaudit |
-| UI-10 | ⬜ Terbuka | Peringatan externalize modul Node saat build belum ditelusuri |
-| UI-11…UI-14 | ⬜ Terbuka | Penyempurnaan visual Sprint 4 |
+| UI-08 | ✅ Selesai | Komponen `src/components/ui/Modal.tsx` (portal DaisyUI, focus trap, restore focus, Escape, scroll lock, backdrop, prop `sibuk`); **16 pemakaian modal** dimigrasikan: 7 modal khusus (Logout, Panduan, BelajarId, AdminUjian, Diagnostik, NamaFile, KopPengesahan) + inline (Buat Paket, Hapus Paket, Hapus Dokumen, Generate, Konfirmasi Arsip, Ilustrasi AI, Detail Perpustakaan, Ubah Profil Guru, Tambah Guru). QA browser: scroll terkunci saat modal terbuka, Escape menutup, scroll pulih |
+| UI-09 | ✅ Selesai | Modul `src/components/ui/toast.ts` (`notifyToast` + pendengar); App satu-satunya perender. Empat implementasi toast lokal (DocumentRepository, DocumentViewer, GeneratorForm, PaketWorkspace) dihapus. QA: arsipkan paket → tepat satu toast "Paket diarsipkan" di viewport App |
+| UI-10 | ✅ Selesai (gejala tidak ditemukan) | Penelusuran: tidak ada impor `fs`/`path`/`url`/`node:*` di `src/`/`shared/`; build Vite 8 bersih tanpa peringatan externalize (gejala era Vite lama sudah hilang). Bundle terukur: chunk utama 1.915 kB (gzip 558 kB), vendor-excel 937 kB terpisah. Pemecahan chunk per view = pekerjaan lanjutan di luar rumusan UI-10 |
+| UI-11 | ✅ Selesai | Empty state Perpustakaan diringkas (py-8, maskot 56px) + CTA "Buat Paket Pertama" (prop `onBuatPaket` baru, dihubungkan di App). QA: CTA tampil & menuju `#/paket` |
+| UI-12 | ✅ Selesai (terverifikasi) | Tabel admin sudah terbungkus `overflow-x-auto` + `min-w-[820px]` sejak `c09180d`; QA 360px: `scrollWidth` halaman = 360 (tanpa overflow horizontal) |
+| UI-13 | ✅ Selesai (terverifikasi) | Header kini satu-satunya lokasi judul chrome: pola `Seksi / Judul` tunggal di `TopHeader`; tidak ada lagi breadcrumb terpisah yang menggandakan judul |
+| UI-14 | ✅ Selesai | Komponen `src/components/ui/Avatar.tsx` dipakai TopHeader & Sidebar UserMenu (warna `--accent` + hitung inisial seragam) |
 | UI-15 | ✅ Selesai (`c09180d`) | `@media (prefers-reduced-motion: reduce)` ada di `index.css` |
 | UI-16 | ✅ Selesai | `lang="id"` + meta description sudah ada di `index.html`; `public/robots.txt` ditambahkan |

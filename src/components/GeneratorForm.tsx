@@ -18,6 +18,7 @@ import { KomposisiSoal, KomposisiSoalState, KOMPOSISI_DEFAULT } from './Komposis
 import type { KomposisiKognitifState } from '../../shared/soalTerstruktur';
 import { bagiKomposisiPreset, totalKognitif } from '../../shared/soalTerstruktur';
 import { P5ThematicGeneratorSection } from './P5ThematicGeneratorSection';
+import { notifyToast } from './ui/toast';
 import { CurriculumTopicItem } from '../data/topicCatalog';
 import { apiFetch } from '../utils/api';
 import { 
@@ -187,18 +188,11 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
     return () => clearTimeout(t);
   }, [saranNotice]);
 
-  // GEL2: toast lokal mengikuti pola DocumentRepository/PaketWorkspace —
-  // dipakai mode paket untuk kabar sukses/gagal generate & simpan versi.
-  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' } | null>(null);
-  const toastTimer = useRef<number | null>(null);
-  const showToast = useCallback((message: string, kind: 'success' | 'error' = 'success') => {
-    setToast({ message, kind });
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
-  }, []);
-  useEffect(() => () => {
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-  }, []);
+  // UI-09: toast terpusat — showToast meneruskan ke viewport App (ui/toast).
+  const showToast = useCallback(
+    (message: string, kind: 'success' | 'error' = 'success') => notifyToast(message, kind),
+    []
+  );
 
   // GEL2: kunci double-submit khusus mode paket (isGenerating milik parent
   // mungkin tidak diset saat generate dari dalam mode paket).
@@ -1295,29 +1289,6 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
 
       </form>
 
-      {/* GEL2: toast lokal sukses/gagal (pola DocumentRepository/PaketWorkspace) */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2.5 pl-3.5 pr-2 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[12.5px] font-medium max-w-[calc(100vw-2rem)] text-[var(--ink)]"
-        >
-          {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
-          ) : (
-            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
-          )}
-          <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            aria-label="Tutup notifikasi"
-            className="ml-1 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

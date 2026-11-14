@@ -2,6 +2,7 @@
 // REDESIGN: timeline aktivitas, tab Dokumen/Versi, aksi generate/tandai-final/arsip.
 // REDESIGN: Dikerjakan sesuai KONTRAK API (Worker A, paralel); endpoint bundle belum ada di Gelombang 1.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Modal } from './ui/Modal';
 // GEL2: hapus interface Paket lokal (tech debt) — pakai tipe kanonik dari '../types'.
 import { DocType, GeneratorParams, Paket, TeacherUser } from '../types';
 import { GeneratorForm } from './GeneratorForm';
@@ -36,6 +37,7 @@ import {
 import { DocumentViewer } from './DocumentViewer';
 // FRIENDLY: maskot Owi + sapaan hangat untuk empty state
 import { Maskot } from './Maskot';
+import { notifyToast } from './ui/toast';
 import { pesanKosong } from '../utils/sapaan';
 // FITUR 3: presenter slide tayang (dokumen turunan Modul Ajar)
 import { SlidePresenter, Slide } from './SlidePresenter';
@@ -168,17 +170,11 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
     setMdModal({ docType, nilaiAwal: `${namaFileCerdas(aktif.title, docType)}_v${aktif.nomor}` });
   };
 
-  // REDESIGN: toast lokal mengikuti pola DocumentRepository
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const toastTimer = useRef<number | null>(null);
-  const showToast = useCallback((message: string, kind: ToastState['kind'] = 'success') => {
-    setToast({ message, kind });
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
-  }, []);
-  useEffect(() => () => {
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-  }, []);
+  // UI-09: toast terpusat — showToast meneruskan ke viewport App (ui/toast).
+  const showToast = useCallback(
+    (message: string, kind: ToastState['kind'] = 'success') => notifyToast(message, kind),
+    []
+  );
 
   // FRIENDLY: tutup modal Generate dengan Escape (jangan tutup saat AI sedang generate)
   useEffect(() => {
@@ -948,8 +944,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
 
       {/* Modal generate — GeneratorForm dalam paketMode */}
       {modal === 'generate' && modalDoc && infoModal && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label={`Generate ${infoModal.label}`}>
-          <div className="modal-box max-w-4xl p-0 ux-pop-in">
+        <Modal label={`Generate ${infoModal.label}`} onClose={() => setModal(null)} sibuk={sedangGenerate} boxClassName="max-w-4xl p-0 ux-pop-in">
             <div className="flex items-center justify-between gap-2 px-4 sm:px-5 h-14 border-b border-[var(--line)]">
               <h3 className="text-[14px] font-semibold flex items-center gap-2 text-[var(--ink)]">
                 <span className="w-7 h-7 rounded-md bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
@@ -982,9 +977,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                 <span className="loading loading-spinner loading-lg" aria-label="Memuat profil pengguna" />
               </div>
             )}
-          </div>
-          <div className="modal-backdrop" onClick={() => setModal(null)} />
-        </div>
+    </Modal>
       )}
 
       {/* Dokumen: tampilan baca layar penuh memakai DocumentViewer (A4 + ekspor) */}
@@ -1064,8 +1057,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
 
       {/* Modal konfirmasi arsip */}
       {modal === 'arsip' && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Konfirmasi arsip">
-          <div className="modal-box max-w-md ux-pop-in">
+        <Modal label="Konfirmasi arsip" onClose={() => setModal(null)} sibuk={menyimpan} boxClassName="max-w-md ux-pop-in">
             <h3 className="text-[15px] font-semibold flex items-center gap-2 text-[var(--ink)]">
               <span className="w-8 h-8 rounded-md bg-[var(--surface-2)] text-[var(--ink-soft)] flex items-center justify-center">
                 <Archive className="w-4 h-4" />
@@ -1091,9 +1083,7 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
                 {paketDiarsip ? 'Keluarkan' : 'Arsipkan'}
               </button>
             </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => !menyimpan && setModal(null)} />
-        </div>
+    </Modal>
       )}
 
       {/* FITUR 4: modal asesmen diagnostik 5 menit */}
@@ -1123,32 +1113,6 @@ export const PaketWorkspace: React.FC<PaketWorkspaceProps> = ({ paketId, onKemba
         }}
         onBatal={() => setMdModal(null)}
       />
-
-      {/* REDESIGN: toast lokal */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-2.5 pl-3.5 pr-2 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[13px] font-medium max-w-[calc(100vw-2rem)] text-[var(--ink)] ux-pop-in"
-        >
-          {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
-          ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
-          ) : (
-            <Info className="w-4 h-4 shrink-0 text-[var(--accent)]" />
-          )}
-          <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            aria-label="Tutup notifikasi"
-            className="ml-1 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)]"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Modal } from './ui/Modal';
 import { TeacherUser, Jenjang } from '../types';
 import {
   CheckCircle2,
@@ -399,8 +400,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
 
       {/* Edit Teacher Modal (admin) */}
       {editingUser && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Ubah profil guru">
-          <div className="modal-box max-w-md">
+        <Modal label="Ubah profil guru" onClose={() => setEditingUser(null)} boxClassName="max-w-md">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-[var(--ink)]">Ubah profil guru</h3>
@@ -473,15 +473,12 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
                 </button>
               </div>
             </form>
-          </div>
-          <div className="modal-backdrop" onClick={() => setEditingUser(null)} />
-        </div>
+    </Modal>
       )}
 
       {/* Manual Add Teacher Modal */}
       {showAddModal && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Tambah guru baru">
-          <div className="modal-box max-w-md">
+        <Modal label="Tambah guru baru" onClose={() => setShowAddModal(false)} boxClassName="max-w-md">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-[var(--ink)]">Tambah guru baru</h3>
@@ -581,9 +578,7 @@ export const TeacherVerificationPanel: React.FC<TeacherVerificationPanelProps> =
                 </button>
               </div>
             </form>
-          </div>
-          <div className="modal-backdrop" onClick={() => setShowAddModal(false)} />
-        </div>
+    </Modal>
       )}
 
     </div>

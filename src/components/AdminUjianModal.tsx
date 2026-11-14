@@ -8,6 +8,7 @@
  * Ekspor .docx dilakukan pemanggil lewat prop onUnduh (koordinator/integrasi).
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { X, Users, Download, ClipboardList } from 'lucide-react';
 import {
   parseDaftarSiswa,
@@ -78,8 +79,7 @@ export const AdminUjianModal: React.FC<AdminUjianModalProps> = ({
   };
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Paket admin ujian">
-      <div className="modal-box max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+    <Modal label="Paket admin ujian" onClose={onBatal} boxClassName="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         {/* Header */}
         <div className="relative shrink-0 border-b border-[var(--line)] px-5 py-4">
           <button
@@ -186,8 +186,6 @@ export const AdminUjianModal: React.FC<AdminUjianModalProps> = ({
             Unduh semua (3 dokumen)
           </button>
         </div>
-      </div>
-      <div className="modal-backdrop" onClick={onBatal} />
-    </div>
+    </Modal>
   );
 };

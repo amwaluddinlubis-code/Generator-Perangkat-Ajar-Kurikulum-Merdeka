@@ -37,6 +37,7 @@ import { ProfilePage } from './components/ProfilePage';
 import { LoginPage } from './components/LoginPage';
 import { LogoutConfirmModal } from './components/LogoutConfirmModal';
 import { apiFetch } from './utils/api';
+import { dengarkanToast } from './components/ui/toast';
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -112,6 +113,10 @@ export default function App() {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 4000);
   };
+
+  // UI-09: App adalah satu-satunya perender toast; komponen lain memanggil
+  // notifyToast() dari ui/toast dan diteruskan ke viewport di sini.
+  useEffect(() => dengarkanToast((t) => showToast(t.message, t.kind)), []);
 
   // Fetch initial data from server
   const loadInitialData = async () => {
@@ -588,6 +593,10 @@ export default function App() {
               <Perpustakaan
                 currentUser={currentUser}
                 onBukaPaket={(id) => setPaketAktifId(id)}
+                onBuatPaket={() => {
+                  setActiveTarget('paket');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 notify={(msg, kind) => showToast(msg, kind)}
               />
             </div>

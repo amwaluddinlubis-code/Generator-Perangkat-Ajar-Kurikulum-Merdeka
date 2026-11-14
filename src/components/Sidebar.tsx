@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { TeacherUser } from '../types';
+import { Avatar } from './ui/Avatar';
 import {
   GraduationCap,
   Home,
@@ -65,7 +66,6 @@ const UserMenu: React.FC<{
     currentUser?.role === 'SUPER_ADMIN' ||
     currentUser?.role === 'ADMIN' ||
     currentUser?.role === 'KEPALA_SEKOLAH';
-  const initial = (currentUser?.name || '?').trim().charAt(0).toUpperCase() || '?';
 
   return (
     <div className="dropdown dropdown-top dropdown-start w-full">
@@ -80,9 +80,7 @@ const UserMenu: React.FC<{
         aria-haspopup="menu"
       >
         <span className="relative shrink-0">
-          <span className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-semibold text-[13px]">
-            {initial}
-          </span>
+          <Avatar name={currentUser?.name ?? '?'} size={32} />
           {isAdmin && pendingCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[var(--danger)] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-[var(--surface)]">
               {pendingCount > 99 ? '99+' : pendingCount}

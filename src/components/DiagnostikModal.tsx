@@ -3,6 +3,7 @@
 // menampilkan hasil markdown dengan renderer sederhana buatan sendiri (tanpa dependensi baru),
 // plus tombol unduh .md dan salin. Bukan bagian dari 7 dokumen utama paket.
 import React, { useCallback, useEffect, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { X, Download, ClipboardCopy, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import type { Jenjang } from '../types';
 import { apiFetch, extractErrorMessage } from '../utils/api';
@@ -200,8 +201,7 @@ export const DiagnostikModal: React.FC<DiagnostikModalProps> = ({ paket, onClose
   }, [konten]);
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Asesmen Diagnostik 5 Menit">
-      <div className="modal-box max-w-3xl rounded-3xl ux-pop-in">
+    <Modal label="Asesmen Diagnostik 5 Menit" onClose={onClose} sibuk={memuat} boxClassName="max-w-3xl rounded-3xl ux-pop-in">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -305,9 +305,7 @@ export const DiagnostikModal: React.FC<DiagnostikModalProps> = ({ paket, onClose
             Tutup
           </button>
         </div>
-      </div>
-      <div className="modal-backdrop" onClick={() => !memuat && onClose()} />
-    </div>
+    </Modal>
   );
 };
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TeacherUser } from '../types';
 import { LogOut } from 'lucide-react';
+import { Modal } from './ui/Modal';
 
 interface LogoutConfirmModalProps {
   isOpen: boolean;
@@ -18,8 +19,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-label="Keluar dari akun">
-      <div className="modal-box max-w-sm text-center">
+    <Modal label="Keluar dari akun" onClose={onClose} boxClassName="max-w-sm text-center">
         
         <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--muted)]">
           <LogOut className="w-5 h-5" />
@@ -73,8 +73,6 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
           </button>
         </div>
 
-      </div>
-      <div className="modal-backdrop" onClick={onClose} />
-    </div>
+    </Modal>
   );
 };

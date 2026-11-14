@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { DocType, EducationalDocument, TeacherUser, VersiDokumen } from '../types';
 import { 
   renderMarkdownToHtml, 
@@ -8,6 +9,7 @@ import {
   copyToClipboard 
 } from '../utils/exportUtils';
 import { apiFetch } from '../utils/api';
+import { notifyToast } from './ui/toast';
 // FITUR 2: ekspor Lembar Penilaian KKTP ke .xlsx
 import { unduhLembarPenilaianXlsx } from '../utils/lembarPenilaianXlsx';
 // FASE 1 (F1-4/F1-6): viewer soal terstruktur + edit inline
@@ -222,15 +224,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   // FITUR 2: status ekspor Lembar Penilaian (.xlsx)
   const [isExportingXlsx, setIsExportingXlsx] = useState<boolean>(false);
-  // UX: toast lokal untuk umpan balik salin / unduh / simpan
-  const [toast, setToast] = useState<{ message: string; kind: 'success' | 'error' | 'info' } | null>(null);
-  const toastTimer = useRef<number | null>(null);
-  const showToast = (message: string, kind: 'success' | 'error' | 'info' = 'success') => {
-    setToast({ message, kind });
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 4000);
-  };
-  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
+  // UI-09: toast terpusat — showToast meneruskan ke viewport App (ui/toast).
+  const showToast = notifyToast;
 
   useEffect(() => {
     if (!document) return;
@@ -1078,8 +1073,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* Modal Ilustrasi AI */}
       {imgModalOpen && (
-        <div className="modal modal-open no-print" role="dialog" aria-modal="true" aria-label="Ilustrasi AI">
-          <div className="modal-box max-w-md">
+        <Modal label="Ilustrasi AI" onClose={() => setImgModalOpen(false)} className="no-print" boxClassName="max-w-md">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-[var(--ink)]">Ilustrasi AI</h3>
@@ -1147,9 +1141,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 </button>
               )}
             </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => setImgModalOpen(false)} />
-        </div>
+    </Modal>
       )}
       {/* F2-1: modal editor kop & pengesahan */}
       <KopPengesahanModal
@@ -1192,30 +1184,6 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         />
       )}
 
-      {/* UX: toast lokal — umpan balik salin / unduh / simpan */}
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[70] no-print flex items-center gap-2.5 pl-3.5 pr-2 py-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] shadow-lg text-[12.5px] font-medium max-w-[calc(100vw-2rem)] text-[var(--ink)]"
-        >
-          {toast.kind === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-[var(--ok)]" />
-          ) : toast.kind === 'error' ? (
-            <XCircle className="w-4 h-4 shrink-0 text-[var(--danger)]" />
-          ) : (
-            <Info className="w-4 h-4 shrink-0 text-[var(--muted)]" />
-          )}
-          <span className="truncate">{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            aria-label="Tutup notifikasi"
-            className="ml-1 rounded-md p-1 text-[var(--muted)] hover:bg-[var(--surface-2)] shrink-0 cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 };

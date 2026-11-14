@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Modal } from './ui/Modal';
 import { X, Upload, Trash2, Building2 } from 'lucide-react';
 import type { KopPengesahan } from '@/shared/kopPengesahan';
 import { LOGO_MAX_BYTES, validasiKop } from '@/shared/kopPengesahan';
@@ -85,13 +86,7 @@ export const KopPengesahanModal: React.FC<KopPengesahanModalProps> = ({
   const wajib = <span className="text-[var(--danger)]">*</span>;
 
   return (
-    <div
-      className="modal modal-open no-print"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Kop dan lembar pengesahan"
-    >
-      <div className="modal-box max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
+    <Modal label="Kop dan lembar pengesahan" onClose={onBatal} className="no-print" boxClassName="max-w-lg max-h-[90vh] flex flex-col p-0 overflow-hidden">
         {/* Header */}
         <div className="relative shrink-0 border-b border-[var(--line)] px-5 py-4">
           <button
@@ -284,8 +279,6 @@ export const KopPengesahanModal: React.FC<KopPengesahanModalProps> = ({
             Simpan
           </button>
         </div>
-      </div>
-      <div className="modal-backdrop" onClick={onBatal} />
-    </div>
+    </Modal>
   );
 };
