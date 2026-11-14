@@ -7,3 +7,7 @@ coverage/
 .env*
 !.env.example
 data/db.json
+data/*.bak
+data/rgm.sqlite
+data/rgm.sqlite-*
+data/uploads/

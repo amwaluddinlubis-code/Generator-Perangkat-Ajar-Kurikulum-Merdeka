@@ -1,13 +1,16 @@
 # Render.com blueprint — deploy via "New > Blueprint" lalu pilih repo ini.
 # Isi GEMINI_API_KEY di dashboard Render (Environment > Secret).
-# Catatan: paket free tidak mendukung disk, jadi data lokal (sesi login di
-# data/db.json, audit log di data/audit.log) bersifat sementara — hilang saat
-# redeploy/restart, pengguna cukup login ulang. Butuh data permanen? Upgrade
-# ke plan starter lalu tambahkan blok disk di bawah ini:
+# Catatan: paket free tidak mendukung disk, jadi data lokal (basis data SQLite
+# data/rgm.sqlite, gambar data/uploads, audit log data/audit.log) bersifat
+# sementara — hilang saat redeploy/restart, pengguna cukup login ulang. Butuh
+# data permanen? Upgrade ke plan starter lalu tambahkan blok disk di bawah ini
+# (SQLite dan uploads berada di bawah /app/data, jadi satu disk cukup):
 #     disk:
 #       name: rgm-data
 #       mountPath: /app/data
 #       sizeGB: 1
+# Backend memakai node:sqlite sehingga TIDAK butuh layanan database eksternal.
+# Dua instance sekaligus tidak didukung (SQLite satu penulis); jalankan 1 instance.
 services:
   - type: web
     name: ruang-guru-merdeka

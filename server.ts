@@ -51,6 +51,17 @@ import {
   SESSION_COOKIE,
   type AuthUser
 } from './server/auth.js';
+// FASE B — persistensi SQLite transaksional + penyimpanan berkas (uploads).
+import {
+  bukaDatabase,
+  imporJsonDariFile,
+  type DataTersimpan
+} from './server/db.js';
+import {
+  buatStorage,
+  gantiGambarDataUrl,
+  mimeDariEkstensi
+} from './server/storage.js';
 
 dotenv.config();
 
@@ -508,55 +519,124 @@ export interface UlasanPaket {
 }
 let ulasanPaket: UlasanPaket[] = [];
 
-// ---- Persistensi file JSON (data/db.json) ----
-const DB_PATH = path.resolve(__dirname, 'data', 'db.json');
+// ---- Persistensi SQLite (Fase B) ----
+// Data runtime disimpan di SQLite (node:sqlite) dan ditulis dalam satu
+// transaksi per save. Data lama di data/db.json diimpor otomatis sekali lalu
+// diarsipkan menjadi *.pra-sqlite-<timestamp>.bak.
+const DATA_DIR = path.resolve(__dirname, 'data');
+const DB_JSON_PATH = path.join(DATA_DIR, 'db.json');
+const DB_SQLITE_PATH = process.env.RGM_DB_PATH
+  ? path.resolve(process.env.RGM_DB_PATH)
+  : path.join(DATA_DIR, 'rgm.sqlite');
+const UPLOAD_DIR = process.env.RGM_UPLOAD_DIR
+  ? path.resolve(process.env.RGM_UPLOAD_DIR)
+  : path.join(DATA_DIR, 'uploads');
+
+// Gambar/ilustrasi tidak lagi disimpan sebagai data-URL di database; berkas
+// ditulis ke UPLOAD_DIR dan dokumen hanya menyimpan URL pendek /uploads/...
+const storage = buatStorage({ folder: UPLOAD_DIR });
+const database = bukaDatabase({ file: DB_SQLITE_PATH });
+
+function ambilSnapshot(): DataTersimpan {
+  return {
+    users,
+    documents,
+    pakets,
+    dokumenPaket,
+    versiDokumen,
+    slidePaket,
+    ulasanPaket,
+    sessions: getSessions()
+  };
+}
 
 function saveDBNow() {
   try {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    const payload = JSON.stringify({ users, documents, pakets, dokumenPaket, versiDokumen, slidePaket, ulasanPaket, sessions: getSessions() }, null, 2);
-    // Tulis atomik: temp + rename agar crash di tengah tulis tidak merusak db.json
-    const tmpPath = `${DB_PATH}.tmp`;
-    fs.writeFileSync(tmpPath, payload);
-    fs.renameSync(tmpPath, DB_PATH);
+    database.save(ambilSnapshot());
   } catch (err) {
-    console.warn('[DB] Gagal menyimpan db.json:', (err as Error).message);
+    console.warn('[DB] Gagal menyimpan ke SQLite:', (err as Error).message);
   }
 }
 
 let saveTimer: NodeJS.Timeout | null = null;
 function saveDB() {
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveDBNow, 200);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    saveDBNow();
+  }, 200);
+}
+
+/** Simpan segera (migrasi & shutdown) dan batalkan debounce yang tertunda. */
+function flushDB() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  saveDBNow();
+}
+
+const VALID_STATUS = new Set(['PENDING', 'VERIFIED', 'REJECTED']);
+
+function terapkanSnapshot(data: DataTersimpan) {
+  if (Array.isArray(data.users) && data.users.length > 0) {
+    // Pertahankan status verifikasi dari DB; hanya normalisasi nilai tak dikenal.
+    users = data.users.map(u => ({
+      ...u,
+      status: VALID_STATUS.has(String(u.status)) ? (u.status as TeacherUser['status']) : 'PENDING'
+    })) as TeacherUser[];
+  }
+  documents = (data.documents || []) as EducationalDocument[];
+  pakets = (data.pakets || []) as Paket[]; // REDESIGN
+  dokumenPaket = (data.dokumenPaket || []) as DokumenPaket[]; // REDESIGN
+  versiDokumen = (data.versiDokumen || []) as VersiDokumen[]; // REDESIGN
+  slidePaket = (data.slidePaket || []) as unknown as SlideTayang[]; // FITUR 3
+  ulasanPaket = (data.ulasanPaket || []) as UlasanPaket[]; // FITUR 5
+  if (Array.isArray(data.sessions)) setSessions(data.sessions.map(s => ({ ...s })));
+}
+
+/** Arsipkan db.json lama setelah migrasi agar tidak diimpor ulang. */
+function arsipkanDbJson(): void {
+  if (!fs.existsSync(DB_JSON_PATH)) return;
+  const cap = new Date().toISOString().replace(/[:.]/g, '-');
+  const tujuan = `${DB_JSON_PATH}.pra-sqlite-${cap}.bak`;
+  try {
+    fs.renameSync(DB_JSON_PATH, tujuan);
+    console.log(`[DB] data/db.json diarsipkan ke ${path.basename(tujuan)}`);
+  } catch (err) {
+    console.warn('[DB] Gagal mengarsipkan db.json:', (err as Error).message);
+  }
 }
 
 function loadDB() {
   try {
-    if (!fs.existsSync(DB_PATH)) {
-      saveDBNow(); // simpan data awal sebagai basis
-      return;
+    const snapshot = database.load();
+    if (snapshot) {
+      terapkanSnapshot(snapshot);
+      console.log(`[DB] SQLite dimuat: ${users.length} users, ${documents.length} documents, ${pakets.length} pakets, ${dokumenPaket.length} dokumenPaket, ${versiDokumen.length} versiDokumen, ${getSessions().length} sessions`);
+    } else if (fs.existsSync(DB_JSON_PATH)) {
+      // Migrasi satu-kali: SQLite kosong + db.json lama tersedia.
+      terapkanSnapshot(imporJsonDariFile(DB_JSON_PATH));
+      database.save(ambilSnapshot());
+      arsipkanDbJson();
+      console.log(`[DB] Migrasi db.json → SQLite selesai: ${users.length} users, ${documents.length} documents, ${pakets.length} pakets, ${dokumenPaket.length} dokumenPaket, ${versiDokumen.length} versiDokumen`);
+    } else {
+      // Basis data baru: simpan data seed sebagai titik awal.
+      database.save(ambilSnapshot());
+      console.log('[DB] Basis data baru dibuat dari data seed');
     }
-    const raw = JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
-    if (Array.isArray(raw.users) && raw.users.length > 0) {
-      // Pertahankan status verifikasi dari DB; hanya normalisasi nilai tak dikenal.
-      const VALID_STATUS = new Set(['PENDING', 'VERIFIED', 'REJECTED']);
-      users = raw.users.map((u: TeacherUser) => ({
-        ...u,
-        status: VALID_STATUS.has((u as TeacherUser).status) ? (u as TeacherUser).status : 'PENDING',
-      }));
-    }
-    if (Array.isArray(raw.documents)) documents = raw.documents;
-    if (Array.isArray(raw.pakets)) pakets = raw.pakets; // REDESIGN
-    if (Array.isArray(raw.dokumenPaket)) dokumenPaket = raw.dokumenPaket; // REDESIGN
-    if (Array.isArray(raw.versiDokumen)) versiDokumen = raw.versiDokumen; // REDESIGN
-    if (Array.isArray(raw.slidePaket)) slidePaket = raw.slidePaket; // FITUR 3
-    if (Array.isArray(raw.ulasanPaket)) ulasanPaket = raw.ulasanPaket; // FITUR 5
-    if (Array.isArray(raw.sessions)) setSessions(raw.sessions);
     const pruned = pruneExpiredSessions();
-    if (pruned > 0) console.log(`[Auth] ${pruned} session kedaluwarsa dibersihkan saat start`);
-    console.log(`[DB] Loaded ${users.length} users, ${documents.length} documents, ${pakets.length} pakets, ${dokumenPaket.length} dokumenPaket, ${versiDokumen.length} versiDokumen, ${getSessions().length} sessions from db.json`);
+    if (pruned > 0) {
+      console.log(`[Auth] ${pruned} session kedaluwarsa dibersihkan saat start`);
+      saveDBNow();
+    }
   } catch (err) {
-    console.warn('[DB] Gagal memuat db.json, memakai data awal:', (err as Error).message);
+    // Jangan lanjut dengan data seed: save berikutnya akan menimpa isi basis
+    // data yang gagal dibaca. Lebih aman berhenti dan biarkan operator
+    // memeriksa/restore file SQLite.
+    console.error('[DB] Gagal memuat basis data:', (err as Error).message);
+    console.error('[DB] Server dihentikan agar data tidak tertimpa. Periksa data/rgm.sqlite (atau backup .bak) lalu jalankan ulang.');
+    process.exit(1);
   }
 }
 loadDB();
@@ -615,6 +695,49 @@ function migrasiDokumenLama(): void {
   }
 }
 migrasiDokumenLama();
+
+/** FASE B — pindahkan gambar base64 di konten ke folder uploads. */
+function siapkanKonten(teks: string): string {
+  const hasil = gantiGambarDataUrl(teks, storage);
+  if (hasil.diganti > 0) {
+    console.log(`[Storage] ${hasil.diganti} gambar data-URL dipindahkan saat menyimpan dokumen`);
+  }
+  if (hasil.gagal > 0) {
+    console.warn(`[Storage] ${hasil.gagal} gambar data-URL gagal dipindahkan saat menyimpan dokumen`);
+  }
+  return hasil.teks;
+}
+
+// FASE B — migrasi satu-kali: gambar base64 yang tertanam di dokumen/versi lama
+// dipindahkan ke folder uploads agar database tidak membengkak. Idempoten:
+// setelah migrasi, konten hanya memuat URL /uploads/... sehingga dilewati.
+function migrasiGambarTertanam(): void {
+  const cache = new Map<string, string>();
+  let diganti = 0;
+  let gagal = 0;
+
+  const proses = (teks: string): string => {
+    const hasil = gantiGambarDataUrl(teks, storage, cache);
+    diganti += hasil.diganti;
+    gagal += hasil.gagal;
+    return hasil.teks;
+  };
+
+  for (const doc of documents) {
+    if (typeof doc.content === 'string') doc.content = proses(doc.content);
+  }
+  for (const versi of versiDokumen) {
+    if (typeof versi.content === 'string') versi.content = proses(versi.content);
+  }
+  if (diganti > 0) {
+    saveDBNow();
+    console.log(`[Storage] ${diganti} gambar data-URL dipindahkan ke ${UPLOAD_DIR}`);
+  }
+  if (gagal > 0) {
+    console.warn(`[Storage] ${gagal} gambar data-URL gagal dipindahkan (dibiarkan apa adanya)`);
+  }
+}
+migrasiGambarTertanam();
 
 // ---------------------------------------------------------------------------
 // KREDENSIAL DEMO — PENTING:
@@ -721,6 +844,18 @@ function isBelajarIdEmail(email: string): boolean {
     lower === 'amwaluddin.lubis@gmail.com'
   );
 }
+
+// FASE B — sajikan berkas unggahan (nama UUID acak, hanya-baca).
+// Sengaja tanpa auth agar bisa dipakai di <img src>; URL tidak dapat ditebak.
+app.use('/uploads', express.static(UPLOAD_DIR, {
+  fallthrough: false,
+  immutable: true,
+  maxAge: '365d',
+  setHeaders: (res, filePath) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Type', mimeDariEkstensi(filePath));
+  }
+}));
 
 // Routes
 // 0. Health check (untuk monitoring & platform deploy)
@@ -1167,7 +1302,7 @@ app.post('/api/documents', requireAuth, requireVerified, (req: Request, res: Res
     fase: fase || 'Fase B',
     mataPelajaran: mataPelajaran || me.mataPelajaran,
     topik: topik || String(title),
-    content: String(content),
+    content: siapkanKonten(String(content)),
     createdAt: new Date().toISOString(),
     authorId: me.id,
     authorName: me.name,
@@ -1437,7 +1572,7 @@ app.post('/api/pakets/:id/dokumen/:docType/generate', requireAuth, (req: Request
     id: newRedesignId('versi'),
     dokumenPaketId: dp.id,
     nomorVersi,
-    content: String(content),
+    content: siapkanKonten(String(content)),
     title: String(title || '').trim() || `${dp.docType} v${nomorVersi} — ${paket.topik}`,
     dibuatPada: now,
     dibuatOleh: currentDbUser(req)?.name || req.user!.id
@@ -2609,9 +2744,18 @@ app.post('/api/generate-image', requireAuth, imageRateLimit, async (req: Request
     }
 
     const mime = imgPart.inlineData.mimeType || 'image/png';
+    // FASE B — simpan ilustrasi sebagai berkas; respons hanya membawa URL pendek.
+    // Bila penyimpanan gagal, jatuh kembali ke data-URL agar fitur tetap hidup.
+    let imageUrl = `data:${mime};base64,${imgPart.inlineData.data}`;
+    try {
+      const tersimpan = storage.simpanBuffer(Buffer.from(imgPart.inlineData.data, 'base64'), mime);
+      imageUrl = tersimpan.url;
+    } catch (err) {
+      console.warn('[Storage] Gagal menyimpan ilustrasi AI:', (err as Error).message);
+    }
     res.json({
       success: true,
-      imageUrl: `data:${mime};base64,${imgPart.inlineData.data}`,
+      imageUrl,
       modelUsed: 'gemini-2.5-flash-image'
     });
   } catch (error: any) {
@@ -2659,4 +2803,26 @@ async function setupVite() {
 
 setupVite().catch(err => {
   console.error('Failed to start server:', err);
+});
+
+// FASE B — tutup rapi: tulis debounce terakhir lalu tutup koneksi SQLite.
+let databaseTertutup = false;
+function tutupDatabase() {
+  if (databaseTertutup) return;
+  databaseTertutup = true;
+  try {
+    flushDB();
+  } catch {
+    // abaikan: proses sedang berakhir
+  }
+  database.close();
+}
+process.on('exit', tutupDatabase);
+process.on('SIGINT', () => {
+  tutupDatabase();
+  process.exit(0);
+});
+process.on('SIGTERM', () => {
+  tutupDatabase();
+  process.exit(0);
 });

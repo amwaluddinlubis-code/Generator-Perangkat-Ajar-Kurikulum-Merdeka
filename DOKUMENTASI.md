@@ -32,7 +32,7 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 - **Backend:** Express 5 + `tsx` (satu server menyajikan API + frontend, middleware Vite saat dev)
 - **AI:** `@google/genai` (teks: `gemini-2.5-flash` → `gemini-3-flash-preview` → `gemini-2.5-flash-lite` → `gemini-2.5-pro`, fallback berurutan; gambar: `gemini-2.5-flash-image`)
 - **Ekspor:** `docx` (Word asli), `jspdf` + `html2canvas` (PDF), `exceljs` (.xlsx lembar nilai KKTP), salin clipboard
-- **Data:** JSON file `data/db.json` (di-gitignore), dimuat saat start + disimpan debounce tiap mutasi
+- **Data:** SQLite (`node:sqlite`, file `data/rgm.sqlite`, di-gitignore) — satu transaksi per penyimpanan, WAL; migrasi otomatis satu-kali dari `data/db.json` lama. Gambar disimpan sebagai berkas di `data/uploads/` (URL `/uploads/...`), bukan data-URL.
 
 ---
 
@@ -42,7 +42,14 @@ Aplikasi web untuk membantu guru Indonesia menyusun **7 perangkat ajar Kurikulum
 PerangkatAjar/
 ├── server.ts              # API Express + serve frontend
 ├── serverFallback.ts      # Template cadangan 7 tipe dokumen + tiered LKPD & P5
-├── data/db.json           # Data runtime (dibuat otomatis, jangan di-commit)
+├── server/
+│   ├── db.ts              # Lapisan SQLite (skema, load/save transaksional, impor JSON)
+│   ├── storage.ts         # Penyimpanan berkas + konversi gambar data-URL
+│   ├── auth.ts            # Sesi, kata sandi, middleware, rate limit, audit
+│   └── ...                # Pipeline soal, prompt, parser AI
+├── data/rgm.sqlite        # Basis data runtime (dibuat otomatis, jangan di-commit)
+├── data/uploads/          # Gambar/ilustrasi (nama UUID, jangan di-commit)
+├── data/db.json           # Format lama — hanya sumber migrasi, diarsipkan otomatis
 ├── .env                   # Kunci API (dibuat dari .env.example)
 ├── index.html
 ├── src/
@@ -230,7 +237,9 @@ npm run dev
 
 - Seed: 1 Super Admin (`amwaluddin.lubis@gmail.com`), 1 admin (`admin@guru.belajar.id`), 6 guru terverifikasi, 5 dokumen contoh.
 - Kata sandi awal seluruh akun seed = `SEED_PASSWORD` (default pengembangan `guru123`). Produksi wajib mengisi `SEED_PASSWORD` ≥ 12 karakter.
-- Data tersimpan di `data/db.json`; hapus file untuk kembali ke data awal.
+- Data tersimpan di SQLite `data/rgm.sqlite`; gambar disimpan di `data/uploads/`. Hapus keduanya untuk kembali ke data awal (seed).
+- Data lama `data/db.json` diimpor otomatis satu kali saat SQLite masih kosong, lalu diarsipkan menjadi `data/db.json.pra-sqlite-<timestamp>.bak`.
+- Lokasi dapat diubah lewat `RGM_DB_PATH` dan `RGM_UPLOAD_DIR` (lihat `.env.example`); di Render arahkan ke mount disk permanen.
 - Login cepat 1-ketuk tersedia di halaman masuk dan modal ganti akun **hanya di server pengembangan**; endpoint `/api/users/demo` sengaja tidak mengirim email.
 - Pendaftaran mandiri (`Daftar`) membuat akun `PENDING` tanpa sesi; admin memverifikasi di panel Admin. Admin juga bisa menambah guru langsung terverifikasi — sistem menampilkan kata sandi awal satu kali.
 
@@ -242,7 +251,7 @@ npm run dev
 | `EADDRINUSE` port 3000 | Matikan proses lama yang menjalankan `tsx server.ts` |
 | Selalu "Template cadangan" | Isi `GEMINI_API_KEY` lalu restart |
 | "API key not valid" (ilustrasi) | Key salah/kedaluwarsa — buat baru di AI Studio |
-| Data kembali ke awal | `data/db.json` terhapus — normal, akan dibuat ulang |
+| Data kembali ke awal | `data/rgm.sqlite` terhapus — normal, akan dibuat ulang dari seed |
 | Fase kosong untuk SMP/SMA | Sudah diperbaiki — default mengikuti jenjang akun |
 
 ---
@@ -250,9 +259,9 @@ npm run dev
 ## 9. Batasan yang Diketahui
 
 - Statistik bulanan memakai tren contoh (bukan murni data nyata).
-- Arsip tersimpan per-server (file lokal), bukan cloud multi-perangkat.
+- Arsip tersimpan per-server (SQLite + berkas lokal), bukan cloud multi-perangkat; satu instance saja (SQLite satu penulis).
 - Ilustrasi AI memakai kuota Gemini; saat habis, hanya teks yang memakai fallback.
-- Gambar tersisip tersimpan sebagai data-URL (memperbesar `db.json`); di `.docx` menjadi keterangan teks.
+- Gambar tersisip disimpan sebagai berkas di `data/uploads/` dan disajikan lewat URL `/uploads/...` tanpa auth (nama UUID acak). Signed URL / object storage eksternal belum diterapkan; di `.docx` gambar menjadi keterangan teks.
 
 ---
 
@@ -264,7 +273,7 @@ Fitur antarmuka dan alur utama sudah tersedia, tetapi produksi publik belum bole
 
 - ~~autentikasi dan sesi server yang nyata~~ — **selesai (Fase A)**: login wajib email + kata sandi (scrypt), sesi httpOnly di server, tidak ada token di `localStorage`;
 - otorisasi terpusat pada seluruh endpoint — **sebagian**: `requireAuth`/`requireRole` dipasang di route sensitif, tetapi belum ada uji integrasi HTTP menyeluruh;
-- database transaksional untuk multi-user;
+- database transaksional untuk multi-user — **selesai (Fase B)**: SQLite `node:sqlite`, satu transaksi per penyimpanan, migrasi otomatis dari `db.json`;
 - perlindungan data pribadi guru dan sekolah;
 - sanitasi konten Markdown/HTML;
 - rate limit untuk generator AI;
@@ -283,7 +292,7 @@ Status penilaian saat ini:
 | Ekspor Word/PDF | Tersedia, perlu pengujian dokumen panjang |
 | Autentikasi Belajar.id | Simulasi validasi domain + kata sandi lokal (scrypt), belum OAuth/OIDC |
 | Otorisasi API | Berbasis sesi server & peran; perlu uji integrasi menyeluruh |
-| Penyimpanan | File JSON lokal, hanya untuk pilot tunggal |
+| Penyimpanan | SQLite `node:sqlite` + berkas uploads lokal; masih satu instance (belum multi-node) |
 | Testing | Modul inti teruji; route HTTP belum tercakup |
 | Observability | Belum tersedia |
 | Kesiapan produksi | Belum siap |
@@ -345,19 +354,24 @@ Route HTTP tidak boleh mengambil keputusan authorization dari `requesterId` yang
 
 ### Data dan penyimpanan
 
-Migrasikan `data/db.json` ke database transaksional. Minimal entitas target:
+Migrasi `data/db.json` ke database transaksional sudah dilakukan pada Fase B (SQLite `node:sqlite`). Entitas yang sudah tersedia:
 
 - `users`
+- `documents`
+- `pakets`, `dokumen_paket`, `versi_dokumen`
+- `slide_paket`, `ulasan_paket`
+- `sessions`
+
+Entitas yang masih perlu ditambahkan sebelum produksi multi-sekolah:
+
 - `schools`
 - `school_memberships`
-- `documents`
-- `document_versions`
 - `document_shares`
 - `generation_jobs`
 - `audit_logs`
 - `ai_usage_records`
 
-Gambar dan lampiran jangan disimpan sebagai data-URL di dokumen. Simpan file pada object storage dan hanya simpan metadata serta URL internal yang memiliki masa berlaku.
+Gambar dan lampiran sudah tidak disimpan sebagai data-URL di dokumen: Fase B menulis berkas ke `data/uploads/` melalui abstraksi `server/storage.ts` dan hanya menyimpan URL `/uploads/...`. Untuk produksi, ganti implementasi storage ke object storage (S3/R2) dan gunakan signed URL dengan masa berlaku.
 
 ## 13. Roadmap Implementasi
 
@@ -381,10 +395,10 @@ Tujuan: menutup celah yang menghalangi produksi.
 
 Tujuan: mendukung banyak guru dan sekolah tanpa kehilangan data.
 
-- Buat schema database dan migration.
+- ~~Buat schema database dan migration~~ — **selesai sebagian (Fase B)**: SQLite `node:sqlite`, skema v1 + migrasi otomatis dari `db.json`; skema masih single-tenant.
 - Tambahkan `schoolId`/`tenantId` pada semua data bisnis.
 - Implementasikan unique constraint email dan membership.
-- Gunakan transaksi untuk pembuatan dokumen dan versi.
+- ~~Gunakan transaksi untuk pembuatan dokumen dan versi~~ — **selesai (Fase B)**: seluruh koleksi ditulis dalam satu transaksi per penyimpanan.
 - Tambahkan soft delete untuk pengguna dan dokumen penting.
 - Tambahkan backup terjadwal dan prosedur restore yang diuji.
 - Pisahkan konfigurasi dev, staging, dan production.
@@ -460,6 +474,7 @@ Format error yang disarankan:
 - generator fallback;
 - parser Markdown dan sanitasi;
 - authorization policy;
+- persistensi SQLite (roundtrip, hapus baris, migrasi JSON) dan penyimpanan berkas (URL, traversal, konversi data-URL) — `test/database.test.ts`;
 - validasi schema setiap jenis dokumen.
 
 ### Integration test
