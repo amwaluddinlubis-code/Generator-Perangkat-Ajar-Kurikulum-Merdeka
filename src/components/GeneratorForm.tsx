@@ -389,7 +389,12 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({
   const currentFaseObj = availableFases.find(f => f.fase === fase) || availableFases[0];
 
   return (
-    <div className="apple-card overflow-hidden">
+    // PERBAIKAN: overflow-clip, BUKAN overflow-hidden — overflow:hidden menjadikan
+    // kartu ini scroll container sehingga bilah aksi `sticky bottom-4` di dalam
+    // form tidak pernah menempel (tombol Generate tenggelam di bawah lipatan dan
+    // tampak tertutup). overflow:clip tetap memotong banner ke sudut kartu tanpa
+    // membuat scroll container, jadi sticky bekerja terhadap halaman/modal-box.
+    <div className="apple-card overflow-clip">
       
       {/* Verification Notice Banner if Pending */}
       {!isVerified && (

@@ -444,7 +444,12 @@
     to { opacity: 1; transform: translateY(0); }
   }
   .ux-view-enter {
-    animation: ux-view-enter 0.24s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+    /* PERBAIKAN: fill 'backwards', BUKAN 'both' — 'both' mempertahankan transform
+       keyframe akhir selamanya, dan transform pada kontainer view menjadikannya
+       containing block bagi keturunan position:fixed (modal DaisyUI) sehingga
+       modal bergeser/terpotong keluar viewport. 'backwards' hanya menerapkan
+       keyframe awal selama delay; sesudah animasi selesai tidak ada transform. */
+    animation: ux-view-enter 0.24s cubic-bezier(0.22, 0.8, 0.36, 1) backwards;
   }
 
   /* UX: indikator fokus keyboard selalu terlihat (a11y) */
@@ -673,7 +678,7 @@
   from { opacity: 0; transform: scale(0.98) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.ux-pop-in { animation: ux-pop-in 0.2s cubic-bezier(0.22, 0.8, 0.36, 1) both; }
+.ux-pop-in { animation: ux-pop-in 0.2s cubic-bezier(0.22, 0.8, 0.36, 1) backwards; }
 
 /* Entrance berurutan — pakai style={{ '--ux-delay': '60ms' }} */
 @keyframes ux-rise-in {
@@ -681,7 +686,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .ux-stagger {
-  animation: ux-rise-in 0.3s cubic-bezier(0.22, 0.8, 0.36, 1) both;
+  animation: ux-rise-in 0.3s cubic-bezier(0.22, 0.8, 0.36, 1) backwards;
   animation-delay: var(--ux-delay, 0ms);
 }
 
